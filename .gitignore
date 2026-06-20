@@ -55,6 +55,9 @@ venv/
 # Flask instance folder
 instance/
 
+# Daily activity logs (user conversation history)
+activities/
+
 # IDE / editor files
 .idea/
 .vscode/
