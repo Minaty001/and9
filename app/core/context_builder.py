@@ -3,6 +3,10 @@ app/core/context_builder.py — Assembles rich LLM context from all memory layer
 
 Takes user profile, emotional context, recent episodes, and current analysis
 to build a comprehensive system prompt that makes JARVIS truly context-aware.
+
+Constitution V3:
+   Rule 1 — Never instruct LLM to "confidently recall" or invent context
+   Rule 4 — Honest memory boundaries: only what context contains
 """
 import logging
 from typing import Optional
@@ -56,10 +60,13 @@ class ContextBuilder:
         if extra_context and extra_context.strip():
             parts.append(extra_context.strip())
 
+        # ── Truth-first closing instruction (Rule 1/4) ──────────────
         parts.append(
-            "Remember: Respond naturally in Hinglish. "
-            "Use the context above to make the conversation feel "
-            "personal and connected."
+            "REMEMBER: Respond naturally in Hinglish. "
+            "Sirf upar diya hua context use karo. "
+            "Agar context mein kuch nahi hai toh assume mat karo — "
+            "sach bolo ki aapko nahi pata. "
+            "Kabhi bhi information invent mat karo."
         )
 
         return "\n\n".join(parts)
@@ -112,6 +119,10 @@ class ContextBuilder:
             if len(content) > 500:
                 content = content[:497] + "..."
             lines.append(f"[{role}]: {content}")
+        lines.append(
+            "Yeh recent conversation hai. Sirf yahi context use karo — "
+            "kuch bhi invent mat karo."
+        )
         return "\n".join(lines)
 
     @staticmethod
@@ -129,7 +140,7 @@ class ContextBuilder:
 
         lines: list[str] = [
             "═══ RELEVANT PAST CONTEXT ═══",
-            "User ne pehle bhi is topic pe baat ki thi:",
+            "User ne pehle is topic pe baat ki thi (yeh context mein hai):",
         ]
         for ep in episodes:
             role = ep.get("role", "unknown")
@@ -139,6 +150,10 @@ class ContextBuilder:
                 content = content[:397] + "..."
             prefix = f"  [{ts}] " if ts else "  "
             lines.append(f"{prefix}[{role}]: {content}")
+        lines.append(
+            "Sirf upar di gayi information ka reference karo. "
+            "Koi bhi additional detail invent mat karo."
+        )
         return "\n".join(lines)
 
     @staticmethod
@@ -173,11 +188,12 @@ class ContextBuilder:
         if expertise:
             lines.append(f"Expertise level: {expertise}")
 
-        # Memory-related flags
+        # Memory-related flags — truth-first instructions
         if _safe_get(analysis, "is_memory_recall", False):
             lines.append(
-                "User purana context yaad karna chahta hai — "
-                "confidently recall karo with specifics."
+                "User purana context yaad karna chahta hai. "
+                "Agar context mein kuch nahi hai toh sach bolo "
+                "ki aapko nahi pata — invent mat karo."
             )
         if _safe_get(analysis, "is_memory_store", False):
             lines.append(

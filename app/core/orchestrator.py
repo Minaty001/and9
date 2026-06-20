@@ -1,14 +1,14 @@
 """
 app/core/orchestrator.py — Central orchestrator with cognitive processing pipeline.
 
-Processing flow:
+Constitution V3 processing flow:
   1. Understand — analyze intent, emotion, entities
-  2. Memory ops — handle explicit memory store/recall requests
-  3. Context — build rich prompt from all memory layers
-  4. Route & Execute — dispatch to appropriate agent
-  5. Post-process — extract facts, tag emotions, update session
+  2. Truth Engine — validate memory before LLM calls (Rule 5)
+  3. Memory ops — handle explicit memory store/recall requests
+  4. Context — build rich prompt from all memory layers
+  5. Route & Execute — dispatch to appropriate agent
+  6. Post-process — save episodes, tag emotions (no auto-entity storage)
 """
-import re
 import time
 import logging
 import threading
@@ -21,31 +21,63 @@ from app.core.context_builder import ContextBuilder
 from app.core.goal_tracker import GoalTracker
 from app.core.events import EventSystem, is_event_request
 from app.core.reflection import ReflectionEngine
-from app.core.activity_logger import get_activity_logger
-from app.core.intent_router import LLMIntentRouter
-from app.core.knowledge_graph import KnowledgeGraph
-from app.core.working_memory import WorkingMemory
+from app.core.truth_engine import verify_before_llm, cap_confidence
 
 logger = logging.getLogger(__name__)
 
 
-INTENT_AGENT_MAP = {
-    # Direct handlers (orchestrator routes these internally)
-    "music": None, "goal": None, "reminder": None,
-    "reflection": None, "memory": None, "timer": None,
-    # Goes to AssistantAgent (search/image/device are tools, not separate agents)
-    "search":         "search",
-    "image":          "image",
-    "device_app":     "device",
-    "device_call":    "device",
-    "device_control": "device",
-    "device_storage": "device",
-    # Dedicated agents
-    "research": "research",
-    "coding":   "coding",
-    # Default
-    "chat": None,
-}
+class IntentRouter:
+    """Keyword-based intent router. Fast, zero LLM calls."""
+
+    PATTERNS = {
+        "search":   ["find", "look up", "google", "news", "weather", "who is", "what is"],
+        "research": ["in-depth", "comprehensive", "tell me everything about", "deep dive", "history of"],
+        "coding":   ["code", "python", "javascript", "bug", "fix", "debug", "function", "refactor"],
+        "image":    ["generate image", "create image", "draw", "make a picture", "paint"],
+        "music":    ["song", "gaana", "music", "gana", "sunna", "laga do", "bajao",
+                     "play", "baja do", "track", "playlist", "singer", "soft song",
+                     "sad song", "romantic", "sunao", "ghazal", "bhajan"],
+        "goal":     ["goal", "target", "aim", "objective", "lakshya", "mera goal",
+                     "add goal", "new goal", "set goal", "complete goal", "goals kya hain",
+                     "project", "kaam", "task", "todo", "to do", "meri list"],
+        "reminder": ["remind", "reminder", "yaad dilana", "yaad dila", "mat bhoolna",
+                     "event", "meeting", "schedule", "appointment", "alert"],
+        "reflection":["daily review", "aaj kya kiya", "session summary", "reflect",
+                      "din ka summary", "review karo", "kya kiya aaj"],
+        "device":   ["turn on", "turn off", "enable", "disable", "wifi", "wi-fi",
+                     "bluetooth", "torch", "flashlight", "volume", "brightness", "battery",
+                     "camera", "photo", "youtube", "whatsapp", "chrome", "calculator",
+                     "maps", "telegram", "spotify", "instagram", "alarm", "call", "dial",
+                     "contact", "contacts", "file", "folder", "directory", "storage"],
+    }
+
+    def route(self, query: str) -> str:
+        q = query.lower().strip()
+        if not q:
+            return "chat"
+
+        if any(kw in q for kw in self.PATTERNS["image"]):
+            return "image"
+        if any(kw in q for kw in self.PATTERNS["reflection"]):
+            return "reflection"
+        if any(kw in q for kw in self.PATTERNS["device"]):
+            return "device"
+        if any(kw in q for kw in self.PATTERNS["goal"]):
+            return "goal"
+        if any(kw in q for kw in self.PATTERNS["reminder"]):
+            return "reminder"
+        if any(kw in q for kw in self.PATTERNS["music"]):
+            return "music"
+        if q.startswith("search") or q.startswith("find ") or q.startswith("look up") or q.startswith("google"):
+            return "search"
+        if any(kw in q for kw in self.PATTERNS["coding"]):
+            return "coding"
+        if q.startswith("research") or any(kw in q for kw in self.PATTERNS["research"]):
+            return "research"
+        if any(kw in q for kw in self.PATTERNS["search"]):
+            return "search"
+
+        return "chat"
 
 
 class Orchestrator:
@@ -53,14 +85,12 @@ class Orchestrator:
 
     def __init__(self, memory=None):
         self.memory     = memory or get_memory()
-        self.llm_router = LLMIntentRouter(cache_ttl=60)
+        self.router     = IntentRouter()
         self.understanding = UnderstandingEngine()
         self.context_builder = ContextBuilder()
         self.goals      = GoalTracker(self.memory)
         self.events_sys = EventSystem(self.memory)
-        self.reflector     = ReflectionEngine(self.memory)
-        self.knowledge_graph = KnowledgeGraph(self.memory)
-        self.working_memory  = WorkingMemory(self.memory)
+        self.reflector  = ReflectionEngine(self.memory)
         self._agent_cache = {}
         # ── Speed: TTL cache for expensive reads (60s) ──────────
         self._cache: dict = {}
@@ -95,19 +125,16 @@ class Orchestrator:
 
     def list_agents(self):
         return [
-            {"name": "chat",           "description": "General conversation and tasks"},
-            {"name": "coding",         "description": "Write, debug, and explain code"},
-            {"name": "image",          "description": "Generate images from text prompts"},
-            {"name": "research",       "description": "Multi-source research with citations"},
-            {"name": "search",         "description": "Real-time web search and facts"},
-            {"name": "music",          "description": "Search and play songs from YouTube"},
-            {"name": "goal",           "description": "Manage goals, tasks, and projects"},
-            {"name": "reminder",       "description": "Set and manage reminders and events"},
-            {"name": "reflection",     "description": "Daily review and session summaries"},
-            {"name": "device_app",     "description": "Open/launch Android apps"},
-            {"name": "device_call",    "description": "Make phone calls"},
-            {"name": "device_control", "description": "Control Android device features"},
-            {"name": "memory",         "description": "Recall past conversations"},
+            {"name": "chat",       "description": "General conversation and tasks"},
+            {"name": "coding",     "description": "Write, debug, and explain code"},
+            {"name": "image",      "description": "Generate images from text prompts"},
+            {"name": "research",   "description": "Multi-source research with citations"},
+            {"name": "search",     "description": "Real-time web search and facts"},
+            {"name": "music",      "description": "Search and play songs from YouTube"},
+            {"name": "goal",       "description": "Manage goals, tasks, and projects"},
+            {"name": "reminder",   "description": "Set and manage reminders and events"},
+            {"name": "reflection", "description": "Daily review and session summaries"},
+            {"name": "device",     "description": "Control Android device features"},
         ]
 
     def run(self, query: str) -> dict:
@@ -129,16 +156,13 @@ class Orchestrator:
         user_profile = self.memory.get_user_profile()
         analysis = self.understanding.analyze(query, user_profile)
 
-        # ── 2. AUTO-STORE ENTITIES ──────────────────────────────
-        self._store_entities(analysis.entities)
-
-        # ── 3. HANDLE MEMORY REQUESTS ───────────────────────────
+        # ── 2. HANDLE MEMORY REQUESTS ───────────────────────────
         if analysis.is_memory_store:
             return self._handle_memory_store(query, analysis, start)
         if analysis.is_memory_recall:
             return self._handle_memory_recall(query, analysis, start)
 
-        # ── 4. BUILD CONTEXT — parallel fetch ───────────────────
+        # ── 3. BUILD CONTEXT + TRUTH CHECK — parallel fetch ────
         # Run memory, goals, events queries simultaneously
         futures = {}
         with ThreadPoolExecutor(max_workers=3) as ex:
@@ -156,6 +180,29 @@ class Orchestrator:
         goal_ctx   = futures["goals"].result()
         event_ctx  = futures["evts"].result()
 
+        # ── 4. TRUTH ENGINE — verify before LLM ──────────────────
+        has_truth, guidance = verify_before_llm(memory_ctx, query)
+        if not has_truth:
+            # No usable memory — return honest don't-know
+            elapsed = int((time.time() - start) * 1000)
+            return {
+                "response": guidance,
+                "agent": "orchestrator",
+                "success": True,
+                "metadata": {"truth_engine": "no_memory"},
+                "brain": {
+                    "intent": analysis.intent,
+                    "emotion_detected": analysis.emotion,
+                    "emotion_intensity": analysis.emotion_intensity,
+                    "topic": analysis.topic,
+                    "entities_found": len(analysis.entities),
+                    "expertise_level": analysis.expertise_level,
+                    "session_id": memory_ctx.get("session_id"),
+                    "truth_engine": "no_verified_memory",
+                },
+                "time_ms": elapsed,
+            }
+
         context = self.context_builder.build(
             user_profile=memory_ctx.get("user_profile", {}),
             emotional_context=memory_ctx.get("emotional_context", {}),
@@ -166,28 +213,22 @@ class Orchestrator:
         )
 
         # ── 5. ROUTE & EXECUTE ──────────────────────────────────
-        llm_result = self.llm_router.classify(query)
-        agent_name = llm_result["intent"]
-        intent_params = llm_result.get("parameters", {})
+        agent_name = self.router.route(query)
 
         if agent_name == "music":
-            return self._handle_music(query, analysis, memory_ctx, context, start, intent_params)
+            return self._handle_music(query, analysis, memory_ctx, context, start)
         if agent_name == "goal":
-            return self._handle_goal(query, analysis, memory_ctx, context, start, intent_params)
+            return self._handle_goal(query, analysis, memory_ctx, context, start)
         if agent_name == "reminder":
-            return self._handle_reminder(query, analysis, memory_ctx, context, start, intent_params)
+            return self._handle_reminder(query, analysis, memory_ctx, context, start)
         if agent_name == "reflection":
             return self._handle_reflection(query, analysis, memory_ctx, context, start)
-        if agent_name == "memory":
-            return self._handle_memory_recall(query, analysis, start)
-        if agent_name == "timer":
-            return self._handle_timer(query, analysis, memory_ctx, start, intent_params)
 
-        agent = self._get_agent(INTENT_AGENT_MAP.get(agent_name))
+        agent = self._get_agent(agent_name)
 
         if agent:
             try:
-                result = agent.run(query, intent_name=agent_name, intent_params=intent_params)
+                result = agent.run(query)
                 response = str(result.get("result", ""))
                 metadata = result.get("metadata", {})
                 success = result.get("success", True)
@@ -216,8 +257,6 @@ class Orchestrator:
             "metadata": metadata,
             "brain": {
                 "intent": analysis.intent,
-                "llm_intent": agent_name,
-                "llm_confidence": llm_result.get("confidence", 0),
                 "emotion_detected": analysis.emotion,
                 "emotion_intensity": analysis.emotion_intensity,
                 "topic": analysis.topic,
@@ -240,8 +279,7 @@ class Orchestrator:
     # ── Music Handler ───────────────────────────────────────────
 
     def _handle_music(self, query: str, analysis: MessageAnalysis,
-                      memory_ctx: dict, context: str, start: float,
-                      intent_params: dict | None = None) -> dict:
+                      memory_ctx: dict, context: str, start: float) -> dict:
         """Handle music/song requests via YouTube search."""
         from app.skills.youtube import handle_music_request, is_music_request
 
@@ -250,18 +288,12 @@ class Orchestrator:
         prefs = profile.get("preference", {})
         fav_song = prefs.get("favorite_song") or prefs.get("song") or prefs.get("music")
 
-        # Use LLM-extracted song name if available
-        llm_song = intent_params.get("song") if intent_params else None
-        llm_artist = intent_params.get("artist") if intent_params else None
-
         # If user is vague ('koi bhi', 'kuch bhi') and we know their fav, use it
         vague_keywords = ["koi bhi", "kuch bhi", "anything", "koi sa", "koi"]
         is_vague = any(kw in query.lower() for kw in vague_keywords)
 
-        effective_query = llm_song or query
+        effective_query = query
         memory_note = ""
-        if llm_artist and llm_song:
-            effective_query = f"{llm_song} {llm_artist}"
         if is_vague and fav_song:
             effective_query = fav_song
             memory_note = f"(based on your favorite: {fav_song}) "
@@ -296,112 +328,22 @@ class Orchestrator:
             "time_ms": elapsed,
         }
 
-    # ── Timer Handler ───────────────────────────────────────────
-
-    _DURATION_PATTERNS = [
-        (r"(\d+)\s*(hour|hours|ghante|ghanta)s?", lambda n: n * 3600),
-        (r"(\d+)\s*(min|minute|mins|minutes)s?", lambda n: n * 60),
-        (r"(\d+)\s*(sec|second|seconds)s?", lambda n: n),
-    ]
-
-    def _parse_duration(self, query: str) -> tuple[Optional[int], Optional[str]]:
-        """Extract duration in seconds from a natural language query.
-
-        Returns:
-            (seconds, label) on success, (None, None) on failure.
-        """
-        q = query.lower()
-        # Try direct duration patterns first
-        for pattern, multiplier in self._DURATION_PATTERNS:
-            m = re.search(pattern, q)
-            if m:
-                n = int(m.group(1))
-                secs = multiplier(n)
-                if 1 <= secs <= 86400:
-                    # Build a label from the remainder of the query
-                    label = re.sub(r"\b(set|alarm|timer|countdown|for|ka|ke|ki|ka alarm|ka timer)\b",
-                                   "", query, flags=re.IGNORECASE).strip(" ,.-") or "Alarm"
-                    return secs, label[:100]
-        return None, None
-
-    def _handle_timer(self, query: str, analysis: MessageAnalysis,
-                      memory_ctx: dict, start: float,
-                      intent_params: dict | None = None) -> dict:
-        """Handle timer/countdown requests via the server-side timer service."""
-        # Prefer LLM-extracted duration
-        params = intent_params or {}
-        llm_secs = params.get("duration_seconds")
-        if llm_secs and 1 <= llm_secs <= 86400:
-            secs = llm_secs
-            label = params.get("label", "Alarm")[:100]
-        else:
-            secs, label = self._parse_duration(query)
-
-        if secs is None:
-            # If the user said something like "set alarm" without a duration,
-            # fall back to chat asking for duration
-            reply = "Kitne minute ka timer set karna hai boss? 5 min, 30 sec — batao!"
-            elapsed = int((time.time() - start) * 1000)
-            return {
-                "response": reply, "agent": "timer", "success": True,
-                "metadata": {}, "brain": {"intent": "timer", "topic": analysis.topic,
-                                          "session_id": memory_ctx.get("session_id")},
-                "time_ms": elapsed,
-            }
-
-        from app.core.timer import get_timer_service
-        result = get_timer_service().create_timer(secs, label or "Alarm")
-
-        # Format response in Hinglish
-        if secs >= 3600:
-            hours = secs // 3600
-            mins = (secs % 3600) // 60
-            duration_str = f"{hours} ghante {mins} minute" if mins else f"{hours} ghante"
-        elif secs >= 60:
-            mins = secs // 60
-            duration_str = f"{mins} minute"
-        else:
-            duration_str = f"{secs} seconds"
-
-        reply = f"⏰ {duration_str} ka timer set kar diya! Bolaunga jab time ho jayega! 💪"
-
-        self._post_process(query, reply, analysis)
-
-        elapsed = int((time.time() - start) * 1000)
-        return {
-            "response": reply,
-            "agent": "timer",
-            "success": True,
-            "metadata": {
-                "timer": {
-                    "id": result["id"],
-                    "remaining": result["remaining"],
-                    "label": result["label"],
-                }
-            },
-            "brain": {"intent": "timer", "topic": analysis.topic,
-                      "session_id": memory_ctx.get("session_id")},
-            "time_ms": elapsed,
-        }
-
     # ── Goal Handler ────────────────────────────────────────────
 
     def _handle_goal(self, query: str, analysis: MessageAnalysis,
-                     memory_ctx: dict, context: str, start: float,
-                     intent_params: dict | None = None) -> dict:
+                     memory_ctx: dict, context: str, start: float) -> dict:
         """Handle goal/project management requests."""
         import re
-        params = intent_params or {}
-        action = params.get("action", "add")
+        q = query.lower()
 
-        if action == "complete":
+        if any(kw in q for kw in ["complete", "done", "khatam", "finish", "ho gaya"]):
             goals = self.goals.get_active_goals()
             if goals:
                 self.goals.complete_goal(goals[0]["id"])
                 reply = f"✅ '{goals[0]['title']}' — mark kar diya done! Badhiya kaam kiya boss! 🎉"
             else:
                 reply = "Koi active goal nahi mila. Pehle ek goal add karo!"
-        elif action == "list":
+        elif any(kw in q for kw in ["list", "show", "kya hain", "batao", "dikhaao", "meri list", "goals kya"]):
             goals = self.goals.get_active_goals()
             projects = self.goals.get_active_projects()
             if not goals and not projects:
@@ -418,8 +360,10 @@ class Orchestrator:
                         lines.append(f"  • {p['name']}")
                 reply = "\n".join(lines)
         else:
-            title = params.get("title") or query[:80]
-            q = query.lower()
+            title = re.sub(
+                r"\b(goal|target|add|set|new|mera|meri|jarvis|please|lagao|daalo|create)\b",
+                "", query, flags=re.IGNORECASE
+            ).strip(" ,.-") or query[:80]
             priority = "high" if any(kw in q for kw in ["important", "urgent", "zaruri", "jaldi"]) else "medium"
             result = self.goals.add_goal(title, priority=priority)
             reply = f"✅ Goal add kar diya: **{title}** [{priority}] 💪" if result else "Goal add nahi ho saka, try again!"
@@ -433,13 +377,11 @@ class Orchestrator:
     # ── Reminder Handler ────────────────────────────────────────
 
     def _handle_reminder(self, query: str, analysis: MessageAnalysis,
-                         memory_ctx: dict, context: str, start: float,
-                         intent_params: dict | None = None) -> dict:
+                         memory_ctx: dict, context: str, start: float) -> dict:
         """Handle reminder/event creation requests."""
-        params = intent_params or {}
-        action = params.get("action", "create")
+        q = query.lower()
 
-        if action == "list":
+        if any(kw in q for kw in ["list", "show", "kya hain", "upcoming", "schedule", "batao"]):
             events = self.events_sys.get_upcoming_events(hours_ahead=72)
             if not events:
                 reply = "Koi upcoming reminder nahi hai. Kuch schedule karein?"
@@ -486,36 +428,27 @@ class Orchestrator:
     # ── Memory Store Handler ────────────────────────────────────
 
     def _handle_memory_store(self, query: str, analysis: MessageAnalysis, start: float) -> dict:
-        """Handle explicit memory storage requests."""
-        # Store entities that were extracted
-        self._store_entities(analysis.entities)
+        """Handle explicit memory storage requests.
 
-        # Also try LLM-based extraction for complex facts
-        try:
-            from app.core.brain import extract_facts_from_text
-            facts = extract_facts_from_text(query)
-            for f in facts:
-                self.memory.store_fact(
-                    category=f["category"],
-                    key=f["key"],
-                    value=f["value"],
-                    confidence=0.9,
-                )
-        except Exception as e:
-            logger.warning(f"LLM fact extraction failed: {e}")
+        Per Rule 5/6: ONLY store entities extracted via regex (confidence 0.3).
+        NEVER use LLM for fact extraction.
+        """
+        # Store regex-extracted entities at appropriate confidence
+        self._store_entities(analysis.entities, source="regex_extraction")
 
-        # Record the episode
+        # Record the episode with source tracking
         self.memory.add_episode(
             role="user", content=query,
             topic=analysis.topic, emotion=analysis.emotion,
             importance=3,
+            source="user_input",
         )
 
         response = "Yaad rakh liya bhai! 👍 Aage se dhyan rahunga."
-        self._log_activity(query, response)
         self.memory.add_episode(
             role="assistant", content=response,
             topic=analysis.topic, emotion="happy",
+            source="llm_response",
         )
 
         elapsed = int((time.time() - start) * 1000)
@@ -536,80 +469,89 @@ class Orchestrator:
     # ── Memory Recall Handler ───────────────────────────────────
 
     def _handle_memory_recall(self, query: str, analysis: MessageAnalysis, start: float) -> dict:
-        """Handle explicit memory recall requests — uses fast_recall() cache first."""
-        import time as _time
-        t0 = _time.time()
+        """Handle explicit memory recall requests.
 
-        # ━━ 1. Fast-path: check warm LRU cache (sub-millisecond) ━━━━━━━━━━━━━
-        recalled = self.memory.fast_recall(query, limit=8)
-        cache_hit = recalled.get("cache_hit", False)
-
-        # ━━ 2. Build LLM context from recalled data ━━━━━━━━━━━━━━━━━━━
-        context = self.context_builder.build(
-            user_profile=recalled.get("user_profile", {}),
-            emotional_context={},
-            recent_episodes=recalled.get("recent_chat", []),
-            relevant_past=recalled.get("matched_episodes", []),
-            current_analysis=analysis,
+        Per Rule 1/4: First check Truth Engine for verified memory.
+        If no verified memory exists, return honest "I don't know".
+        """
+        # Build memory context
+        memory_ctx = self.memory.build_memory_context(
+            current_topic=analysis.topic, limit=10
         )
 
-        # ━━ 3. Inject sessions summary into prompt ━━━━━━━━━━━━━━━━━━━━━
-        sessions = recalled.get("sessions_summary", [])
-        if sessions:
-            sess_lines = ["\n═══ PREVIOUS SESSIONS RECAP ═══"]
-            for s in sessions:
-                status = s.get("ended_at", "active")
-                sess_lines.append(
-                    f"  Session {s['session_id']} [{status}]: {s.get('summary', '')[:80]}"
-                )
-            context += "\n".join(sess_lines)
+        # Truth Engine check — do we actually have verified memory?
+        has_truth, guidance = verify_before_llm(memory_ctx, query)
+        if not has_truth:
+            # No verified memory about this topic
+            self.memory.add_episode(
+                role="user", content=query,
+                topic=analysis.topic, emotion=analysis.emotion,
+            )
+            self.memory.add_episode(
+                role="assistant", content=guidance[:500],
+                topic=analysis.topic,
+            )
+            elapsed = int((time.time() - start) * 1000)
+            return {
+                "response": guidance,
+                "agent": "memory",
+                "success": True,
+                "metadata": {"task": "memory_recall", "truth_engine": "no_memory"},
+                "brain": {
+                    "intent": analysis.intent,
+                    "emotion_detected": analysis.emotion,
+                    "topic": analysis.topic,
+                    "entities_found": len(analysis.entities),
+                },
+                "time_ms": elapsed,
+            }
+
+        # We have verified memory — build context and ask LLM
+        context = self.context_builder.build(
+            user_profile=memory_ctx.get("user_profile", {}),
+            emotional_context=memory_ctx.get("emotional_context", {}),
+            recent_episodes=memory_ctx.get("recent_episodes", []),
+            relevant_past=memory_ctx.get("relevant_past", []),
+            current_analysis=analysis,
+        )
 
         from app.core.brain import ask_llm
         messages = [{"role": "user", "content": query}]
         response = ask_llm(messages, context=context)
 
-        # ━━ 4. Record this exchange (background) ━━━━━━━━━━━━━━━━━━━━━━━
-        threading.Thread(
-            target=self._post_process,
-            args=(query, response, analysis),
-            daemon=True,
-        ).start()
+        # Record this exchange
+        self.memory.add_episode(
+            role="user", content=query,
+            topic=analysis.topic, emotion=analysis.emotion,
+        )
+        self.memory.add_episode(
+            role="assistant", content=response[:500],
+            topic=analysis.topic,
+        )
 
-        recall_ms = int((_time.time() - t0) * 1000)
-        elapsed   = int((_time.time() - start) * 1000)
-        logger.info(f"memory_recall: cache_hit={cache_hit}, recall_ms={recall_ms}, total_ms={elapsed}")
-
+        elapsed = int((time.time() - start) * 1000)
         return {
             "response": response,
             "agent": "memory",
             "success": True,
-            "metadata": {
-                "task":       "memory_recall",
-                "cache_hit":  cache_hit,
-                "recall_ms":  recall_ms,
-                "matches":    len(recalled.get("matched_episodes", [])),
-            },
+            "metadata": {"task": "memory_recall"},
             "brain": {
-                "intent":           analysis.intent,
+                "intent": analysis.intent,
                 "emotion_detected": analysis.emotion,
-                "topic":            analysis.topic,
-                "entities_found":   len(analysis.entities),
+                "topic": analysis.topic,
+                "entities_found": len(analysis.entities),
             },
             "time_ms": elapsed,
         }
 
     # ── Post-Processing ─────────────────────────────────────────
 
-    def _log_activity(self, query: str, response: str):
-        """Log conversation to daily activity file (background)."""
-        try:
-            get_activity_logger().log(query, response)
-        except Exception:
-            logger.debug("Activity log skipped")
-
     def _post_process(self, query: str, response: str, analysis: MessageAnalysis):
-        """After generating a response: save episodes, extract facts, tag emotions."""
-        self._log_activity(query, response)
+        """After generating a response: save episodes, tag emotions.
+
+        Per Rule 5/6: Does NOT auto-store entities (removed).
+        Entities are only stored during explicit memory_store requests.
+        """
         try:
             # Save episodes to episodic memory
             episode_id = self.memory.add_episode(
@@ -633,15 +575,6 @@ class Orchestrator:
                     context=query[:200],
                 )
 
-            # Auto-extract and store entities
-            self._store_entities(analysis.entities)
-
-            # Update knowledge graph from entities
-            try:
-                self.knowledge_graph.extract_and_store(analysis.entities)
-            except Exception:
-                logger.debug("KG extraction skipped")
-
         except Exception:
             logger.exception("Post-processing error")
 
@@ -656,10 +589,20 @@ class Orchestrator:
         "preference": "preference",
     }
 
-    def _store_entities(self, entities: dict):
-        """Store extracted entities into semantic memory."""
+    def _store_entities(self, entities: dict, source: str = "regex_extraction"):
+        """Store extracted entities into semantic memory.
+
+        Per Rule 5: regex_extraction has max confidence of 0.3.
+        Per Rule 6: never LLM-inferred facts.
+        Entities are only stored with appropriate source and confidence.
+
+        Args:
+            entities: Dict of entity_type → value from regex extraction.
+            source: Source type (default regex_extraction).
+        """
         if not entities:
             return
+        confidence = cap_confidence(source)
         for entity_type, value in entities.items():
             category = self._ENTITY_TO_CATEGORY.get(entity_type, "personal")
             try:
@@ -667,15 +610,20 @@ class Orchestrator:
                     category=category,
                     key=entity_type,
                     value=str(value),
-                    confidence=0.9,
+                    confidence=confidence,
+                    source=source,
+                    verified=False,  # regex-extracted, not user-confirmed
                 )
-                # Also mirror to legacy user_facts for backward compat
+                # Mirror to user_facts for backward compat
                 self.memory.learn_fact(
                     key=entity_type,
                     value=str(value),
                     fact_type=category,
                     priority=2,
+                    source=source,
+                    confidence=confidence,
+                    verified=False,
                 )
-                logger.info(f"Auto-stored entity: {entity_type}={value}")
+                logger.info(f"Stored entity: {entity_type}={value} (conf={confidence}, source={source})")
             except Exception as e:
                 logger.warning(f"Failed to store entity {entity_type}: {e}")

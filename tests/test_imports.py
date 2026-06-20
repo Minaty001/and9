@@ -152,9 +152,9 @@ def test_relevant_episodes():
 def test_semantic_memory_store():
     from app.core.memory import Memory
     m = Memory(db_path=":memory:")
-    m.store_fact("identity", "name", "Saif")
-    m.store_fact("location", "city", "Delhi")
-    m.store_fact("profession", "role", "Developer")
+    m.store_fact("identity", "name", "Saif", confidence=1.0)
+    m.store_fact("location", "city", "Delhi", confidence=1.0)
+    m.store_fact("profession", "role", "Developer", confidence=1.0)
     profile = m.get_user_profile()
     assert "identity" in profile
     assert profile["identity"]["name"] == "Saif"
@@ -165,8 +165,8 @@ def test_semantic_memory_store():
 def test_semantic_memory_upsert():
     from app.core.memory import Memory
     m = Memory(db_path=":memory:")
-    m.store_fact("identity", "name", "Saif")
-    m.store_fact("identity", "name", "Saif Khan")  # Update
+    m.store_fact("identity", "name", "Saif", confidence=1.0)
+    m.store_fact("identity", "name", "Saif Khan", confidence=1.0)  # Update
     profile = m.get_user_profile()
     assert profile["identity"]["name"] == "Saif Khan"
 
@@ -174,9 +174,9 @@ def test_semantic_memory_upsert():
 def test_semantic_facts_by_category():
     from app.core.memory import Memory
     m = Memory(db_path=":memory:")
-    m.store_fact("preference", "color", "blue")
-    m.store_fact("preference", "food", "biryani")
-    m.store_fact("identity", "name", "Saif")
+    m.store_fact("preference", "color", "blue", confidence=1.0)
+    m.store_fact("preference", "food", "biryani", confidence=1.0)
+    m.store_fact("identity", "name", "Saif", confidence=1.0)
     prefs = m.get_facts_by_category("preference")
     assert "color" in prefs
     assert "food" in prefs
@@ -186,7 +186,7 @@ def test_semantic_facts_by_category():
 def test_semantic_forget_fact():
     from app.core.memory import Memory
     m = Memory(db_path=":memory:")
-    m.store_fact("identity", "name", "Saif")
+    m.store_fact("identity", "name", "Saif", confidence=1.0)
     assert m.forget_fact("identity", "name") is True
     assert m.forget_fact("identity", "name") is False
     profile = m.get_user_profile()
@@ -236,7 +236,7 @@ def test_dominant_emotion():
 def test_build_memory_context():
     from app.core.memory import Memory
     m = Memory(db_path=":memory:")
-    m.store_fact("identity", "name", "Saif")
+    m.store_fact("identity", "name", "Saif", confidence=1.0)
     m.add_episode("user", "test message", topic="coding")
     m.record_emotion("coding", "happy")
     ctx = m.build_memory_context(current_topic="coding")

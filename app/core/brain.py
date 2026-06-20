@@ -233,32 +233,9 @@ def get_available_models() -> list:
     return models
 
 
-FACT_EXTRACTION_PROMPT = """Analyze the following user message and extract any personal facts about the user.
-Return a JSON object with extracted facts. Only include facts that are clearly stated.
-Categories: identity, location, profession, preference, project, habit, goal, relationship, technical.
-
-Example output:
-{"facts": [{"category": "identity", "key": "name", "value": "Saif"}, {"category": "location", "key": "city", "value": "Delhi"}]}
-
-If no facts found, return: {"facts": []}
-
-User message: """
-
-
-def extract_facts_from_text(text: str) -> list[dict]:
-    """Use the LLM to extract structured facts from user text."""
-    if not text:
-        return []
-    try:
-        result = ask_llm_json(
-            [{"role": "user", "content": FACT_EXTRACTION_PROMPT + text}],
-            system="You are a fact extraction engine. Return ONLY valid JSON. No explanation.",
-        )
-        facts = result.get("facts", [])
-        return [
-            f for f in facts
-            if isinstance(f, dict) and "category" in f and "key" in f and "value" in f
-        ]
-    except Exception as e:
-        logger.warning(f"Fact extraction failed: {e}")
-        return []
+# ── REMOVED (Constitution V3 Rule 5/6) ───────────────────────────
+# extract_facts_from_text() and FACT_EXTRACTION_PROMPT removed.
+# LLM inference must NEVER be stored as fact per Rule 5:
+#   llm_inference → confidence 0.0 → never stored.
+# Use direct regex extraction (understanding.py) instead.
+# ────────────────────────────────────────────────────────────────

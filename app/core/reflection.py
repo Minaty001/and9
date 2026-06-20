@@ -3,12 +3,18 @@ app/core/reflection.py — Reflection Engine.
 
 Part of JARVIS Cognitive Architecture (Subconscious Brain layer).
 Runs at session end or on demand to:
-  1. Summarize what was discussed
-  2. Extract key insights / facts from the session
+  1. Summarize what was discussed (only from actual data)
+  2. Extract key insights / facts from the session (regex-only, no LLM)
   3. Tag emotional arc of the session
-  4. Generate a daily review (on request)
+  4. Generate a daily review (on request, only from actual data)
+
+Constitution V3:
+   Rule 5 — No LLM-inferred facts stored as memory
+   Rule 6 — Only store what data explicitly contains
+   Rule 8 — Source tracking for all memory writes
 """
 import logging
+import re
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -29,7 +35,7 @@ class ReflectionEngine:
             ask_llm_fn: Callable(messages) → str  (e.g. brain.ask_llm)
 
         Returns:
-            Summary string.
+            Summary string, faithful to the actual transcript.
         """
         episodes = self._mem.get_session_history(session_id)
         if not episodes:
@@ -47,10 +53,14 @@ class ReflectionEngine:
 {transcript}
 
 Is session ka ek concise summary do (3-5 lines mein, Hinglish mein):
+- Sirf wohi likho jo transcript mein hai
 - Kya discuss hua
-- Koi important decisions ya facts
+- Koi important decisions ya facts (sirf transcript se)
 - User ka mood / emotional state
-- Koi unresolved questions ya next steps"""
+- Koi unresolved questions ya next steps
+
+IMPORTANT: Sirf transcript mein di gayi information ka reference karo.
+Kuch bhi invent mat karo. Agar kuch nahi hai toh mat likho."""
 
         try:
             messages = [{"role": "user", "content": prompt}]
@@ -70,7 +80,10 @@ Is session ka ek concise summary do (3-5 lines mein, Hinglish mein):
     def daily_review(self, ask_llm_fn) -> str:
         """Generate a daily review of what happened today.
 
-        Pulls episodes from last 24 hours and summarizes them.
+        Only from chat_history, activity_logs, episodic_memory, journal_entries.
+        If no activity → 'No meaningful activity recorded.'
+
+        Pulls episodes from last 24 hours and summarizes them faithfully.
         """
         recent = self._mem.get_recent_episodes(limit=50)
         if not recent:
@@ -101,10 +114,16 @@ Is session ka ek concise summary do (3-5 lines mein, Hinglish mein):
 {transcript}
 
 Include karo:
-1. Kya kiya aaj saath mein
-2. Koi important decisions / facts
+1. Kya discuss hua (sirf transcript se)
+2. Koi important decisions / facts (sirf jo transcript mein clearly hain)
 3. Pending tasks / goals jo aaj mention hue
-4. Kal ke liye suggestions"""
+4. Kal ke liye suggestions
+
+Data-faithfulness rules:
+- ONLY include what is explicitly in the transcript above
+- Agar koi section mein kuch nahi hai toh skip karo
+- Kabhi bhi activities ya facts invent mat karo
+- Sirf actual conversations ka reference do"""
 
         try:
             messages = [{"role": "user", "content": prompt}]
@@ -115,44 +134,109 @@ Include karo:
 
         return review
 
-    def extract_key_facts(self, session_id: int, ask_llm_fn) -> list[dict]:
-        """Extract important facts from a session and store them in semantic memory.
+    def extract_key_facts(self, session_id: int) -> list[dict]:
+        """Extract important facts from a session using regex pattern matching only.
 
-        Returns list of extracted facts.
+        Per Rule 5/6: NEVER use LLM for fact extraction. Only direct regex
+        patterns from understanding.py are allowed.
+
+        Returns list of extracted facts with confidence=0.3 and source=regex_extraction.
         """
         episodes = self._mem.get_session_history(session_id)
         if not episodes:
             return []
 
-        user_turns = [ep["content"] for ep in episodes if ep["role"] == "user"]
-        text = "\n".join(user_turns[:20])
+        user_turns = [ep.get("content", "") for ep in episodes if ep.get("role") == "user"]
+        text = "\n".join(user_turns)
 
-        prompt = f"""Extract important personal facts from this conversation (JSON array):
+        facts = []
 
-Text: {text}
+        # Pattern: mera naam X hai / my name is X / main X hoon / I am X
+        name_match = re.search(
+            r'(?:mera naam |my name is |i am |i\'m |main |call me )(\w+(?:\s+\w+)?)',
+            text, re.IGNORECASE
+        )
+        if name_match:
+            name = name_match.group(1).strip().capitalize()
+            if name.lower() not in ("jarvis", "assistant", "there", "here", "ready"):
+                facts.append({
+                    "category": "identity",
+                    "key": "name",
+                    "value": name,
+                    "source": "regex_extraction",
+                    "confidence": 0.3,
+                })
 
-Return ONLY a JSON array like:
-[
-  {{"category": "identity", "key": "name", "value": "Karan"}},
-  {{"category": "preference", "key": "favorite_song", "value": "Tum Hi Ho"}}
-]
+        # Pattern: main X mein rehta hoon / i live in X / from X
+        location_match = re.search(
+            r'(?:main |i )(?:\w+ )?(?:mein rehta|live in|from |rehta|rehti)(?:\w+ )?(.+?)(?:\.|,|$| hoon)',
+            text, re.IGNORECASE
+        )
+        if location_match:
+            loc = location_match.group(1).strip().capitalize()
+            if len(loc) > 2 and loc.lower() not in ("here", "there", "somewhere"):
+                facts.append({
+                    "category": "location",
+                    "key": "location",
+                    "value": loc,
+                    "source": "regex_extraction",
+                    "confidence": 0.3,
+                })
 
-Only return facts about the USER. Return empty array [] if no facts found."""
+        # Pattern: mujhe X pasand hai / i like X / i love X
+        preference_match = re.search(
+            r'(?:(?:mujhe|main) (.+?) pasand|i (?:like|love|prefer) (.+?))(?:\.|,|$| hai)',
+            text, re.IGNORECASE
+        )
+        if preference_match:
+            pref = preference_match.group(1) or preference_match.group(2)
+            if pref:
+                facts.append({
+                    "category": "preference",
+                    "key": "preference",
+                    "value": pref.strip(),
+                    "source": "regex_extraction",
+                    "confidence": 0.3,
+                })
 
-        try:
-            import json
-            messages = [{"role": "user", "content": prompt}]
-            raw = ask_llm_fn(messages, max_tokens=300) or "[]"
-            # Extract JSON from response
-            start = raw.find("[")
-            end   = raw.rfind("]") + 1
-            if start >= 0 and end > start:
-                facts = json.loads(raw[start:end])
-                for f in facts:
-                    if all(k in f for k in ("category", "key", "value")):
-                        self._mem.store_fact(f["category"], f["key"], str(f["value"]), confidence=0.85)
-                        self._mem.learn_fact(f["key"], str(f["value"]), f["category"])
-                return facts
-        except Exception as e:
-            logger.warning(f"Fact extraction failed: {e}")
-        return []
+        # Pattern: profession detection
+        prof_match = re.search(
+            r'(?:i am a |main ek |i work as |my job is |profession |main |mein )(\w+(?:\s+\w+)?) (?:hoon|hun|hū)',
+            text, re.IGNORECASE
+        )
+        if prof_match:
+            prof = prof_match.group(1).strip()
+            if prof.lower() not in ("there", "here", "ready", "fine", "good"):
+                facts.append({
+                    "category": "profession",
+                    "key": "profession",
+                    "value": prof,
+                    "source": "regex_extraction",
+                    "confidence": 0.3,
+                })
+
+        # Store extracted facts (regex-based, confidence 0.3)
+        for f in facts:
+            try:
+                self._mem.store_fact(
+                    category=f["category"],
+                    key=f["key"],
+                    value=f["value"],
+                    confidence=f["confidence"],
+                    source=f["source"],
+                    verified=False,
+                )
+                self._mem.learn_fact(
+                    key=f["key"],
+                    value=f["value"],
+                    fact_type=f["category"],
+                    priority=1,
+                    source=f["source"],
+                    confidence=f["confidence"],
+                    verified=False,
+                )
+                logger.info(f"Regex-extracted fact: {f['category']}:{f['key']}={f['value']}")
+            except Exception as e:
+                logger.warning(f"Failed to store extracted fact {f['key']}: {e}")
+
+        return facts

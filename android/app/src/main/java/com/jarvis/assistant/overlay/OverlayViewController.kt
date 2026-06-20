@@ -41,23 +41,16 @@ import kotlinx.coroutines.delay
 /**
  * OverlayViewController
  *
+ * Constitution V3 compliance:
+ *   - ACTION_WHITELIST: Only safe, user-visible actions are allowed.
+ *   - Parameter validation: Every action payload is validated before execution.
+ *   - Dangerous actions (create_file, make_call): Require user confirmation.
+ *
  * Owns the complete lifecycle of the assistant UI:
  *   SpeechRecognizer → Backend HTTP call → TTS response → Device actions
  *
  * UI state machine:
  *   IDLE → LISTENING → PROCESSING → SPEAKING → LISTENING (loop)
- *
- * Device actions supported:
- *   - Open apps              (PackageManager.getLaunchIntentForPackage)
- *   - Close apps / Go Home   (AccessibilityService)
- *   - Control volume         (AudioManager)
- *   - Flashlight on/off      (CameraManager.setTorchMode)
- *   - Launch browser         (ACTION_VIEW with URL)
- *   - Search web             (ACTION_WEB_SEARCH)
- *   - Open camera            (MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
- *   - Take screenshot        (via accessibility or system intent)
- *   - Open settings          (Settings.ACTION_SETTINGS)
- *   - Start voice conversation (continues listening loop)
  */
 class OverlayViewController(
     private val context: Context,
@@ -67,6 +60,25 @@ class OverlayViewController(
 ) {
     companion object {
         private const val TAG = "JarvisOverlay"
+
+        // ── ACTION WHITELIST (Constitution V3 Rule 7) ──────────────
+        // Only these actions are allowed. Any action not in this list
+        // is silently ignored.
+        val ACTION_WHITELIST = setOf(
+            "open_app", "close_app", "home", "go_home", "back", "go_back",
+            "torch", "flashlight", "strobe", "blink", "blink_flashlight",
+            "volume", "browser", "open_browser", "search", "web_search",
+            "camera", "open_camera", "settings", "open_settings",
+            "wifi", "wifi_settings", "screenshot", "screenshot",
+            "notification", "notifications", "vibrate",
+            "alarm", "set_alarm",
+        )
+
+        // ── DANGEROUS ACTIONS — require user confirmation ──────────
+        val DANGEROUS_ACTIONS = setOf(
+            "call", "make_call", "phone_call",
+            "create_file", "write_file", "make_file",
+        )
     }
 
     // ── UI refs ─────────────────────────────────────────────────
@@ -239,7 +251,7 @@ class OverlayViewController(
 
     private fun extractAndCleanActions(rawReply: String): Pair<String, List<JSONObject>> {
         val actions = mutableListOf<JSONObject>()
-        
+
         // 1. Look for ```json ... ```
         val jsonRegex = Regex("```json\\s*([\\s\\S]*?)\\s*```", RegexOption.IGNORE_CASE)
         val matches = jsonRegex.findAll(rawReply)
@@ -259,14 +271,14 @@ class OverlayViewController(
                 Log.e(TAG, "Failed to parse matched JSON block: $jsonStr", e)
             }
         }
-        
+
         // Remove the ```json ... ``` blocks from the speech/display text
         var cleanText = rawReply.replace(jsonRegex, "")
-        
+
         // 2. Remove other generic code blocks ``` ... ```
         val genericCodeRegex = Regex("```[\\s\\S]*?```")
         cleanText = cleanText.replace(genericCodeRegex, "")
-        
+
         // 3. Fallback: If no actions found via code blocks, try finding any single JSON object { ... } in the text
         if (actions.isEmpty()) {
             val startIdx = cleanText.indexOf('{')
@@ -280,7 +292,7 @@ class OverlayViewController(
                 } catch (_: Exception) {}
             }
         }
-        
+
         return Pair(cleanText.trim(), actions)
     }
 
@@ -291,18 +303,18 @@ class OverlayViewController(
             mainHandler.post {
                 if (isDestroyedOrDismissed) return@post
                 DebugLogger.log(TAG, "Backend reply: $reply")
-                
+
                 val (cleanReply, extractedActions) = extractAndCleanActions(reply)
                 showStatus(cleanReply)
-                
+
                 // 1. Handle device actions from backend metadata (Flask-style)
                 jsonResponse?.let { handleActions(it) }
-                
-                // 2. Handle extracted actions (Groq/OpenAI style)
+
+                // 2. Handle extracted actions (with whitelist + validation)
                 for (action in extractedActions) {
                     handleDeviceAction(action)
                 }
-                
+
                 // Speak the clean reply
                 speakReply(cleanReply)
             }
@@ -311,7 +323,7 @@ class OverlayViewController(
 
     /**
      * Parse backend JSON response and execute device actions.
-     * Supports both single action and array of actions.
+     * All actions are validated against ACTION_WHITELIST before execution.
      */
     private fun handleActions(jsonResponse: JSONObject) {
         // Single action
@@ -331,14 +343,31 @@ class OverlayViewController(
     }
 
     private fun handleDeviceAction(metadata: JSONObject) {
-        val task = metadata.optString("task")
         val action = metadata.optString("action")
+            .ifEmpty { metadata.optString("task") }
+            .lowercase()
+
+        // ── WHITELIST CHECK (Rule 7) ────────────────────────────────
+        if (action !in ACTION_WHITELIST && action !in DANGEROUS_ACTIONS) {
+            Log.w(TAG, "Blocked unlisted action: $action")
+            return
+        }
+
+        // ── DANGEROUS ACTION CONFIRMATION ───────────────────────────
+        if (action in DANGEROUS_ACTIONS) {
+            Log.w(TAG, "Blocked dangerous action requiring confirmation: $action")
+            showStatus("This action requires your confirmation.")
+            speakReply("This action needs your confirmation. Please use the app directly.")
+            return
+        }
+
         val payload = metadata.optString("payload")
         val appName = metadata.optString("app_name")
 
-        Log.d(TAG, "Device action: task=$task action=$action payload=$payload app=$appName")
+        Log.d(TAG, "Device action: action=$action payload=$payload app=$appName")
 
-        when (action.lowercase()) {
+        // ── PARAMETER VALIDATION per action type ────────────────────
+        when (action) {
             "torch", "flashlight" -> {
                 if (payload.lowercase() == "strobe" || payload.lowercase() == "blink") {
                     blinkFlashlight(5)
@@ -350,16 +379,21 @@ class OverlayViewController(
                 blinkFlashlight(5)
             }
             "volume" -> {
-                adjustVolume(payload)
+                if (payload.isNotEmpty()) {
+                    adjustVolume(payload)
+                } else {
+                    Log.w(TAG, "Volume action missing payload")
+                }
             }
             "alarm", "set_alarm" -> {
                 val hourVal = metadata.optInt("hour", -1)
                 val minVal = metadata.optInt("minute", -1)
-                val labelVal = metadata.optString("label", "").ifEmpty { metadata.optString("message", "JARVIS Alarm") }
-                
-                if (hourVal != -1 && minVal != -1) {
+                val labelVal = metadata.optString("label", "")
+                    .ifEmpty { metadata.optString("message", "JARVIS Alarm") }
+
+                if (hourVal in 0..23 && minVal in 0..59) {
                     setAlarm(hourVal, minVal, labelVal)
-                } else {
+                } else if (payload.isNotEmpty()) {
                     val parts = payload.trim().split(" ")
                     val timeStr = parts.firstOrNull() ?: ""
                     val timeParts = timeStr.split(":")
@@ -369,57 +403,39 @@ class OverlayViewController(
                     if (h in 0..23 && m in 0..59) {
                         setAlarm(h, m, lbl)
                     } else {
-                        Log.w(TAG, "Invalid alarm time format: $payload")
+                        Log.w(TAG, "Invalid alarm time: $payload")
                     }
+                } else {
+                    Log.w(TAG, "Missing alarm parameters")
                 }
-            }
-            "call", "make_call", "phone_call" -> {
-                val numberOrName = payload.ifEmpty { appName }
-                makeCall(numberOrName)
-            }
-            "create_file", "write_file", "make_file" -> {
-                val fileName = metadata.optString("file_name")
-                    .ifEmpty { metadata.optString("filename", "jarvis_note.txt") }
-                val content = metadata.optString("content").ifEmpty { payload }
-                createFile(fileName, content)
             }
             "open_app" -> {
                 val packageToOpen = if (payload.isNotEmpty()) payload else appName
-                openApp(packageToOpen)
+                if (packageToOpen.isNotEmpty()) {
+                    openApp(packageToOpen)
+                } else {
+                    Log.w(TAG, "open_app missing package name")
+                }
             }
-            "close_app" -> {
-                closeApp()
-            }
-            "home", "go_home" -> {
-                goHome()
-            }
-            "back", "go_back" -> {
-                goBack()
-            }
+            "close_app" -> closeApp()
+            "home", "go_home" -> goHome()
+            "back", "go_back" -> goBack()
             "browser", "open_browser" -> {
-                openBrowser(payload)
+                openBrowser(payload.ifEmpty { "" })
             }
             "search", "web_search" -> {
-                webSearch(payload)
+                if (payload.isNotEmpty()) {
+                    webSearch(payload)
+                } else {
+                    Log.w(TAG, "search missing query")
+                }
             }
-            "camera", "open_camera" -> {
-                openCamera()
-            }
-            "settings", "open_settings" -> {
-                openSettings(payload)
-            }
-            "wifi", "wifi_settings" -> {
-                openWifiSettings()
-            }
-            "screenshot" -> {
-                takeScreenshot()
-            }
-            "notification", "notifications" -> {
-                openNotifications()
-            }
-            "vibrate" -> {
-                triggerVibrate()
-            }
+            "camera", "open_camera" -> openCamera()
+            "settings", "open_settings" -> openSettings(payload)
+            "wifi", "wifi_settings" -> openWifiSettings()
+            "screenshot" -> takeScreenshot()
+            "notification", "notifications" -> openNotifications()
+            "vibrate" -> triggerVibrate()
         }
     }
 
@@ -740,106 +756,6 @@ class OverlayViewController(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to set alarm: ${e.message}")
             showStatus("Failed to set alarm")
-        }
-    }
-
-    private fun makeCall(numberOrName: String) {
-        if (numberOrName.isEmpty()) return
-        
-        val number = if (numberOrName.all { it.isDigit() || it == '+' || it == '-' || it == ' ' || it == '(' || it == ')' }) {
-            numberOrName
-        } else {
-            val resolved = findContactNumber(numberOrName)
-            if (resolved.isNullOrEmpty()) {
-                Log.w(TAG, "Could not find contact: $numberOrName")
-                showStatus("Contact not found: $numberOrName")
-                speakReply("Sorry, contact $numberOrName nahi mila.")
-                return
-            }
-            resolved
-        }
-
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
-            try {
-                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${Uri.encode(number)}")).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
-                dismissOverlay()
-            } catch (e: Exception) {
-                Log.e(TAG, "Dial failed: ${e.message}")
-            }
-            return
-        }
-
-        try {
-            val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:${Uri.encode(number)}")).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-            dismissOverlay()
-        } catch (e: Exception) {
-            Log.e(TAG, "Call failed: ${e.message}")
-            showStatus("Failed to place call")
-        }
-    }
-
-    private fun findContactNumber(name: String): String? {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-            Log.w(TAG, "READ_CONTACTS permission not granted")
-            return null
-        }
-        try {
-            val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
-            val projection = arrayOf(
-                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER,
-                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
-            )
-            val selection = "${android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
-            val selectionArgs = arrayOf("%$name%")
-            
-            context.contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val numIdx = cursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
-                    if (numIdx != -1) {
-                        return cursor.getString(numIdx)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Contacts query failed: ${e.message}")
-        }
-        return null
-    }
-
-    private fun createFile(fileName: String, content: String) {
-        val hasStoragePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            android.os.Environment.isExternalStorageManager()
-        } else {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-        }
-
-        if (!hasStoragePermission) {
-            Log.w(TAG, "Storage permission not granted")
-            showStatus("Storage permission required to create files")
-            speakReply("Please grant storage permission in settings first.")
-            return
-        }
-
-        try {
-            val dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
-            if (!dir.exists()) {
-                dir.mkdirs()
-            }
-            val file = java.io.File(dir, fileName)
-            file.writeText(content)
-            Log.d(TAG, "File created: ${file.absolutePath}")
-            showStatus("Saved in Downloads: $fileName")
-            speakReply("File $fileName create kar diya hai.")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to write file: ${e.message}")
-            showStatus("File write failed")
-            speakReply("File write fail ho gaya.")
         }
     }
 

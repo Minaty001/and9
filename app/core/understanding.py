@@ -160,7 +160,9 @@ class UnderstandingEngine:
             r'from (.+?)(?:\.|$|,)',
             r'located in (.+?)(?:\.|$|,)',
             r'(.+?) se hoon',
-            r'(.+?) mein hoon',
+            # Location before "mein hoon" — requires a known location keyword
+            # (removed generic (.+?) mein hoon which falsely matched emotional states)
+            r'(?:living|rehta|rehti|stay|staying|settled|shift|moved|visit|visiting) (.+?) mein hoon',
         ],
         'profession': [
             r'i am a (.+?)(?:\.|$|,)',
