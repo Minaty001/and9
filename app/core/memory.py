@@ -739,3 +739,538 @@ class Memory:
         _cache_put(cache_key, result)
         return result
 
+    # ════════════════════════════════════════════════════════════
+    # v2 NEW TABLES — Procedural Memory
+    # ════════════════════════════════════════════════════════════
+
+    def store_procedure(self, name: str, description: str = "",
+                        workflow_steps: Optional[list] = None,
+                        trigger_phrase: Optional[str] = None) -> Optional[int]:
+        if not self._ok:
+            return None
+        res = self._safe(lambda: self._q("procedural_memory").insert({
+            "name": name, "description": description,
+            "workflow_steps": workflow_steps or [],
+            "trigger_phrase": trigger_phrase,
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    def get_procedure(self, name: str) -> Optional[dict]:
+        if not self._ok:
+            return None
+        res = self._safe(lambda: self._q("procedural_memory")
+                         .select("*").eq("name", name)
+                         .limit(1).execute(), None)
+        return res.data[0] if res and res.data else None
+
+    def record_procedure_use(self, proc_id: int, success: bool, duration_ms: int):
+        if not self._ok:
+            return
+        col = "success_count" if success else "failure_count"
+        self._safe(lambda: self._q("procedural_memory")
+                   .update({
+                       col: self._sb.raw(f"{col} + 1"),
+                       "last_used_at": datetime.now(timezone.utc).isoformat(),
+                       "avg_duration_ms": self._sb.raw(
+                           f"(avg_duration_ms * (success_count + failure_count) + {duration_ms})"
+                           f" / (success_count + failure_count + 1)"
+                       ),
+                   }).eq("id", proc_id).execute())
+
+    def search_procedures(self, keyword: str, limit: int = 10) -> list:
+        if not self._ok:
+            return []
+        res = self._safe(lambda: self._q("procedural_memory")
+                         .select("*")
+                         .ilike("name", f"%{keyword}%")
+                         .order("success_count", desc=True)
+                         .limit(limit).execute(), None)
+        return res.data if res and res.data else []
+
+    # ════════════════════════════════════════════════════════════
+    # v2 NEW TABLES — Habit Memory
+    # ════════════════════════════════════════════════════════════
+
+    def record_habit(self, pattern_name: str, pattern_type: str = "daily",
+                     trigger: Optional[str] = None, action: str = "",
+                     confidence: float = 0.5) -> Optional[int]:
+        if not self._ok:
+            return None
+        existing = self._safe(lambda: self._q("habit_memory")
+                              .select("id, frequency")
+                              .eq("pattern_name", pattern_name)
+                              .limit(1).execute(), None)
+        now = datetime.now(timezone.utc).isoformat()
+        if existing and existing.data:
+            hid = existing.data[0]["id"]
+            freq = existing.data[0].get("frequency", 0) + 1
+            self._safe(lambda: self._q("habit_memory")
+                       .update({
+                           "frequency": freq,
+                           "confidence": min(1.0, confidence + freq * 0.05),
+                           "last_observed": now,
+                       }).eq("id", hid).execute())
+            return hid
+        res = self._safe(lambda: self._q("habit_memory").insert({
+            "pattern_name": pattern_name, "pattern_type": pattern_type,
+            "trigger": trigger, "action": action,
+            "confidence": confidence, "frequency": 1,
+            "last_observed": now,
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    def get_habits(self, pattern_type: Optional[str] = None,
+                   min_confidence: float = 0.3, limit: int = 20) -> list:
+        if not self._ok:
+            return []
+        q = self._q("habit_memory").select("*") \
+            .gte("confidence", min_confidence) \
+            .order("frequency", desc=True).limit(limit)
+        if pattern_type:
+            q = q.eq("pattern_type", pattern_type)
+        res = self._safe(lambda: q.execute(), None)
+        return res.data if res and res.data else []
+
+    # ════════════════════════════════════════════════════════════
+    # v2 NEW TABLES — Reflections
+    # ════════════════════════════════════════════════════════════
+
+    def store_reflection(self, task_type: str, what_happened: str,
+                         what_succeeded: str = "", what_failed: str = "",
+                         why: str = "", improvement: str = "",
+                         can_be_skill: bool = False,
+                         new_skill_name: Optional[str] = None,
+                         session_id: Optional[int] = None,
+                         task_id: Optional[int] = None) -> Optional[int]:
+        if not self._ok:
+            return None
+        res = self._safe(lambda: self._q("reflections").insert({
+            "task_type": task_type, "what_happened": what_happened,
+            "what_succeeded": what_succeeded, "what_failed": what_failed,
+            "why": why, "improvement": improvement,
+            "can_be_skill": can_be_skill, "new_skill_name": new_skill_name,
+            "session_id": session_id, "task_id": task_id,
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    def get_recent_reflections(self, limit: int = 10) -> list:
+        if not self._ok:
+            return []
+        res = self._safe(lambda: self._q("reflections")
+                         .select("*")
+                         .order("id", desc=True).limit(limit)
+                         .execute(), None)
+        return res.data if res and res.data else []
+
+    # ════════════════════════════════════════════════════════════
+    # v2 NEW TABLES — Skills
+    # ════════════════════════════════════════════════════════════
+
+    def register_skill(self, name: str, description: str = "",
+                       triggers: Optional[list] = None,
+                       parameters: Optional[list] = None) -> Optional[int]:
+        if not self._ok:
+            return None
+        res = self._safe(lambda: self._q("skills").insert({
+            "name": name, "description": description,
+            "triggers": triggers or [], "parameters": parameters or [],
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    def update_skill(self, skill_id: int, **kwargs) -> bool:
+        if not self._ok:
+            return False
+        kwargs["updated_at"] = datetime.now(timezone.utc).isoformat()
+        self._safe(lambda: self._q("skills")
+                   .update(kwargs).eq("id", skill_id).execute())
+        return True
+
+    def get_skill(self, skill_id_or_name) -> Optional[dict]:
+        if not self._ok:
+            return None
+        q = self._q("skills").select("*")
+        if isinstance(skill_id_or_name, int):
+            q = q.eq("id", skill_id_or_name)
+        else:
+            q = q.eq("name", skill_id_or_name)
+        res = self._safe(lambda: q.limit(1).execute(), None)
+        return res.data[0] if res and res.data else None
+
+    def list_skills(self, status: str = "active") -> list:
+        if not self._ok:
+            return []
+        res = self._safe(lambda: self._q("skills")
+                         .select("*").eq("status", status)
+                         .order("name").execute(), None)
+        return res.data if res and res.data else []
+
+    def store_skill_version(self, skill_id: int, version: int,
+                            code: str, changelog: str = "") -> Optional[int]:
+        if not self._ok:
+            return None
+        import hashlib
+        code_hash = hashlib.sha256(code.encode()).hexdigest()[:16]
+        res = self._safe(lambda: self._q("skill_versions").insert({
+            "skill_id": skill_id, "version": version,
+            "code": code, "hash": code_hash, "changelog": changelog,
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    # ════════════════════════════════════════════════════════════
+    # v2 NEW TABLES — Tasks
+    # ════════════════════════════════════════════════════════════
+
+    def create_task(self, title: str, description: str = "",
+                    task_type: str = "general", priority: str = "medium",
+                    goal_id: Optional[int] = None,
+                    depends_on: Optional[list] = None,
+                    scheduled_at: Optional[str] = None) -> Optional[int]:
+        if not self._ok:
+            return None
+        res = self._safe(lambda: self._q("tasks").insert({
+            "title": title, "description": description,
+            "task_type": task_type, "priority": priority,
+            "goal_id": goal_id, "depends_on": depends_on or [],
+            "scheduled_at": scheduled_at,
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    def update_task(self, task_id: int, **kwargs) -> bool:
+        if not self._ok:
+            return False
+        if "completed_at" in kwargs or kwargs.get("status") in ("done", "failed", "cancelled"):
+            if "completed_at" not in kwargs:
+                kwargs["completed_at"] = datetime.now(timezone.utc).isoformat()
+        self._safe(lambda: self._q("tasks")
+                   .update(kwargs).eq("id", task_id).execute())
+        return True
+
+    def get_task(self, task_id: int) -> Optional[dict]:
+        if not self._ok:
+            return None
+        res = self._safe(lambda: self._q("tasks")
+                         .select("*").eq("id", task_id)
+                         .limit(1).execute(), None)
+        return res.data[0] if res and res.data else None
+
+    def get_pending_tasks(self, limit: int = 20) -> list:
+        if not self._ok:
+            return []
+        res = self._safe(lambda: self._q("tasks")
+                         .select("*")
+                         .in_("status", ("pending", "in_progress", "waiting"))
+                         .order("priority", desc=True)
+                         .order("id").limit(limit)
+                         .execute(), None)
+        return res.data if res and res.data else []
+
+    def add_task_history(self, task_id: int, attempt: int, status: str,
+                         duration_ms: int = 0, error: Optional[str] = None,
+                         input_data: Optional[dict] = None,
+                         output_data: Optional[dict] = None) -> Optional[int]:
+        if not self._ok:
+            return None
+        now = datetime.now(timezone.utc).isoformat()
+        res = self._safe(lambda: self._q("task_history").insert({
+            "task_id": task_id, "attempt": attempt,
+            "status": status, "duration_ms": duration_ms,
+            "error": error,
+            "input_snapshot": input_data or {},
+            "output_snapshot": output_data or {},
+            "started_at": now, "completed_at": now,
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    # ════════════════════════════════════════════════════════════
+    # v2 NEW TABLES — Decisions
+    # ════════════════════════════════════════════════════════════
+
+    def record_decision(self, title: str, context_summary: str = "",
+                        options: Optional[list] = None,
+                        selected_option: Optional[int] = None,
+                        selection_reason: str = "",
+                        goal_id: Optional[int] = None,
+                        session_id: Optional[int] = None) -> Optional[int]:
+        if not self._ok:
+            return None
+        res = self._safe(lambda: self._q("decisions").insert({
+            "title": title, "context_summary": context_summary,
+            "options": options or [],
+            "selected_option": selected_option,
+            "selection_reason": selection_reason,
+            "goal_id": goal_id, "session_id": session_id,
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    def update_decision_outcome(self, decision_id: int, outcome: str,
+                                success: bool, execution_time_ms: int = 0) -> bool:
+        if not self._ok:
+            return False
+        self._safe(lambda: self._q("decisions")
+                   .update({
+                       "outcome": outcome, "success": success,
+                       "execution_time_ms": execution_time_ms,
+                   }).eq("id", decision_id).execute())
+        return True
+
+    def add_decision_step(self, decision_id: int, step: str,
+                          detail: str = "", data: Optional[dict] = None) -> Optional[int]:
+        if not self._ok:
+            return None
+        res = self._safe(lambda: self._q("decision_history").insert({
+            "decision_id": decision_id, "step": step,
+            "detail": detail, "data": data or {},
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    # ════════════════════════════════════════════════════════════
+    # v2 NEW TABLES — Tool Usage
+    # ════════════════════════════════════════════════════════════
+
+    def record_tool_usage(self, tool_name: str, success: bool = True,
+                          latency_ms: int = 0, tokens_used: int = 0,
+                          error_type: Optional[str] = None,
+                          query_type: str = "general",
+                          session_id: Optional[int] = None) -> Optional[int]:
+        if not self._ok:
+            return None
+        res = self._safe(lambda: self._q("tool_usage").insert({
+            "tool_name": tool_name, "success": success,
+            "latency_ms": latency_ms, "tokens_used": tokens_used,
+            "error_type": error_type, "query_type": query_type,
+            "session_id": session_id,
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    def get_tool_stats(self, tool_name: Optional[str] = None) -> list:
+        if not self._ok:
+            return []
+        q = self._q("tool_usage").select(
+            "tool_name, count(*) as calls, "
+            "avg(latency_ms) as avg_latency, "
+            "sum(case when success then 1 else 0 end) as successes"
+        )
+        if tool_name:
+            q = q.eq("tool_name", tool_name)
+        res = self._safe(lambda: q.order("tool_name").execute(), None)
+        return res.data if res and res.data else []
+
+    # ════════════════════════════════════════════════════════════
+    # v2 NEW TABLES — Learning Events
+    # ════════════════════════════════════════════════════════════
+
+    def record_learning_event(self, event_type: str, title: str = "",
+                              description: str = "",
+                              confidence: float = 0.5,
+                              metadata: Optional[dict] = None) -> Optional[int]:
+        if not self._ok:
+            return None
+        res = self._safe(lambda: self._q("learning_events").insert({
+            "event_type": event_type, "title": title,
+            "description": description, "confidence": confidence,
+            "metadata": metadata or {},
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    def get_learning_events(self, event_type: Optional[str] = None,
+                            limit: int = 20) -> list:
+        if not self._ok:
+            return []
+        q = self._q("learning_events").select("*") \
+            .order("id", desc=True).limit(limit)
+        if event_type:
+            q = q.eq("event_type", event_type)
+        res = self._safe(lambda: q.execute(), None)
+        return res.data if res and res.data else []
+
+    # ════════════════════════════════════════════════════════════
+    # v2 NEW TABLES — Behavior Patterns
+    # ════════════════════════════════════════════════════════════
+
+    def record_behavior_pattern(self, pattern_name: str,
+                                trigger_query: Optional[str] = None,
+                                action_taken: Optional[str] = None,
+                                confidence: float = 0.3) -> Optional[int]:
+        if not self._ok:
+            return None
+        now = datetime.now(timezone.utc).isoformat()
+        existing = self._safe(lambda: self._q("behavior_patterns")
+                              .select("id, pattern_name")
+                              .eq("pattern_name", pattern_name)
+                              .limit(1).execute(), None)
+        if existing and existing.data:
+            pid = existing.data[0]["id"]
+            self._safe(lambda: self._q("behavior_patterns")
+                       .update({
+                           "sample_count": self._sb.raw("sample_count + 1"),
+                           "last_observed": now,
+                           "confidence": self._sb.raw("least(1.0, confidence + 0.05)"),
+                       }).eq("id", pid).execute())
+            return pid
+        res = self._safe(lambda: self._q("behavior_patterns").insert({
+            "pattern_name": pattern_name, "trigger_query": trigger_query,
+            "action_taken": action_taken, "confidence": confidence,
+            "sample_count": 1, "last_observed": now,
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    def get_behavior_patterns(self, min_confidence: float = 0.2,
+                              limit: int = 20) -> list:
+        if not self._ok:
+            return []
+        res = self._safe(lambda: self._q("behavior_patterns")
+                         .select("*")
+                         .gte("confidence", min_confidence)
+                         .order("sample_count", desc=True)
+                         .limit(limit).execute(), None)
+        return res.data if res and res.data else []
+
+    # ════════════════════════════════════════════════════════════
+    # v2 NEW TABLES — Automation Rules
+    # ════════════════════════════════════════════════════════════
+
+    def create_automation_rule(self, name: str, description: str,
+                               trigger_type: str, trigger_config: dict,
+                               action_type: str, action_config: dict,
+                               priority: int = 5) -> Optional[int]:
+        if not self._ok:
+            return None
+        res = self._safe(lambda: self._q("automation_rules").insert({
+            "name": name, "description": description,
+            "trigger_type": trigger_type, "trigger_config": trigger_config,
+            "action_type": action_type, "action_config": action_config,
+            "priority": priority,
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    def get_automation_rules(self, enabled_only: bool = True) -> list:
+        if not self._ok:
+            return []
+        q = self._q("automation_rules").select("*") \
+            .order("priority").order("id")
+        if enabled_only:
+            q = q.eq("enabled", True)
+        res = self._safe(lambda: q.execute(), None)
+        return res.data if res and res.data else []
+
+    # ════════════════════════════════════════════════════════════
+    # v2 NEW TABLES — System Metrics
+    # ════════════════════════════════════════════════════════════
+
+    def record_metric(self, metric_name: str, metric_value: float,
+                      metric_unit: str = "count",
+                      labels: Optional[dict] = None,
+                      session_id: Optional[int] = None) -> Optional[int]:
+        if not self._ok:
+            return None
+        res = self._safe(lambda: self._q("system_metrics").insert({
+            "metric_name": metric_name, "metric_value": metric_value,
+            "metric_unit": metric_unit, "labels": labels or {},
+            "session_id": session_id,
+        }).execute(), None)
+        return res.data[0]["id"] if res and res.data else None
+
+    def get_metrics(self, metric_name: Optional[str] = None,
+                    since: Optional[str] = None, limit: int = 100) -> list:
+        if not self._ok:
+            return []
+        q = self._q("system_metrics").select("*") \
+            .order("id", desc=True).limit(limit)
+        if metric_name:
+            q = q.eq("metric_name", metric_name)
+        if since:
+            q = q.gte("recorded_at", since)
+        res = self._safe(lambda: q.execute(), None)
+        return res.data if res and res.data else []
+
+    # ════════════════════════════════════════════════════════════
+    # v2 — Embedding / Vector Search
+    # ════════════════════════════════════════════════════════════
+
+    def _get_embedding(self, text: str) -> Optional[list]:
+        """Generate embedding vector for text using configured provider.
+
+        Returns a list of floats, or None on failure.
+        """
+        from app.core.config import (
+            ENABLE_VECTOR_SEARCH, EMBEDDING_MODEL,
+            EMBEDDING_DIMENSIONS, GROQ_API_KEY,
+        )
+
+        if not ENABLE_VECTOR_SEARCH or not GROQ_API_KEY:
+            return None
+
+        try:
+            import requests
+            resp = requests.post(
+                "https://api.groq.com/openai/v1/embeddings",
+                headers={
+                    "Authorization": f"Bearer {GROQ_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": EMBEDDING_MODEL,
+                    "input": text[:8000],
+                    "dimensions": EMBEDDING_DIMENSIONS,
+                },
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                return resp.json()["data"][0]["embedding"]
+        except Exception as e:
+            logger.debug(f"Embedding failed: {e}")
+        return None
+
+    def store_with_embedding(self, table: str, data: dict,
+                             text_for_embedding: str) -> Optional[dict]:
+        """Insert a row with an embedding vector computed from text_for_embedding."""
+        embedding = self._get_embedding(text_for_embedding)
+        if embedding:
+            data["embedding"] = embedding
+        return self._safe(
+            lambda: self._q(table).insert(data).execute(),
+            None,
+        )
+
+    def search_by_vector(self, table: str, query_text: str,
+                         threshold: float = 0.7, limit: int = 10) -> list:
+        """Search a table by embedding similarity to query_text.
+
+        Uses the Supabase pgvector search function for the specified table.
+        Falls back to ilike keyword search if vector search is disabled or fails.
+        """
+        from app.core.config import ENABLE_VECTOR_SEARCH
+
+        embedding = self._get_embedding(query_text) if ENABLE_VECTOR_SEARCH else None
+
+        if embedding and self._ok:
+            try:
+                func_map = {
+                    "episodic_memory": "search_episodic_memory",
+                    "semantic_memory": "search_semantic_memory",
+                }
+                func_name = func_map.get(table)
+                if func_name:
+                    res = self._sb.rpc(func_name, {
+                        "query_embedding": embedding,
+                        "match_threshold": threshold,
+                        "match_count": limit,
+                    }).execute()
+                    if res and res.data:
+                        return res.data
+            except Exception as e:
+                logger.debug(f"Vector search failed for {table}: {e}")
+
+        # Fallback: keyword search
+        kw = query_text.lower()
+        if table == "episodic_memory":
+            return self.search_episodes(kw, limit=limit)
+        elif table == "semantic_memory":
+            if self._ok:
+                res = self._safe(lambda: self._q("semantic_memory")
+                                 .select("*")
+                                 .ilike("fact_value", f"%{kw}%")
+                                 .limit(limit).execute(), None)
+                return res.data if res and res.data else []
+        return []
+

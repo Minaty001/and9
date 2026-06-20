@@ -33,6 +33,11 @@ SERP_API_KEY    = _str_env("SERP_API_KEY")
 NEWS_API_KEY    = _str_env("NEWS_API_KEY")
 WEATHER_API_KEY = _str_env("WEATHER_API_KEY")
 
+# ── Vector / Embedding Search ──────────────────────────────────
+ENABLE_VECTOR_SEARCH = os.environ.get("ENABLE_VECTOR_SEARCH", "").lower() in ("true", "1")
+EMBEDDING_MODEL      = _str_env("EMBEDDING_MODEL", "text-embedding-3-small")
+EMBEDDING_DIMENSIONS = int(os.environ.get("EMBEDDING_DIMENSIONS", "384"))
+
 # ── Deployment ─────────────────────────────────────────────────
 IS_RENDER  = os.environ.get("RENDER", "").lower() in ("true", "1")
 IS_TERMUX  = "TERMUX_VERSION" in os.environ

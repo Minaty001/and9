@@ -23,6 +23,8 @@ from app.core.events import EventSystem, is_event_request
 from app.core.reflection import ReflectionEngine
 from app.core.activity_logger import get_activity_logger
 from app.core.intent_router import LLMIntentRouter
+from app.core.knowledge_graph import KnowledgeGraph
+from app.core.working_memory import WorkingMemory
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +58,9 @@ class Orchestrator:
         self.context_builder = ContextBuilder()
         self.goals      = GoalTracker(self.memory)
         self.events_sys = EventSystem(self.memory)
-        self.reflector  = ReflectionEngine(self.memory)
+        self.reflector     = ReflectionEngine(self.memory)
+        self.knowledge_graph = KnowledgeGraph(self.memory)
+        self.working_memory  = WorkingMemory(self.memory)
         self._agent_cache = {}
         # ── Speed: TTL cache for expensive reads (60s) ──────────
         self._cache: dict = {}
@@ -631,6 +635,12 @@ class Orchestrator:
 
             # Auto-extract and store entities
             self._store_entities(analysis.entities)
+
+            # Update knowledge graph from entities
+            try:
+                self.knowledge_graph.extract_and_store(analysis.entities)
+            except Exception:
+                logger.debug("KG extraction skipped")
 
         except Exception:
             logger.exception("Post-processing error")
