@@ -1,0 +1,81 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.jarvis.assistant'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.jarvis.assistant"
+        minSdk 29           // Android 10+
+        targetSdk 34        // Android 14 (AGP 8.2.2 compatible)
+        versionCode 1
+        versionName "1.0.0"
+
+        // ── Backend URL ────────────────────────────────
+        // Override in local.properties: JARVIS_BASE_URL=https://...
+        def jarvisUrl = project.findProperty("JARVIS_BASE_URL") ?: "http://10.0.2.2:5000/api"
+        manifestPlaceholders = [jarvisBaseUrl: jarvisUrl]
+        buildConfigField "String", "JARVIS_BASE_URL", "\"${jarvisUrl}\""
+
+        // ── Groq API (optional) ────────────────────────
+        // Set in local.properties: groqApiKey=gsk_...
+        def groqKey = project.findProperty("groqApiKey") ?: ""
+        buildConfigField "String", "GROQ_API_KEY", "\"${groqKey}\""
+        manifestPlaceholders.groqApiKey = groqKey
+
+        def groqModel = project.findProperty("groqModel") ?: "mixtral-8x7b-32768"
+        manifestPlaceholders.groqModel = groqModel
+
+        // ── OpenAI-compatible API (optional) ──────────
+        // Set in local.properties: openaiApiKey=sk-...
+        def openaiKey = project.findProperty("openaiApiKey") ?: ""
+        buildConfigField "String", "OPENAI_API_KEY", "\"${openaiKey}\""
+        manifestPlaceholders.openaiApiKey = openaiKey
+
+        def openaiModel = project.findProperty("openaiModel") ?: "gpt-4o-mini"
+        manifestPlaceholders.openaiModel = openaiModel
+
+        def openaiBaseUrl = project.findProperty("openaiBaseUrl") ?: "https://api.openai.com/v1"
+        manifestPlaceholders.openaiBaseUrl = openaiBaseUrl
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            // Keep same applicationId as release to ensure assistant registration and services bind correctly
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    buildFeatures {
+        buildConfig true
+        viewBinding false
+    }
+}
+
+dependencies {
+    // AndroidX
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'androidx.core:core-ktx:1.13.1'
+
+    // HTTP client (for backend calls)
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // Coroutines (for background tasks)
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+}

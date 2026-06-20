@@ -1,0 +1,63 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Databases
+*.db
+*.sqlite3
+
+# NumPy data
+*.npy
+
+# Generated content
+generated_images/
+*.apk
+*.aab
+*.zip
+*.jar
+*.keystore
+apk_work/
+
+# Android build outputs
+.gradle/
+**/build/
+*.iml
+local.properties
+**/local.properties
+
+# macOS
+.DS_Store
+
+# Python packaging
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+
+# Testing & linting caches
+.pytest_cache/
+.ruff_cache/
+
+# Jarvis data
+.jarvis_data/
+
+# Logs
+*.log
+
+# Flask instance folder
+instance/
+
+# IDE / editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

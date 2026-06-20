@@ -1,0 +1,142 @@
+"""
+app/main.py — Flask Application Factory
+
+Creates and configures the Flask app with:
+- Rate limiting (in-memory, no external deps)
+- Request ID tracking
+- Graceful error handlers (404, 405, 429, 500)
+- Structured logging
+
+Entry point for both development and production (gunicorn).
+"""
+import os
+import time
+import uuid
+import logging
+from functools import wraps
+from flask import Flask, g, request, jsonify, render_template
+
+from app.api.routes import api_bp
+from app.api.web_routes import web_bp
+from app.api.admin_routes import admin_bp
+
+
+# ── Rate Limiter (in-memory, per-IP sliding window) ───────────
+
+class RateLimiter:
+    """Simple sliding-window rate limiter per IP."""
+
+    def __init__(self, limit: int = 30, window_sec: int = 60):
+        self.limit = limit
+        self.window_sec = window_sec
+        self._buckets: dict[str, list[float]] = {}
+
+    def check(self, key: str) -> tuple[bool, int]:
+        """Returns (allowed, retry_after_seconds)."""
+        now = time.time()
+        window_start = now - self.window_sec
+        bucket = self._buckets.get(key, [])
+
+        # Prune old entries
+        bucket = [t for t in bucket if t > window_start]
+
+        if len(bucket) >= self.limit:
+            retry_after = int(bucket[0] + self.window_sec - now) if bucket else self.window_sec
+            return False, max(1, retry_after)
+
+        bucket.append(now)
+        self._buckets[key] = bucket
+        return True, 0
+
+
+_limiter = RateLimiter(limit=30, window_sec=60)
+
+
+# ── Flask Factory ─────────────────────────────────────────────
+
+def create_app() -> Flask:
+    """Create and configure the Flask application."""
+    app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="")
+
+    # ── Configuration ───────────────────────────────────────────
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", uuid.uuid4().hex)
+    app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
+    app.config["JSON_SORT_KEYS"] = False
+
+    # ── Logging ─────────────────────────────────────────────────
+    log_level = logging.DEBUG if os.environ.get("FLASK_DEBUG") == "1" else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+
+    # ── Request ID ──────────────────────────────────────────────
+    @app.before_request
+    def set_request_id():
+        g.request_id = request.headers.get("X-Request-ID", uuid.uuid4().hex[:12])
+        g.start_time = time.time()
+
+    @app.after_request
+    def add_headers(response):
+        response.headers["X-Request-ID"] = getattr(g, "request_id", "unknown")
+        response.headers["X-Runtime-Ms"] = str(int((time.time() - getattr(g, "start_time", time.time())) * 1000))
+        return response
+
+    # ── Rate limiting ───────────────────────────────────────────
+    @app.before_request
+    def rate_limit():
+        # Skip rate limiting for static files and health checks
+        if request.path in ("/health", "/api/health") or request.path.startswith("/static/"):
+            return None
+
+        client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown")
+        allowed, retry_after = _limiter.check(client_ip)
+        if not allowed:
+            return jsonify({
+                "error": "rate_limit_exceeded",
+                "message": f"Too many requests. Try again in {retry_after} seconds.",
+                "retry_after": retry_after,
+            }), 429, {"Retry-After": str(retry_after)}
+
+    # ── Register blueprints ─────────────────────────────────────
+    app.register_blueprint(web_bp)
+    app.register_blueprint(api_bp, url_prefix="/api")
+    app.register_blueprint(admin_bp, url_prefix="/api/admin")
+
+    # ── Health check ────────────────────────────────────────────
+    @app.route("/health")
+    def health():
+        return {"status": "ok", "request_id": getattr(g, "request_id", "none")}
+
+    # ── Error handlers ──────────────────────────────────────────
+    @app.errorhandler(404)
+    def not_found(e):
+        return jsonify({"error": "not_found", "message": "The requested resource was not found."}), 404
+
+    @app.errorhandler(405)
+    def method_not_allowed(e):
+        return jsonify({"error": "method_not_allowed", "message": "Method not allowed for this endpoint."}), 405
+
+    @app.errorhandler(429)
+    def too_many_requests(e):
+        return jsonify({"error": "rate_limit_exceeded", "message": "Too many requests. Slow down."}), 429
+
+    @app.errorhandler(500)
+    def server_error(e):
+        app.logger.exception("Internal server error")
+        return jsonify({"error": "internal_error", "message": "An unexpected error occurred."}), 500
+
+    app.logger.info("JARVIS v4 app created")
+    return app
+
+
+# Expose module-level app for gunicorn
+app = create_app()
+
+
+if __name__ == "__main__":
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", 8000))
+    debug = os.environ.get("FLASK_DEBUG") == "1"
+    app.run(host=host, port=port, debug=debug)

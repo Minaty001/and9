@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0A0D1A"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="32dp">
+
+        <!-- JARVIS title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="JARVIS"
+            android:textColor="#00FFFF"
+            android:textSize="42sp"
+            android:fontFamily="sans-serif-black"
+            android:letterSpacing="0.3"
+            android:layout_marginTop="32dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Personal Assistant Setup"
+            android:textColor="#66FFFFFF"
+            android:textSize="14sp"
+            android:layout_marginBottom="48dp" />
+
+        <!-- Step 1: Microphone -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1A1E30"
+            android:padding="20dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:id="@+id/statusMic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="❌ Microphone permission required"
+                android:textSize="15sp"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnGrantMic"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Grant Microphone Permission"
+                android:backgroundTint="#1A00FFFF"
+                android:textColor="#00FFFF" />
+
+        </LinearLayout>
+
+        <!-- Step 2: Camera -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1A1E30"
+            android:padding="20dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:id="@+id/statusCamera"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="❌ Camera permission required"
+                android:textSize="15sp"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnGrantCamera"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Grant Camera Permission"
+                android:backgroundTint="#1A00FFFF"
+                android:textColor="#00FFFF" />
+
+        </LinearLayout>
+
+        <!-- Step 3: Default Assistant -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1A1E30"
+            android:padding="20dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:id="@+id/statusAssist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="❌ Default Digital Assistant App"
+                android:textSize="15sp"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Required for: Power button, gesture, and voice activation"
+                android:textColor="#66FFFFFF"
+                android:textSize="12sp"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnSetAssistant"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Set as Default Assistant"
+                android:backgroundTint="#1AFF6B00"
+                android:textColor="#FF6B00" />
+
+        </LinearLayout>
+
+        <!-- Step 4: Accessibility Service -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1A1E30"
+            android:padding="20dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:id="@+id/statusAccessibility"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="❌ Accessibility Service required"
+                android:textSize="15sp"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Required for: Close apps, go home, navigate system"
+                android:textColor="#66FFFFFF"
+                android:textSize="12sp"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnEnableAccessibility"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Enable Accessibility Service"
+                android:backgroundTint="#1A00FFFF"
+                android:textColor="#00FFFF" />
+
+        </LinearLayout>
+
+        <!-- Step 4b: Phone & Contacts Permission -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1A1E30"
+            android:padding="20dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:id="@+id/statusContacts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="❌ Phone &amp; Contacts access required"
+                android:textSize="15sp"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnGrantContacts"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Grant Phone &amp; Contacts"
+                android:backgroundTint="#1A00FFFF"
+                android:textColor="#00FFFF" />
+
+        </LinearLayout>
+
+        <!-- Step 4c: Full Storage Control -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1A1E30"
+            android:padding="20dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:id="@+id/statusStorage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="❌ Full Storage access required"
+                android:textSize="15sp"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnGrantStorage"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Grant Full Storage Control"
+                android:backgroundTint="#1A00FFFF"
+                android:textColor="#00FFFF" />
+
+        </LinearLayout>
+
+        <!-- Step 5: Backend Configuration -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1A1E30"
+            android:padding="20dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="⚙️ Backend Configuration"
+                android:textColor="#00FFFF"
+                android:textSize="15sp"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Backend URL (Flask)"
+                android:textColor="#66FFFFFF"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/editBackendUrl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="http://10.0.2.2:5000/api"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#44FFFFFF"
+                android:textSize="14sp"
+                android:backgroundTint="#00FFFF"
+                android:inputType="textUri"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Groq API Key (Optional)"
+                android:textColor="#66FFFFFF"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/editGroqKey"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="gsk_..."
+                android:textColor="#FFFFFF"
+                android:textColorHint="#44FFFFFF"
+                android:textSize="14sp"
+                android:backgroundTint="#00FFFF"
+                android:inputType="textPassword"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnSaveConfig"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Save Configuration"
+                android:backgroundTint="#1A00FFFF"
+                android:textColor="#00FFFF" />
+
+            <Button
+                android:id="@+id/btnShowLogs"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="View Debug Logs"
+                android:layout_marginTop="8dp"
+                android:backgroundTint="#1AFFFFFF"
+                android:textColor="#FFFFFF" />
+
+        </LinearLayout>
+
+        <!-- Usage info -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="After setup:&#10;• Hold Power button → JARVIS&#10;• Swipe from corner → JARVIS&#10;• Say &quot;JARVIS&quot; → JARVIS&#10;&#10;Works on all Android 10+ devices"
+            android:textColor="#44FFFFFF"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.5"
+            android:layout_marginTop="16dp" />
+
+    </LinearLayout>
+
+</ScrollView>

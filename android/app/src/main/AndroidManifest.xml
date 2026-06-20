@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         ASSISTANT PERMISSIONS
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- VoiceInteractionService binding (required for any assistant) -->
+    <uses-permission android:name="android.permission.BIND_VOICE_INTERACTION" />
+
+    <!-- Microphone for speech recognition -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Foreground service (Android 13+ type declarations) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Wake lock for keeping processor on during listening -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Alarm & Clock -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+
+    <!-- Calling & Contacts -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+
+    <!-- Storage (Manage Storage for full file control on Android 11+) -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <!-- Network for backend API calls -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Camera for flashlight (torch) control -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Audio settings for volume control -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- Vibration for haptic feedback -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Accessibility service (for close apps, go home, navigation) -->
+    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
+
+    <!-- Notification permission (Android 13+) for assistant status -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Query all packages to launch any app by name -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission"
+        android:maxSdkVersion="35" />
+
+    <!-- Overlay permission for showing UI on top of other apps -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Expand/collapse status bar for notifications -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Jarvis"
+        tools:targetApi="35">
+
+        <!-- AI Provider Configuration (override in local.properties):
+             groqModel, openaiModel, openaiBaseUrl -->
+        <meta-data android:name="groqModel" android:value="mixtral-8x7b-32768" />
+        <meta-data android:name="openaiModel" android:value="gpt-4o-mini" />
+        <meta-data android:name="openaiBaseUrl" android:value="https://api.openai.com/v1" />
+
+        <!-- ═════════════════════════════════════════════════════════
+             1. VoiceInteractionService
+             Makes JARVIS selectable as system-wide Digital Assistant.
+             Shows in: Settings → Apps → Default Apps → Digital Assistant App
+             Invocation: long-press power, swipe gesture, assistant shortcut
+             ═════════════════════════════════════════════════════════ -->
+        <service
+            android:name=".services.JarvisVoiceInteractionService"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/voice_interaction_service" />
+        </service>
+
+        <!-- ═════════════════════════════════════════════════════════
+             2. VoiceInteractionSessionService
+             Android creates a session when the assistant is invoked.
+             The session manages the UI lifecycle.
+             ═════════════════════════════════════════════════════════ -->
+        <service
+            android:name=".services.JarvisSessionService"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="true" />
+
+        <!-- ═════════════════════════════════════════════════════════
+             3. AccessibilityService
+             Required for:
+             - Closing any app (via GESTURE_DISMISS / BACK)
+             - Going to Home screen
+             - Navigating system
+             ═════════════════════════════════════════════════════════ -->
+        <service
+            android:name=".services.JarvisAccessibilityService"
+            android:label="@string/accessibility_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- ═════════════════════════════════════════════════════════
+             4. Setup Activity
+             Launcher activity for permission grants and assistant setup.
+             ═════════════════════════════════════════════════════════ -->
+        <activity
+            android:name=".SetupActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Jarvis.Transparent">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+</manifest>

@@ -1,0 +1,21 @@
+#!/bin/sh
+# Gradle wrapper for Unix/macOS.
+
+DIRNAME=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+APP_HOME="$DIRNAME"
+CLASSPATH="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+SHARED_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper-shared.jar"
+
+if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+    JAVA_CMD="$JAVA_HOME/bin/java"
+else
+    JAVA_CMD=java
+fi
+
+if [ -f "$CLASSPATH" ] && [ -f "$SHARED_JAR" ]; then
+    exec "$JAVA_CMD" -Xmx64m -Xms64m -classpath "$CLASSPATH:$SHARED_JAR" org.gradle.wrapper.GradleWrapperMain "$@"
+fi
+
+echo "[ERROR] Gradle wrapper JAR not found at $CLASSPATH"
+echo "[ERROR] Gradle wrapper shared JAR not found at $SHARED_JAR"
+exit 1

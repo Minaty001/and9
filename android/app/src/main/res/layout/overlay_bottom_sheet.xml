@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  overlay_bottom_sheet.xml
+  Displayed by OverlayService via TYPE_APPLICATION_OVERLAY.
+  Slides in from bottom. Rounded top corners. Dark glass background.
+  Components: WaveformView + Mic button + Close button + Status text.
+-->
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="28dp"
+    app:cardElevation="24dp"
+    app:cardBackgroundColor="#E6060916"
+    android:layout_marginStart="0dp"
+    android:layout_marginEnd="0dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="12dp"
+        android:paddingBottom="28dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp">
+
+        <!-- Handle pill -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="4dp"
+            android:background="#44FFFFFF"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Status / transcript text -->
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Listening..."
+            android:textColor="#CCFFFFFF"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:minHeight="48dp"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Live voice waveform -->
+        <com.jarvis.assistant.voice.WaveformView
+            android:id="@+id/waveformView"
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:layout_marginBottom="20dp" />
+
+        <!-- Buttons row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <!-- Spacer -->
+            <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+
+            <!-- Mic button (center) -->
+            <ImageButton
+                android:id="@+id/micButton"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:src="@drawable/ic_mic"
+                android:background="@drawable/bg_mic_button"
+                android:contentDescription="Microphone"
+                android:scaleType="center" />
+
+            <!-- Close button (right) -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:layout_marginEnd="8dp">
+                <ImageButton
+                    android:id="@+id/closeButton"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:src="@drawable/ic_close"
+                    android:background="@drawable/bg_close_button"
+                    android:contentDescription="Close"
+                    android:scaleType="center" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

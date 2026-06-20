@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS Admin Panel</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0a0a12;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* ── Login Screen ── */
+        .login-overlay {
+            position: fixed; inset: 0;
+            background: #0a0a12;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        .login-overlay.hidden { opacity: 0; pointer-events: none; }
+        .login-title { color: #FFA500; font-size: 1.8rem; letter-spacing: 6px; margin-bottom: 8px; font-family: monospace; }
+        .login-sub { color: #666; font-size: 0.85rem; letter-spacing: 2px; margin-bottom: 30px; }
+        .login-box { display: flex; gap: 10px; }
+        .login-box input {
+            padding: 12px 20px; border: 1px solid #2a2a3a; border-radius: 8px;
+            background: #14141e; color: #e0e0e0; font-size: 1rem; width: 250px; outline: none;
+        }
+        .login-box input:focus { border-color: #FFA500; box-shadow: 0 0 15px rgba(255,165,0,0.15); }
+        .login-box button {
+            padding: 12px 24px; border: 1px solid #FFA500; border-radius: 8px;
+            background: rgba(255,165,0,0.15); color: #FFA500; font-weight: 600; cursor: pointer;
+            transition: all 0.3s;
+        }
+        .login-box button:hover { background: rgba(255,165,0,0.3); }
+        .login-error { color: #ff4444; margin-top: 15px; font-size: 0.85rem; min-height: 20px; }
+
+        /* ── Top Bar ── */
+        .topbar {
+            background: #12121a; border-bottom: 1px solid #1e1e2e;
+            padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .topbar h1 { color: #FFA500; font-size: 1.1rem; letter-spacing: 3px; font-family: monospace; }
+        .topbar-btns { display: flex; gap: 8px; }
+        .topbar-btns button {
+            padding: 6px 14px; border: 1px solid #2a2a3a; border-radius: 6px;
+            background: #1a1a2a; color: #aaa; font-size: 0.8rem; cursor: pointer; transition: all 0.2s;
+        }
+        .topbar-btns button:hover { border-color: #FFA500; color: #FFA500; }
+        .topbar-btns button.active { border-color: #FFA500; color: #FFA500; background: rgba(255,165,0,0.1); }
+
+        /* ── Tab Content ── */
+        .tab-content { display: none; padding: 16px; }
+        .tab-content.active { display: block; }
+
+        /* ── File Explorer ── */
+        .breadcrumb {
+            display: flex; gap: 4px; align-items: center; padding: 10px 0;
+            font-family: monospace; font-size: 0.85rem; flex-wrap: wrap;
+        }
+        .breadcrumb span { color: #666; cursor: pointer; transition: color 0.2s; }
+        .breadcrumb span:hover { color: #FFA500; }
+        .breadcrumb span.current { color: #FFA500; }
+
+        .file-list { display: flex; flex-direction: column; gap: 2px; }
+        .file-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 14px; border-radius: 6px; cursor: pointer;
+            transition: background 0.2s; border: 1px solid transparent;
+        }
+        .file-item:hover { background: #1a1a2a; border-color: #2a2a3a; }
+        .file-item .icon { font-size: 1.1rem; width: 24px; text-align: center; }
+        .file-item .name { flex: 1; font-family: monospace; font-size: 0.9rem; }
+        .file-item .size { color: #555; font-size: 0.75rem; font-family: monospace; }
+
+        /* ── File Editor ── */
+        .editor-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0; border-bottom: 1px solid #1e1e2e; margin-bottom: 10px;
+        }
+        .editor-header .path { font-family: monospace; color: #00ffff; font-size: 0.9rem; }
+        .editor-header button {
+            padding: 8px 20px; border: 1px solid #00ff88; border-radius: 6px;
+            background: rgba(0,255,136,0.1); color: #00ff88; font-weight: 600; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .editor-header button:hover { background: rgba(0,255,136,0.25); }
+        .editor-textarea {
+            width: 100%; min-height: 400px; padding: 14px;
+            background: #0d0d15; border: 1px solid #1e1e2e; border-radius: 8px;
+            color: #e0e0e0; font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 0.85rem; line-height: 1.6; resize: vertical; outline: none;
+            tab-size: 4;
+        }
+        .editor-textarea:focus { border-color: #00ffff; }
+        .save-status { color: #00ff88; font-size: 0.8rem; margin-left: 12px; opacity: 0; transition: opacity 0.3s; }
+        .activity-content {
+            background: #0d0d15; border: 1px solid #1e1e2e; border-radius: 8px;
+            padding: 16px; font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 0.82rem; line-height: 1.7; color: #e0e0e0;
+            white-space: pre-wrap; word-wrap: break-word; min-height: 200px; max-height: 70vh; overflow-y: auto;
+        }
+        .activity-entry { padding: 8px 0; border-bottom: 1px solid #0e0e18; }
+
+        /* ── Data Viewer ── */
+        .data-section { margin-bottom: 24px; }
+        .data-section h3 {
+            color: #FFA500; font-size: 0.95rem; letter-spacing: 2px;
+            padding: 10px 0; border-bottom: 1px solid #1e1e2e; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .data-section h3 button {
+            padding: 4px 12px; border: 1px solid #ff4444; border-radius: 4px;
+            background: rgba(255,68,68,0.1); color: #ff4444; font-size: 0.7rem; cursor: pointer;
+        }
+        .data-section h3 button:hover { background: rgba(255,68,68,0.25); }
+
+        .data-table {
+            width: 100%; border-collapse: collapse; font-size: 0.8rem;
+        }
+        .data-table th {
+            text-align: left; padding: 8px 10px; color: #888;
+            border-bottom: 1px solid #1e1e2e; font-weight: 500; font-size: 0.75rem;
+            letter-spacing: 1px; text-transform: uppercase;
+        }
+        .data-table td {
+            padding: 8px 10px; border-bottom: 1px solid #0e0e18;
+            font-family: monospace; max-width: 400px; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
+        }
+        .data-table tr:hover td { background: #14141e; }
+        .data-table .role-user { color: #00ffff; }
+        .data-table .role-assistant { color: #FFD700; }
+
+        .sys-info { font-family: monospace; font-size: 0.8rem; color: #666; line-height: 1.8; }
+        .sys-info span { color: #FFA500; }
+
+        .empty-msg { color: #444; text-align: center; padding: 30px; font-style: italic; }
+
+        /* ── Back link ── */
+        .back-link {
+            display: inline-block; padding: 6px 14px; margin: 16px 0;
+            color: #FFA500; font-family: monospace; font-size: 0.8rem;
+            text-decoration: none; border: 1px solid #2a2a3a; border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .back-link:hover { border-color: #FFA500; background: rgba(255,165,0,0.1); }
+
+        @media (max-width: 600px) {
+            .login-box { flex-direction: column; }
+            .login-box input { width: 80vw; }
+            .topbar { padding: 10px 12px; }
+            .topbar h1 { font-size: 0.9rem; }
+            .tab-content { padding: 10px; }
+            .editor-textarea { min-height: 250px; font-size: 0.8rem; }
+            .data-table td { max-width: 200px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Login Overlay -->
+<div class="login-overlay" id="loginOverlay">
+    <div class="login-title">ADMIN ACCESS</div>
+    <div class="login-sub">AUTHENTICATION REQUIRED</div>
+    <div class="login-box">
+        <input type="password" id="loginPassword" placeholder="Enter admin password" autofocus>
+        <button onclick="doLogin()">AUTHENTICATE</button>
+    </div>
+    <div class="login-error" id="loginError"></div>
+</div>
+
+<!-- Main Panel -->
+<div id="mainPanel" style="display:none;">
+    <div class="topbar">
+        <h1>⚙ JARVIS ADMIN</h1>
+        <div class="topbar-btns">
+            <button id="tabFiles" class="active" onclick="switchTab('files')">FILES</button>
+            <button id="tabActivities" onclick="switchTab('activities')">ACTIVITIES</button>
+            <button id="tabData" onclick="switchTab('data')">DATA</button>
+            <button id="tabImages" onclick="switchTab('images')">IMAGES</button>
+            <button onclick="doLogout()">LOGOUT</button>
+        </div>
+    </div>
+
+    <!-- Files Tab -->
+    <div class="tab-content active" id="filesTab">
+        <div id="fileBrowser">
+            <div class="breadcrumb" id="breadcrumb"></div>
+            <div class="file-list" id="fileList"></div>
+        </div>
+        <div id="fileEditor" style="display:none;">
+            <div class="editor-header">
+                <div>
+                    <span class="path" id="editorPath"></span>
+                    <span class="save-status" id="saveStatus">✓ Saved</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="saveFile()" style="border-color:#00ff88;color:#00ff88;">SAVE</button>
+                    <button onclick="closeEditor()" style="border-color:#ff4444;color:#ff4444;background:rgba(255,68,68,0.1);">CLOSE</button>
+                </div>
+            </div>
+            <textarea class="editor-textarea" id="editorContent" spellcheck="false"></textarea>
+        </div>
+    </div>
+
+    <!-- Data Tab -->
+    <div class="tab-content" id="dataTab">
+        <div id="dataContent"></div>
+    </div>
+
+    <!-- Images Tab -->
+    <div class="tab-content" id="imagesTab">
+        <div id="imagesContent"></div>
+    </div>
+
+    <!-- Activities Tab -->
+    <div class="tab-content" id="activitiesTab">
+        <div id="activityList">
+            <div class="data-section">
+                <h3>DAILY ACTIVITIES</h3>
+            </div>
+            <div id="activityFiles"></div>
+        </div>
+        <div id="activityViewer" style="display:none;">
+            <div class="editor-header">
+                <div>
+                    <span class="path" id="activityDate"></span>
+                    <span class="save-status" id="activitySaveStatus">✓ Saved</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button id="activityEditBtn" onclick="editActivity()" style="border-color:#FFA500;color:#FFA500;">EDIT</button>
+                    <button onclick="copyActivity()" style="border-color:#00ffff;color:#00ffff;">COPY</button>
+                    <button onclick="backToActivityList()" style="border-color:#ff4444;color:#ff4444;background:rgba(255,68,68,0.1);">BACK</button>
+                </div>
+            </div>
+            <pre class="activity-content" id="activityContent"></pre>
+        </div>
+        <div id="activityEditor" style="display:none;">
+            <div class="editor-header">
+                <div>
+                    <span class="path" id="editDate"></span>
+                    <span class="save-status" id="editSaveStatus">✓ Saved</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="saveActivity()" style="border-color:#00ff88;color:#00ff88;">SAVE</button>
+                    <button onclick="cancelEdit()" style="border-color:#ff4444;color:#ff4444;background:rgba(255,68,68,0.1);">CANCEL</button>
+                </div>
+            </div>
+            <textarea class="editor-textarea" id="activityEditorContent" spellcheck="false"></textarea>
+        </div>
+    </div>
+
+    <a href="/" class="back-link">← BACK TO JARVIS</a>
+</div>
+
+<script>
+const API = '/api/admin';
+let currentPath = '.';
+let currentEditPath = '';
+
+// ── Auth ──
+document.getElementById('loginPassword').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+});
+
+async function checkAuth() {
+    try {
+        const r = await fetch(`${API}/check`);
+        const d = await r.json();
+        if (d.authenticated) showPanel();
+    } catch(e) {}
+}
+
+async function doLogin() {
+    const pw = document.getElementById('loginPassword').value.trim();
+    const err = document.getElementById('loginError');
+    if (!pw) { err.textContent = 'Enter password'; return; }
+
+    try {
+        const r = await fetch(`${API}/auth`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: pw })
+        });
+        const d = await r.json();
+        if (r.ok) {
+            showPanel();
+        } else {
+            err.textContent = d.error || 'Access denied';
+            document.getElementById('loginPassword').value = '';
+        }
+    } catch(e) {
+        err.textContent = 'Connection failed';
+    }
+}
+
+async function doLogout() {
+    await fetch(`${API}/logout`, { method: 'POST' });
+    document.getElementById('mainPanel').style.display = 'none';
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    document.getElementById('loginPassword').value = '';
+}
+
+function showPanel() {
+    document.getElementById('loginOverlay').classList.add('hidden');
+    document.getElementById('mainPanel').style.display = 'block';
+    loadFiles('.');
+}
+
+// ── Tabs ──
+function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.topbar-btns button').forEach(b => b.classList.remove('active'));
+    document.getElementById(tab + 'Tab').classList.add('active');
+    document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+    if (tab === 'data') loadData();
+    if (tab === 'images') loadImages();
+    if (tab === 'activities') loadActivities();
+}
+
+// ── File Browser ──
+async function loadFiles(path) {
+    currentPath = path;
+    try {
+        const r = await fetch(`${API}/files?path=${encodeURIComponent(path)}`);
+        const d = await r.json();
+        if (!r.ok) { document.getElementById('fileList').innerHTML = `<div class="empty-msg">${d.error}</div>`; return; }
+
+        // Breadcrumb
+        const parts = d.path.split('/').filter(Boolean);
+        let bc = '<span onclick="loadFiles(\'.\')">ROOT</span>';
+        let accum = '';
+        parts.forEach((p, i) => {
+            accum += (accum ? '/' : '') + p;
+            const cls = i === parts.length - 1 ? 'current' : '';
+            bc += ` / <span class="${cls}" onclick="loadFiles('${accum}')">${p}</span>`;
+        });
+        document.getElementById('breadcrumb').innerHTML = bc;
+
+        // File list
+        let html = '';
+        if (d.path !== '.') {
+            const parent = parts.slice(0, -1).join('/') || '.';
+            html += `<div class="file-item" onclick="loadFiles('${parent}')">
+                <span class="icon">⬆️</span><span class="name">..</span><span class="size">parent</span>
+            </div>`;
+        }
+        d.items.forEach(item => {
+            const icon = item.is_dir ? '📁' : getFileIcon(item.name);
+            const size = item.is_dir ? '' : formatSize(item.size);
+            const click = item.is_dir
+                ? `onclick="loadFiles('${item.path}')"`
+                : `onclick="openFile('${item.path}')"`;
+            html += `<div class="file-item" ${click}>
+                <span class="icon">${icon}</span>
+                <span class="name">${item.name}</span>
+                <span class="size">${size}</span>
+            </div>`;
+        });
+        document.getElementById('fileList').innerHTML = html || '<div class="empty-msg">Empty directory</div>';
+    } catch(e) {
+        document.getElementById('fileList').innerHTML = '<div class="empty-msg">Failed to load</div>';
+    }
+}
+
+async function openFile(path) {
+    try {
+        const r = await fetch(`${API}/file?path=${encodeURIComponent(path)}`);
+        const d = await r.json();
+        if (!r.ok) { alert(d.error); return; }
+
+        currentEditPath = d.path;
+        document.getElementById('editorPath').textContent = d.path;
+        document.getElementById('editorContent').value = d.content;
+        document.getElementById('fileBrowser').style.display = 'none';
+        document.getElementById('fileEditor').style.display = 'block';
+        document.getElementById('saveStatus').style.opacity = '0';
+    } catch(e) { alert('Failed to open file'); }
+}
+
+async function saveFile() {
+    const content = document.getElementById('editorContent').value;
+    try {
+        const r = await fetch(`${API}/file`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: currentEditPath, content })
+        });
+        const d = await r.json();
+        if (r.ok) {
+            const s = document.getElementById('saveStatus');
+            s.style.opacity = '1';
+            setTimeout(() => s.style.opacity = '0', 2000);
+        } else { alert(d.error); }
+    } catch(e) { alert('Save failed'); }
+}
+
+function closeEditor() {
+    document.getElementById('fileEditor').style.display = 'none';
+    document.getElementById('fileBrowser').style.display = 'block';
+    loadFiles(currentPath);
+}
+
+// ── Data Viewer ──
+async function loadData() {
+    try {
+        const r = await fetch(`${API}/data`);
+        const d = await r.json();
+        let html = '';
+
+        // System Info
+        html += `<div class="data-section"><h3>SYSTEM INFO</h3>
+            <div class="sys-info">
+                Project Root: <span>${d.system.project_root}</span><br>
+                Data Dir: <span>${d.system.data_dir}</span><br>
+                Memory DB: <span>${d.system.memory_db}</span><br>
+                DB Exists: <span>${d.system.db_exists ? '✓ Yes' : '✗ No'}</span>
+            </div></div>`;
+
+        // Chat History
+        html += `<div class="data-section"><h3>CHAT HISTORY (${d.chat_history.length})
+            <button onclick="clearData('chat')">CLEAR CHAT</button></h3>`;
+        if (d.chat_history.length > 0) {
+            html += `<table class="data-table"><tr><th>ID</th><th>Time</th><th>Role</th><th>Content</th></tr>`;
+            d.chat_history.forEach(r => {
+                const cls = r.role === 'user' ? 'role-user' : 'role-assistant';
+                html += `<tr><td>${r.id}</td><td>${r.timestamp || '-'}</td>
+                    <td class="${cls}">${r.role}</td><td title="${esc(r.content)}">${esc(r.content)}</td></tr>`;
+            });
+            html += `</table>`;
+        } else { html += `<div class="empty-msg">No chat history</div>`; }
+        html += `</div>`;
+
+        // User Facts
+        html += `<div class="data-section"><h3>USER FACTS (${d.user_facts.length})
+            <button onclick="clearData('facts')">CLEAR FACTS</button></h3>`;
+        if (d.user_facts.length > 0) {
+            html += `<table class="data-table"><tr><th>Key</th><th>Value</th><th>Type</th><th>Priority</th><th>Updated</th></tr>`;
+            d.user_facts.forEach(f => {
+                html += `<tr><td>${esc(f.key)}</td><td>${esc(f.value)}</td>
+                    <td>${f.type}</td><td>${f.priority}</td><td>${f.updated || '-'}</td></tr>`;
+            });
+            html += `</table>`;
+        } else { html += `<div class="empty-msg">No stored facts</div>`; }
+        html += `</div>`;
+
+        document.getElementById('dataContent').innerHTML = html;
+    } catch(e) {
+        document.getElementById('dataContent').innerHTML = '<div class="empty-msg">Failed to load data</div>';
+    }
+}
+
+async function clearData(target) {
+    if (!confirm(`Clear ${target}? This cannot be undone.`)) return;
+    try {
+        await fetch(`${API}/data/clear`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target })
+        });
+        loadData();
+    } catch(e) { alert('Failed to clear'); }
+}
+
+// ── Images Viewer ──
+async function loadImages() {
+    try {
+        const r = await fetch(`${API}/images`);
+        const d = await r.json();
+        let html = '';
+        if (d.images && d.images.length > 0) {
+            html += `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">`;
+            d.images.forEach(img => {
+                html += `
+                <div style="background: #14141e; border: 1px solid #2a2a3a; border-radius: 8px; overflow: hidden; padding-bottom: 10px;">
+                    <a href="${img.url}" target="_blank">
+                        <img src="${img.url}" style="width: 100%; height: 200px; object-fit: cover; border-bottom: 1px solid #2a2a3a;" />
+                    </a>
+                    <div style="padding: 10px; font-family: monospace; font-size: 0.75rem; color: #aaa;">
+                        <div style="color: #00ffff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${esc(img.prompt)}">${esc(img.prompt)}</div>
+                        <div>${formatSize(img.size)}</div>
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+        } else {
+            html = `<div class="empty-msg">No images generated yet</div>`;
+        }
+        document.getElementById('imagesContent').innerHTML = html;
+    } catch(e) {
+        document.getElementById('imagesContent').innerHTML = '<div class="empty-msg">Failed to load images</div>';
+    }
+}
+
+// ── Activities ──
+let _currentActivityDate = '';
+
+async function loadActivities() {
+    resetActivityViews();
+    try {
+        const r = await fetch(`${API}/activities`);
+        const d = await r.json();
+        let html = '';
+        if (d.files.length === 0) {
+            html = '<div class="empty-msg">No activities logged yet. Start chatting with JARVIS!</div>';
+        } else {
+            html += `<table class="data-table">
+                <tr><th>Date</th><th>Entries</th><th>Size</th><th>Actions</th></tr>`;
+            d.files.forEach(f => {
+                const sizeStr = f.size < 1024 ? f.size + ' B' : (f.size / 1024).toFixed(1) + ' KB';
+                html += `<tr>
+                    <td style="color:#FFA500;font-weight:500;">${f.date}</td>
+                    <td>${f.entries} conversations</td>
+                    <td>${sizeStr}</td>
+                    <td>
+                        <button onclick="viewActivity('${f.date}')" style="padding:2px 10px;border:1px solid #00ffff;border-radius:4px;background:rgba(0,255,255,0.08);color:#00ffff;cursor:pointer;font-size:0.75rem;margin-right:4px;">VIEW</button>
+                        <button onclick="copyActivityFile('${f.date}')" style="padding:2px 10px;border:1px solid #888;border-radius:4px;background:rgba(136,136,136,0.08);color:#888;cursor:pointer;font-size:0.75rem;">COPY</button>
+                    </td>
+                </tr>`;
+            });
+            html += `</table>`;
+        }
+        document.getElementById('activityFiles').innerHTML = html;
+    } catch(e) {
+        document.getElementById('activityFiles').innerHTML = '<div class="empty-msg">Failed to load activities</div>';
+    }
+}
+
+async function viewActivity(date) {
+    _currentActivityDate = date;
+    try {
+        const r = await fetch(`${API}/activity?date=${encodeURIComponent(date)}`);
+        const d = await r.json();
+        if (!r.ok) { alert(d.error); return; }
+        document.getElementById('activityDate').textContent = '📋 ' + date;
+        document.getElementById('activityContent').textContent = d.content;
+        document.getElementById('activityList').style.display = 'none';
+        document.getElementById('activityViewer').style.display = 'block';
+        document.getElementById('activityEditor').style.display = 'none';
+    } catch(e) { alert('Failed to load activity'); }
+}
+
+function editActivity() {
+    const content = document.getElementById('activityContent').textContent;
+    document.getElementById('editDate').textContent = '✏️ ' + _currentActivityDate;
+    document.getElementById('activityEditorContent').value = content;
+    document.getElementById('activityViewer').style.display = 'none';
+    document.getElementById('activityEditor').style.display = 'block';
+    document.getElementById('editSaveStatus').style.opacity = '0';
+}
+
+async function saveActivity() {
+    const content = document.getElementById('activityEditorContent').value;
+    try {
+        const r = await fetch(`${API}/activity`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: _currentActivityDate, content })
+        });
+        const d = await r.json();
+        if (r.ok) {
+            const s = document.getElementById('editSaveStatus');
+            s.style.opacity = '1';
+            setTimeout(() => s.style.opacity = '0', 2000);
+            cancelEdit();
+        } else { alert(d.error); }
+    } catch(e) { alert('Save failed'); }
+}
+
+function cancelEdit() {
+    document.getElementById('activityEditor').style.display = 'none';
+    viewActivity(_currentActivityDate);
+}
+
+function backToActivityList() {
+    resetActivityViews();
+    loadActivities();
+}
+
+function resetActivityViews() {
+    document.getElementById('activityList').style.display = 'block';
+    document.getElementById('activityViewer').style.display = 'none';
+    document.getElementById('activityEditor').style.display = 'none';
+}
+
+async function copyActivity() {
+    const content = document.getElementById('activityContent').textContent;
+    try {
+        await navigator.clipboard.writeText(content);
+        const s = document.getElementById('activitySaveStatus');
+        s.textContent = '✓ Copied!';
+        s.style.opacity = '1';
+        setTimeout(() => { s.style.opacity = '0'; s.textContent = '✓ Saved'; }, 2000);
+    } catch(e) {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = content;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+    }
+}
+
+async function copyActivityFile(date) {
+    try {
+        const r = await fetch(`${API}/activity?date=${encodeURIComponent(date)}`);
+        const d = await r.json();
+        if (!r.ok) { alert(d.error); return; }
+        try {
+            await navigator.clipboard.writeText(d.content);
+        } catch(e) {
+            const ta = document.createElement('textarea');
+            ta.value = d.content;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
+    } catch(e) { alert('Failed to copy'); }
+}
+
+// ── Helpers ──
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function formatSize(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+}
+function getFileIcon(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    const icons = { py:'🐍', js:'📜', html:'🌐', css:'🎨', json:'📋', yml:'⚙️', yaml:'⚙️',
+        md:'📝', txt:'📄', sh:'🔧', sql:'🗃️', db:'🗃️', env:'🔐', gitignore:'👁️' };
+    return icons[ext] || '📄';
+}
+
+// ── Init ──
+checkAuth();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">JARVIS</string>
+    <string name="listening">Listening...</string>
+    <string name="processing">Processing...</string>
+    <string name="tap_to_speak">Tap mic to speak</string>
+
+    <!-- Accessibility Service -->
+    <string name="accessibility_label">JARVIS Assistant</string>
+    <string name="accessibility_description">Allows JARVIS to navigate your device — go home, close apps, open notifications, and perform system actions.</string>
+</resources>

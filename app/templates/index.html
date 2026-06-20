@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#03050c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>JARVIS — AI Assistant</title>
+  <meta name="description" content="JARVIS — Your personal cognitive AI assistant. Voice-powered, memory-aware, goal-tracking, Android-optimized.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="jarvis_v2.css">
+</head>
+
+<body class="android-ui">
+
+  <!-- ═══ BACKGROUND CANVAS ═══ -->
+  <canvas id="bgCanvas" class="bg-canvas"></canvas>
+
+  <!-- ═══ TOP STATUS BAR ═══ -->
+  <div class="topbar" id="topbar">
+    <button id="menuBtn" class="icon-btn" aria-label="Open Menu" title="Open Menu">
+      <span class="icon-menu">☰</span>
+    </button>
+    <div class="topbar-center">
+      <div class="jarvis-logo">⚡ JARVIS</div>
+      <div class="status-dot" id="statusDot"></div>
+    </div>
+    <div class="topbar-right">
+      <button id="memoryBtn" class="icon-btn" aria-label="Memory" title="Memory Recall" id="memoryRecallBtn">🧠</button>
+      <button id="profileBtn" class="icon-btn" aria-label="Profile">👤</button>
+    </div>
+  </div>
+
+  <!-- ═══ SIDE PANEL (Drawer) ═══ -->
+  <div id="sidePanel" class="side-panel">
+    <div class="side-panel-header">
+      <span>⚡ JARVIS HQ</span>
+      <button id="closeSidePanel" class="close-btn">✕</button>
+    </div>
+
+    <!-- Proactive Briefing Card -->
+    <div class="briefing-card" id="briefingCard">
+      <div class="briefing-time" id="briefingTime">--:--</div>
+      <div class="briefing-greeting" id="briefingGreeting">Loading...</div>
+      <div class="briefing-tip" id="briefingTip"></div>
+    </div>
+
+    <!-- Productivity Streak -->
+    <div class="streak-banner" id="streakBanner">
+      <span class="streak-icon">🔥</span>
+      <span class="streak-text" id="streakText">Loading streak...</span>
+    </div>
+
+    <!-- Goals Section -->
+    <div class="panel-section">
+      <div class="panel-section-title">🎯 Active Goals</div>
+      <div id="goalsList" class="panel-list">
+        <div class="panel-loading">Loading...</div>
+      </div>
+      <form id="addGoalForm" class="panel-add-form">
+        <input id="newGoalInput" type="text" placeholder="Add new goal..." autocomplete="off">
+        <button type="submit">+</button>
+      </form>
+    </div>
+
+    <!-- Reminders Section -->
+    <div class="panel-section">
+      <div class="panel-section-title">🔔 Upcoming Reminders</div>
+      <div id="eventsList" class="panel-list">
+        <div class="panel-loading">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="panel-section">
+      <div class="panel-section-title">⚡ Quick Ask</div>
+      <div class="quick-chips" id="dynamicChips">
+        <button class="chip" data-msg="Aaj ka daily review do">📋 Daily Review</button>
+        <button class="chip" data-msg="Mera goal list batao">🎯 My Goals</button>
+        <button class="chip" data-msg="Upcoming reminders batao">🔔 Reminders</button>
+        <button class="chip" data-msg="Koi achha soft song laga do">🎵 Play Music</button>
+        <button class="chip" data-msg="Humne kya baat ki thi">🧠 Memory</button>
+        <button class="chip" data-msg="Focus improve karne ka tip do">💡 Focus Tip</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay for sidebar -->
+  <div id="sideOverlay" class="side-overlay"></div>
+
+  <!-- ═══ MEMORY RECALL DRAWER ═══ -->
+  <div id="memoryDrawer" class="memory-drawer">
+    <div class="memory-drawer-header">
+      <span>🧠 Memory Recall</span>
+      <button id="closeMemoryDrawer" class="close-btn">✕</button>
+    </div>
+    <div class="memory-search-bar">
+      <input id="memorySearchInput" type="text" placeholder="Search past conversations..." autocomplete="off">
+      <button id="memorySearchBtn">🔍</button>
+    </div>
+    <div class="memory-stats" id="memoryStats"></div>
+    <div class="memory-results" id="memoryResults">
+      <div class="panel-empty">Search karo ya bol "yaad hai kya..." 💭</div>
+    </div>
+    <div class="memory-sessions" id="memorySessions"></div>
+  </div>
+
+  <!-- ═══ MAIN CHAT CONTAINER ═══ -->
+  <div class="main-container" id="mainContainer">
+
+    <!-- Orb Section -->
+    <div class="orb-section" id="orbSection">
+      <!-- Sci-fi Rings -->
+      <div class="center" id="voiceTrigger">
+        <div class="rings">
+          <div class="ring ring1"></div>
+          <div class="ring ring2"></div>
+          <div class="ring ring3"></div>
+        </div>
+        <!-- Neural Orb -->
+        <div class="orb">
+          <div class="core" id="orbCore"></div>
+          <canvas id="particles"></canvas>
+        </div>
+        <!-- Mic icon -->
+        <div class="mic-icon" id="micIcon">🎙️</div>
+      </div>
+
+      <!-- Status text -->
+      <div class="orb-status">
+        <div class="status" id="statusText">SYSTEM ONLINE</div>
+        <div class="hint" id="hintText">TAP ORB TO SPEAK · TYPE BELOW</div>
+      </div>
+
+      <!-- Proactive suggestion -->
+      <div class="proactive-card" id="proactiveCard" style="display:none;">
+        <span class="proactive-icon">💡</span>
+        <span class="proactive-text" id="proactiveText"></span>
+        <button class="proactive-close" id="proactiveClose">✕</button>
+      </div>
+    </div>
+
+    <!-- Chat History -->
+    <div class="chat-section" id="chatSection" style="display:none;">
+      <div class="chat-messages" id="chatMessages"></div>
+    </div>
+
+    <!-- Response area (legacy fallback, hidden when chat visible) -->
+    <div class="transcript" id="transcriptText"></div>
+    <div class="response" id="responseText"></div>
+
+    <!-- Agent badge -->
+    <div class="agent-badge" id="agentBadge"></div>
+
+  </div>
+
+  <!-- ═══ BOTTOM INPUT BAR ═══ -->
+  <div class="bottom-bar" id="bottomBar">
+    <!-- Quick chips row (horizontal scroll) -->
+    <div class="bottom-chips" id="bottomChips">
+      <button class="bchip" data-msg="Time kya hua?">🕐 Time</button>
+      <button class="bchip" data-msg="Aaj ka weather kya hai">🌤 Weather</button>
+      <button class="bchip" data-msg="Koi motivational quote do">✨ Motivate</button>
+      <button class="bchip" data-msg="Koi achha song laga do">🎵 Music</button>
+      <button class="bchip" data-msg="Latest news batao">📰 News</button>
+      <button class="bchip" data-msg="Ek joke sunao">😄 Joke</button>
+    </div>
+
+    <!-- Input row -->
+    <div class="input-row">
+      <button id="attachBtn" class="input-icon-btn" title="Voice Note">🎤</button>
+      <div class="input-wrapper">
+        <input type="text" id="textInput" placeholder="Message JARVIS..." autocomplete="off" autocorrect="on" spellcheck="true">
+        <button id="clearInputBtn" class="clear-btn" style="display:none;">✕</button>
+      </div>
+      <button id="sendBtn" class="send-btn" title="Send">
+        <span id="sendIcon">➤</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ IMAGE DISPLAY OVERLAY ═══ -->
+  <div id="imageDisplay" class="image-overlay" style="display:none;">
+    <div class="image-overlay-inner">
+      <img id="generatedImg" src="" alt="Generated Image">
+      <div id="imagePath"></div>
+      <div class="image-overlay-hint">TAP TO CLOSE</div>
+    </div>
+  </div>
+
+  <!-- ═══ TIMER FULL-SCREEN OVERLAY ═══ -->
+  <div id="timerOverlay" class="timer-overlay" style="display:none;">
+    <div class="timer-card">
+      <div class="timer-label" id="timerLabel">Timer</div>
+      <div class="timer-display" id="timerDisplay">00:00</div>
+      <div class="timer-progress" id="timerProgress">
+        <div class="timer-progress-bar" id="timerProgressBar"></div>
+      </div>
+      <button id="dismissTimerBtn" class="timer-dismiss-btn" style="display:none;" onclick="TimerManager.dismissAlert()">
+        ✕ Dismiss
+      </button>
+      <button id="cancelTimerBtn" class="timer-cancel-btn" onclick="TimerManager.cancelTimer()">
+        Cancel
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ TOAST NOTIFICATIONS ═══ -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- ═══ YOUTUBE PLAYER ═══ -->
+  <div id="ytPlayer" class="yt-player" style="display:none;">
+    <div class="yt-header">
+      <span id="ytTitle">🎵 Playing...</span>
+      <button id="ytClose">✕</button>
+    </div>
+    <div class="yt-embed" id="ytEmbed"></div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="device.js"></script>
+  <script src="timer.js"></script>
+  <script src="script.js"></script>
+  <script src="panel.js"></script>
+  <script src="jarvis_v2.js"></script>
+</body>
+
+</html>

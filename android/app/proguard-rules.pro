@@ -1,0 +1,3 @@
+-keep class com.jarvis.assistant.services.** { *; }
+-keep class com.jarvis.assistant.voice.WaveformView { *; }
+-dontwarn okhttp3.**

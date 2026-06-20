@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AccessibilityService configuration for JARVIS.
+  Provides system navigation capabilities:
+    - Go to Home screen
+    - Close apps (back navigation)
+    - Open notifications / quick settings
+
+  The service is enabled by the user in:
+    Settings → Accessibility → Installed Apps → JARVIS
+-->
+<accessibility-service
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeAllMask"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault|flagRequestFilterKeyEvents|flagReportViewIds"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:canRequestFilterKeyEvents="true"
+    android:description="@string/accessibility_description"
+    android:notificationTimeout="100" />

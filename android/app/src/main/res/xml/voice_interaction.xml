@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Declares this is a VoiceInteractionService using JarvisSessionService.
+  This XML is referenced from AndroidManifest.xml via the meta-data tag
+  android.voice_interaction.
+
+  Attributes:
+    android:sessionService      — Required. The session service to bind.
+    android:supportsAssist      — Show in assist gesture / power button action.
+    android:supportsLaunchVoiceAssistFromKeyguard — Allow invocation from lockscreen.
+    android:recognitionService  — Optional custom recognition service.
+    android:supportsLocalInteraction — Allow on-device voice processing.
+-->
+<voice-interaction-service
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.jarvis.assistant.services.JarvisSessionService"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="true"
+    android:supportsLocalInteraction="true" />
