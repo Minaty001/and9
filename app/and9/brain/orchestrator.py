@@ -181,7 +181,7 @@ class Orchestrator:
         if intent_name == "emergency":
             return BrainResult(
                 response="🚨 EMERGENCY! Main help bhej raha hoon! Call kar raha hoon emergency services!",
-                action="EMERGENCY",
+                action="emergency",
                 payload={"type": "emergency", "number": "112"},
                 brain=BrainType.REFLEX,
                 intent=IntentType.EMERGENCY,
@@ -198,9 +198,15 @@ class Orchestrator:
                 params=params,
                 events_sys=self.events_sys,
             )
+            handler_action = handler_result.get("action")
+            action_val = (
+                handler_action
+                if handler_action in ["ERROR", "CHROME_FIREWALL_BLOCKED", "UNKNOWN_APP"]
+                else action_type
+            )
             return BrainResult(
                 response=handler_result.get("response", "Done! ✅"),
-                action=handler_result.get("action", action_type.upper()),
+                action=action_val,
                 payload=handler_result.get("payload"),
                 brain=BrainType.REFLEX,
                 intent=self._intent_from_name(intent_name),
@@ -231,7 +237,7 @@ class Orchestrator:
         search_url = f"https://www.google.com/search?q={quote_plus(query)}"
         return BrainResult(
             response=f"Web pe '{query}' search kar raha hoon 🔍",
-            action="SEARCH",
+            action="search",
             payload={
                 "action": "android.intent.action.VIEW",
                 "package": "com.android.chrome",

@@ -630,7 +630,7 @@ def and9_process():
 
     try:
         result = get_and9().process(query)
-        return jsonify(result.to_dict())
+        return jsonify(result)
     except Exception as e:
         logger.exception("AND9 endpoint error")
         return jsonify({

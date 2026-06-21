@@ -62,6 +62,7 @@ def execute_youtube_search(query: str = "", action: str = "search") -> dict:
                 "package": YOUTUBE_PACKAGE,
                 "component": YOUTUBE_COMPONENT,
                 "data": search_url,
+                "query": clean_query,
             },
         }
 
@@ -73,6 +74,7 @@ def execute_youtube_search(query: str = "", action: str = "search") -> dict:
             "package": YOUTUBE_PACKAGE,
             "component": YOUTUBE_COMPONENT,
             "data": search_url,
+            "query": clean_query,
         },
     }
 

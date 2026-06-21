@@ -36,22 +36,23 @@ def validate_intent(intent_name: str, params: dict) -> Tuple[bool, str]:
 
     elif intent_name == "timer":
         # Timer needs a duration
-        if not params.get("seconds"):
+        if not params.get("duration_seconds"):
             return False, "Timer kitne time ka lagana hai? Jaise '5 minutes' ya '10 seconds'. ⏱️"
 
     elif intent_name == "reminder":
         # Reminder needs a valid time
-        if params.get("type") == "unknown" or (params.get("hour") is None and params.get("seconds") is None):
+        trigger_at = params.get("trigger_at", {})
+        if trigger_at.get("type") == "unknown" or (trigger_at.get("hour") is None and trigger_at.get("seconds") is None):
             return False, "Reminder ka time samajh nahi aaya. Kab yaad dilana hai? 📅"
 
     elif intent_name == "call":
         # Call needs a target (number or contact)
-        if not params.get("number") and not params.get("contact_query"):
+        if not params.get("number") and not params.get("contact_name"):
             return False, "Kisko call karna hai? Naam ya number bataiye. 📞"
 
     elif intent_name == "message":
         # Message needs a target
-        if not params.get("number") and not params.get("contact_query"):
+        if not params.get("number") and not params.get("contact_name"):
             return False, "Kisko message bhejna hai? Naam bataiye. ✉️"
 
     elif intent_name == "open_app":

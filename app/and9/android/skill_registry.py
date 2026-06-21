@@ -42,14 +42,14 @@ def _reminder_mapper(params: dict, events_sys: Any) -> dict:
 
 def _call_mapper(params: dict, events_sys: Any) -> dict:
     return {
-        "contact": params.get("contact"),
+        "contact_name": params.get("contact_name"),
         "number": params.get("number"),
         "action_type": params.get("action_type", "contact"),
     }
 
 def _sms_mapper(params: dict, events_sys: Any) -> dict:
     return {
-        "contact": params.get("contact"),
+        "contact_name": params.get("contact_name"),
         "number": params.get("number"),
         "message": params.get("message", ""),
     }

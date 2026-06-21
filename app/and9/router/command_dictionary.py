@@ -215,10 +215,6 @@ YOUTUBE_SEARCH_PATTERNS: List[Pattern] = [
     _c(r'\byoutube\s+pe\s+video\s+search\s+karo\s+(.+)$'),
     # "youtube pe song search karo song_name"
     _c(r'\byoutube\s+pe\s+song\s+search\s+karo\s+(.+)$'),
-    # "play song_name on youtube"
-    _c(r'\bplay\s+(.+?)\s+on\s+youtube\b'),
-    # "song_name youtube pe bajao"
-    _c(r'^(.+?)\s+youtube\s+pe\s+(?:bajao|chalao|sunao)\b'),
     # "song_name youtube pe search karo"
     _c(r'^(.+?)\s+youtube\s+pe\s+search\s+karo\b'),
     # "youtube kholo aur search karo song_name"
@@ -233,6 +229,10 @@ YOUTUBE_PLAY_PATTERNS: List[Pattern] = [
     _c(r'^(.+?)\s+(?:bajao|chalao|sunao|play\s+karo)\s*$'),
     # "play youtube video/song"
     _c(r'\bplay\s+youtube\s+(?:video|song|music)\s*(.*)$'),
+    # "play song_name on youtube"
+    _c(r'\bplay\s+(.+?)\s+on\s+youtube\b'),
+    # "song_name youtube pe bajao"
+    _c(r'^(.+?)\s+youtube\s+pe\s+(?:bajao|chalao|sunao)\b'),
 ]
 
 # Indicates a YouTube play (not just open) intent
@@ -331,8 +331,7 @@ AUTOMATION_TRIGGER: Pattern = _c(
 # ══════════════════════════════════════════════════════════════════
 
 SEARCH_TRIGGER: Pattern = _c(
-    r'\b(search|find|google|look\s+up|who\s+is|what\s+is|where\s+is|'
-    r'how\s+to|why\s+is|when\s+is|weather|news|latest|kya\s+hai|'
+    r'\b(search|find|google|look\s+up|weather|news|latest|kya\s+hai|'
     r'ke\s+baare\s+mein|batao|dhundo|dhundho|khojo|talaash)\b'
 )
 
