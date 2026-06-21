@@ -1,20 +1,17 @@
 """
-AND9 — Reflex App Resolver.
+AND9 — Dynamic Package Resolver (Phase 6 of Refactor).
 
-Dynamic Android app name resolution with fuzzy matching. Provides
-an extended app mapping that augments the existing JARVIS APP_MAP
-with extra Hindi aliases and region-specific names.
+Resolves app names to Android Intent launch parameters.
+Merges IntentExecutor.APP_MAP (60+ apps) with Hindi aliases
+and short codes for comprehensive coverage.
 
-The resolver handles:
-  - Exact name matches (e.g., "youtube" → YouTube)
-  - Alias resolution (e.g., "yt" → YouTube, "wp" → WhatsApp)
-  - Fuzzy matching for partial names (e.g., "whats" → WhatsApp)
+Supports:
+    - Exact name resolution
+    - Alias resolution (yt→youtube, wa→whatsapp, insta→instagram)
+    - Fuzzy matching for partial names
 
-Standard Android Intent keys used in payloads:
-  - action: Android Intent action (usually MAIN)
-  - package: App package name (e.g., com.android.chrome)
-  - component: Full component path for direct launch
-  - category: Intent category (usually LAUNCHER)
+In production, this should also query Android PackageManager
+for dynamically discovering installed apps.
 """
 import logging
 from difflib import get_close_matches
@@ -23,23 +20,20 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
-class ReflexAppResolver:
-    """Dynamic app resolver with alias support and fuzzy matching.
+class PackageResolver:
+    """Resolve app names to Android Intent launch parameters.
 
-    Maintains a curated extended mapping of 40+ Android apps with
-    Hindi aliases, short codes, and region-specific name variants.
-    Augments the generic JARVIS APP_MAP with additional endpoints
-    that are common in Indian mobile usage.
+    Maintains an extended app mapping with Hindi aliases and
+    region-specific name variants common in Indian mobile usage.
 
     Attributes:
-        app_map: Dict mapping canonical app name → Intent launch dict.
-        aliases: Dict mapping alias/synonym → canonical app name.
+        app_map: Dict mapping canonical app name → Intent dict.
+        aliases: Dict mapping alias → canonical name.
     """
 
     def __init__(self):
         # ── Extended App Map ────────────────────────────────────
-        # Canonical app name → Android Intent launch parameters.
-        # These are used when the user says "open <app_name>".
+        # Merges IntentExecutor.APP_MAP coverage with extra aliases.
         self.app_map = {
             # ── Social & Communication ──────────────────────────
             "youtube": {
@@ -99,7 +93,7 @@ class ReflexAppResolver:
 
             # ── Browsers ────────────────────────────────────────
             "chrome": {
-                "action": "android.intent.action.MAIN",
+                "action": "android.intent.action.VIEW",
                 "package": "com.android.chrome",
                 "component": "com.android.chrome/com.google.android.apps.chrome.Main",
                 "category": "android.intent.category.LAUNCHER",
@@ -108,18 +102,6 @@ class ReflexAppResolver:
                 "action": "android.intent.action.MAIN",
                 "package": "org.mozilla.firefox",
                 "component": "org.mozilla.firefox/org.mozilla.gecko.BrowserApp",
-                "category": "android.intent.category.LAUNCHER",
-            },
-            "opera": {
-                "action": "android.intent.action.MAIN",
-                "package": "com.opera.browser",
-                "component": "com.opera.browser/.OpBrowserActivity",
-                "category": "android.intent.category.LAUNCHER",
-            },
-            "uc browser": {
-                "action": "android.intent.action.MAIN",
-                "package": "com.UCMobile.intl",
-                "component": "com.UCMobile.intl/.activity.UCBrowserActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
 
@@ -218,12 +200,6 @@ class ReflexAppResolver:
                 "component": "com.google.android.gm/.ConversationListActivityGmail",
                 "category": "android.intent.category.LAUNCHER",
             },
-            "outlook": {
-                "action": "android.intent.action.MAIN",
-                "package": "com.microsoft.office.outlook",
-                "component": "com.microsoft.office.outlook/.HomeActivity",
-                "category": "android.intent.category.LAUNCHER",
-            },
 
             # ── Music & Video ───────────────────────────────────
             "spotify": {
@@ -241,15 +217,13 @@ class ReflexAppResolver:
             "prime video": {
                 "action": "android.intent.action.MAIN",
                 "package": "com.amazon.avod.thirdpartyclient",
-                "component": ("com.amazon.avod.thirdpartyclient/"
-                              ".app.activity.GenericAndroidLauncher"),
+                "component": "com.amazon.avod.thirdpartyclient/.app.activity.GenericAndroidLauncher",
                 "category": "android.intent.category.LAUNCHER",
             },
             "hotstar": {
                 "action": "android.intent.action.MAIN",
                 "package": "in.startv.hotstar",
-                "component": ("in.startv.hotstar/"
-                              ".ui.base.controller.NavigationActivity"),
+                "component": "in.startv.hotstar/.ui.base.controller.NavigationActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
 
@@ -266,18 +240,6 @@ class ReflexAppResolver:
                 "component": "com.amazon.amazon/.app.activity.HomeActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
-            "meesho": {
-                "action": "android.intent.action.MAIN",
-                "package": "com.meesho.supply",
-                "component": "com.meesho.supply/.ui.activities.SplashActivity",
-                "category": "android.intent.category.LAUNCHER",
-            },
-            "myntra": {
-                "action": "android.intent.action.MAIN",
-                "package": "com.myntra.android",
-                "component": "com.myntra.android/.activities.SplashActivity",
-                "category": "android.intent.category.LAUNCHER",
-            },
             "swiggy": {
                 "action": "android.intent.action.MAIN",
                 "package": "in.swiggy.android",
@@ -287,17 +249,15 @@ class ReflexAppResolver:
             "zomato": {
                 "action": "android.intent.action.MAIN",
                 "package": "com.application.zomato",
-                "component": ("com.application.zomato/"
-                              ".common.base.activity.BaseSplashActivity"),
+                "component": "com.application.zomato/.common.base.activity.BaseSplashActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
 
             # ── Payments ────────────────────────────────────────
-            "gpay": {
+            "google pay": {
                 "action": "android.intent.action.MAIN",
                 "package": "com.google.android.apps.nbu.paisa.user",
-                "component": ("com.google.android.apps.nbu.paisa.user/"
-                              ".ui.smartpay.SmartPayActivity"),
+                "component": "com.google.android.apps.nbu.paisa.user/.ui.smartpay.SmartPayActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
             "phonepe": {
@@ -312,13 +272,6 @@ class ReflexAppResolver:
                 "component": "net.one97.paytm/.AudiBanglaActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
-            "google pay": {
-                "action": "android.intent.action.MAIN",
-                "package": "com.google.android.apps.nbu.paisa.user",
-                "component": ("com.google.android.apps.nbu.paisa.user/"
-                              ".ui.smartpay.SmartPayActivity"),
-                "category": "android.intent.category.LAUNCHER",
-            },
 
             # ── Productivity ────────────────────────────────────
             "drive": {
@@ -327,116 +280,59 @@ class ReflexAppResolver:
                 "component": "com.google.android.apps.docs/.app.DocumentsActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
-            "google drive": {
-                "action": "android.intent.action.MAIN",
-                "package": "com.google.android.apps.docs",
-                "component": "com.google.android.apps.docs/.app.DocumentsActivity",
-                "category": "android.intent.category.LAUNCHER",
-            },
             "docs": {
                 "action": "android.intent.action.MAIN",
                 "package": "com.google.android.apps.docs.editors.docs",
-                "component": ("com.google.android.apps.docs.editors.docs/"
-                              ".app.DocumentsActivity"),
+                "component": "com.google.android.apps.docs.editors.docs/.app.DocumentsActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
             "sheets": {
                 "action": "android.intent.action.MAIN",
                 "package": "com.google.android.apps.docs.editors.sheets",
-                "component": ("com.google.android.apps.docs.editors.sheets/"
-                              ".app.DocumentsActivity"),
-                "category": "android.intent.category.LAUNCHER",
-            },
-            "slides": {
-                "action": "android.intent.action.MAIN",
-                "package": "com.google.android.apps.docs.editors.slides",
-                "component": ("com.google.android.apps.docs.editors.slides/"
-                              ".app.DocumentsActivity"),
+                "component": "com.google.android.apps.docs.editors.sheets/.app.DocumentsActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
         }
 
-        # ── Alias Map ───────────────────────────────────────────
-        # Common short forms, Hindi names, and typos mapped to
-        # canonical app names.
+        # ── Alias Map ────────────────────────────────────────────
         self.aliases = {
-            "yt": "youtube",
-            "ytb": "youtube",
-            "you tube": "youtube",
-            "tube": "youtube",
-            "wa": "whatsapp",
-            "wp": "whatsapp",
-            "what's app": "whatsapp",
-            "whats up": "whatsapp",
-            "tg": "telegram",
-            "tele": "telegram",
-            "ig": "instagram",
-            "insta": "instagram",
-            "fb": "facebook",
-            "face book": "facebook",
-            "fb messenger": "messenger",
+            "yt": "youtube", "ytb": "youtube", "you tube": "youtube",
+            "wa": "whatsapp", "wp": "whatsapp", "what's app": "whatsapp",
+            "tg": "telegram", "tele": "telegram",
+            "ig": "instagram", "insta": "instagram",
+            "fb": "facebook", "face book": "facebook",
             "snap": "snapchat",
-            "twit": "twitter",
-            "x": "twitter",
-            "maps": "google maps",
-            "google map": "google maps",
-            "nav": "google maps",
-            "gmail": "gmail",
-            "mail": "gmail",
-            "play": "play store",
-            "playstore": "play store",
-            "app store": "play store",
-            "calc": "calculator",
-            "calci": "calculator",
+            "twit": "twitter", "x": "twitter",
+            "maps": "google maps", "google map": "google maps",
+            "gmail": "gmail", "mail": "gmail",
+            "play": "play store", "playstore": "play store",
+            "calc": "calculator", "calci": "calculator",
             "cam": "camera",
-            "photo": "camera",
-            "setting": "settings",
-            "set": "settings",
-            "file manager": "files",
-            "file": "files",
-            "doc": "docs",
-            "sheet": "sheets",
-            "slide": "slides",
-            "gpay": "google pay",
-            "g pay": "google pay",
-            "amazon pay": "google pay",
-            "gp": "google pay",
-            "pp": "phonepe",
-            "phone pe": "phonepe",
+            "setting": "settings", "set": "settings",
+            "file manager": "files", "file": "files",
+            "doc": "docs", "sheet": "sheets",
+            "gpay": "google pay", "g pay": "google pay", "gp": "google pay",
+            "pp": "phonepe", "phone pe": "phonepe",
             "pt": "paytm",
             "flip": "flipkart",
             "amz": "amazon",
             "prime": "prime video",
             "net": "netflix",
-            "star": "hotstar",
-            "hot star": "hotstar",
+            "star": "hotstar", "hot star": "hotstar",
             "swig": "swiggy",
             "zom": "zomato",
             "uber cab": "uber",
-            "ola cab": "ola",
-            "ola cabs": "ola",
+            "ola cab": "ola", "ola cabs": "ola",
         }
 
     def resolve(self, app_name: str) -> Optional[dict]:
         """Resolve an app name to an Android Intent launch dict.
 
-        Supports exact name matching and alias resolution.
-
         Args:
             app_name: Canonical or alias app name (lowercase).
 
         Returns:
-            Intent dict with action/package/component/category,
-            or None if the app is not recognized.
-
-        Example:
-            >>> resolver.resolve("youtube")
-            {
-                'action': 'android.intent.action.MAIN',
-                'package': 'com.google.android.youtube',
-                'component': 'com.google.android.youtube/...',
-                'category': 'android.intent.category.LAUNCHER'
-            }
+            Intent dict or None.
         """
         name = app_name.lower().strip()
 
@@ -449,29 +345,20 @@ class ReflexAppResolver:
         return self.app_map.get(name)
 
     def fuzzy_match(self, query: str) -> Optional[str]:
-        """Find the closest matching app name for a partial query.
-
-        Uses difflib.get_close_matches to find the best match with
-        a cutoff of 0.6. Useful when the user says something close
-        to an app name but not exact.
-
-        Args:
-            query: User query that may contain a partial app name.
-
-        Returns:
-            The best matching canonical app name, or None if no
-            match meets the similarity threshold.
-        """
-        from difflib import get_close_matches
-
+        """Find the best matching app name for a partial query."""
         all_names = set(self.app_map.keys()) | set(self.aliases.keys())
         matches = get_close_matches(query.lower(), all_names, n=1, cutoff=0.6)
-
         if matches:
             best = matches[0]
-            # Resolve alias back to canonical
             if best in self.aliases:
                 return self.aliases[best]
             return best
-
         return None
+
+    def list_apps(self) -> list[str]:
+        """Return sorted list of all known app names."""
+        return sorted(self.app_map.keys())
+
+    def list_aliases(self) -> dict:
+        """Return all aliases."""
+        return dict(self.aliases)

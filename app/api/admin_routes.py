@@ -7,11 +7,10 @@ Accepts passwords: "code10" or "codeten"
 import os
 import hashlib
 import logging
-import sqlite3
 from functools import wraps
 from flask import Blueprint, request, jsonify, session, render_template
 
-from app.core.config import NOTES_DIR, MEMORY_DB
+from app.core.config import NOTES_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -215,51 +214,63 @@ def write_file():
 @admin_required
 def view_data():
     """View all stored data: chat history, facts, and system info."""
+    from app.api.routes import get_mem
+    mem = get_mem()
+
+    chat_history = []
+    user_facts = []
+
+    # Chat history (last 100)
+    try:
+        if mem._ok:
+            res = mem._safe(lambda: mem._q("chat_history")
+                             .select("id, created_at, role, content")
+                             .order("id", desc=True)
+                             .limit(100)
+                             .execute(), None)
+            if res and res.data:
+                chat_history = [
+                    {"id": r["id"], "timestamp": r.get("created_at"), "role": r["role"], "content": r["content"]}
+                    for r in res.data
+                ]
+        else:
+            chat_history = [
+                {"id": i, "timestamp": msg.get("timestamp", ""), "role": msg["role"], "content": msg["content"]}
+                for i, msg in enumerate(mem._mem["chat"])
+            ]
+    except Exception as e:
+        logger.warning(f"Failed to fetch chat history for admin: {e}")
+
+    # User facts
+    try:
+        if mem._ok:
+            res = mem._safe(lambda: mem._q("user_facts")
+                             .select("fact_key, fact_value, fact_type, priority, last_updated")
+                             .order("priority", desc=True)
+                             .execute(), None)
+            if res and res.data:
+                user_facts = [
+                    {"key": r["fact_key"], "value": r["fact_value"], "type": r["fact_type"], "priority": r["priority"], "updated": r.get("last_updated")}
+                    for r in res.data
+                ]
+        else:
+            user_facts = [
+                {"key": k, "value": v["value"], "type": v["type"], "priority": v["priority"], "updated": v.get("timestamp", "")}
+                for k, v in mem._mem["facts"].items()
+            ]
+    except Exception as e:
+        logger.warning(f"Failed to fetch user facts for admin: {e}")
+
     result = {
-        "chat_history": [],
-        "user_facts": [],
+        "chat_history": chat_history,
+        "user_facts": user_facts,
         "system": {
             "project_root": PROJECT_ROOT,
             "data_dir": NOTES_DIR,
-            "memory_db": MEMORY_DB,
-            "db_exists": os.path.exists(MEMORY_DB),
+            "memory_db": "Supabase (PostgreSQL)",
+            "db_exists": mem._ok,
         }
     }
-
-    if not os.path.exists(MEMORY_DB):
-        return jsonify(result)
-
-    try:
-        conn = sqlite3.connect(MEMORY_DB)
-
-        # Chat history (last 100)
-        try:
-            rows = conn.execute(
-                "SELECT id, timestamp, role, content FROM chat_history ORDER BY id DESC LIMIT 100"
-            ).fetchall()
-            result["chat_history"] = [
-                {"id": r[0], "timestamp": r[1], "role": r[2], "content": r[3]}
-                for r in rows
-            ]
-        except sqlite3.OperationalError:
-            pass
-
-        # User facts
-        try:
-            rows = conn.execute(
-                "SELECT fact_key, fact_value, fact_type, priority, last_updated FROM user_facts ORDER BY priority DESC"
-            ).fetchall()
-            result["user_facts"] = [
-                {"key": r[0], "value": r[1], "type": r[2], "priority": r[3], "updated": r[4]}
-                for r in rows
-            ]
-        except sqlite3.OperationalError:
-            pass
-
-        conn.close()
-    except Exception as e:
-        result["error"] = str(e)
-
     return jsonify(result)
 
 
@@ -270,28 +281,33 @@ def clear_data():
     data = request.get_json(silent=True) or {}
     target = data.get("target", "")
 
-    if not os.path.exists(MEMORY_DB):
-        return jsonify({"error": "No database found."}), 404
+    from app.api.routes import get_mem
+    mem = get_mem()
 
     try:
-        conn = sqlite3.connect(MEMORY_DB)
         if target == "chat":
-            conn.execute("DELETE FROM chat_history")
-            conn.commit()
+            if mem._ok:
+                mem._safe(lambda: mem._q("chat_history").delete().neq("id", 0).execute())
+            else:
+                mem._mem["chat"].clear()
             logger.info("Admin cleared chat history")
         elif target == "facts":
-            conn.execute("DELETE FROM user_facts")
-            conn.commit()
+            if mem._ok:
+                mem._safe(lambda: mem._q("user_facts").delete().neq("priority", -999).execute())
+            else:
+                mem._mem["facts"].clear()
             logger.info("Admin cleared user facts")
         elif target == "all":
-            conn.execute("DELETE FROM chat_history")
-            conn.execute("DELETE FROM user_facts")
-            conn.commit()
+            if mem._ok:
+                mem._safe(lambda: mem._q("chat_history").delete().neq("id", 0).execute())
+                mem._safe(lambda: mem._q("user_facts").delete().neq("priority", -999).execute())
+            else:
+                mem._mem["chat"].clear()
+                mem._mem["facts"].clear()
             logger.info("Admin cleared all data")
         else:
-            conn.close()
             return jsonify({"error": "Target must be 'chat', 'facts', or 'all'."}), 400
-        conn.close()
+
         return jsonify({"status": "cleared", "target": target})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

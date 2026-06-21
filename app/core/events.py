@@ -172,6 +172,17 @@ class EventSystem:
                     h += 12
                 dt = dt.replace(hour=h, minute=m, second=0, microsecond=0)
             event_time = dt.isoformat()
+        elif "aaj" in t:
+            dt = datetime.utcnow()
+            # Try to extract hour
+            hr = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(baje|am|pm)?", t)
+            if hr:
+                h = int(hr.group(1))
+                m = int(hr.group(2) or 0)
+                if "pm" in (hr.group(3) or "") and h < 12:
+                    h += 12
+                dt = dt.replace(hour=h, minute=m, second=0, microsecond=0)
+            event_time = dt.isoformat()
         else:
             event_time = None
 

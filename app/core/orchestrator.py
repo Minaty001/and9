@@ -181,27 +181,42 @@ class Orchestrator:
         event_ctx  = futures["evts"].result()
 
         # ── 4. TRUTH ENGINE — verify before LLM ──────────────────
-        has_truth, guidance = verify_before_llm(memory_ctx, query)
-        if not has_truth:
-            # No usable memory — return honest don't-know
-            elapsed = int((time.time() - start) * 1000)
-            return {
-                "response": guidance,
-                "agent": "orchestrator",
-                "success": True,
-                "metadata": {"truth_engine": "no_memory"},
-                "brain": {
-                    "intent": analysis.intent,
-                    "emotion_detected": analysis.emotion,
-                    "emotion_intensity": analysis.emotion_intensity,
-                    "topic": analysis.topic,
-                    "entities_found": len(analysis.entities),
-                    "expertise_level": analysis.expertise_level,
-                    "session_id": memory_ctx.get("session_id"),
-                    "truth_engine": "no_verified_memory",
-                },
-                "time_ms": elapsed,
-            }
+        import re
+        personal_patterns = [
+            r"\bmy\b", r"\bwho am i\b", r"\bwhat is my\b", r"\bwhere do i\b", r"\bfavorite\b",
+            r"\bmera\b", r"\bmeri\b", r"\bmujhe\b", r"\bmain kahan\b", r"\byaad hai\b", r"\babout me\b",
+            r"\bpreference\b", r"\bhobby\b", r"\bprofession\b", r"\bjob\b", r"\bcity\b",
+            r"\blocation\b", r"\bage\b", r"\bnaam\b"
+        ]
+        is_asking_personal = any(re.search(pat, query.lower()) for pat in personal_patterns)
+        
+        # Check if "me" is used personally (not as a filler object of tell/show/give/remind)
+        if not is_asking_personal and re.search(r"\bme\b", query.lower()):
+            if not re.search(r"\b(tell|show|give|play|send|remind|ask|let|help|with)\s+me\b", query.lower()):
+                is_asking_personal = True
+
+        if is_asking_personal or analysis.is_memory_recall:
+            has_truth, guidance = verify_before_llm(memory_ctx, query)
+            if not has_truth:
+                # No usable memory — return honest don't-know
+                elapsed = int((time.time() - start) * 1000)
+                return {
+                    "response": guidance,
+                    "agent": "orchestrator",
+                    "success": True,
+                    "metadata": {"truth_engine": "no_memory"},
+                    "brain": {
+                        "intent": analysis.intent,
+                        "emotion_detected": analysis.emotion,
+                        "emotion_intensity": analysis.emotion_intensity,
+                        "topic": analysis.topic,
+                        "entities_found": len(analysis.entities),
+                        "expertise_level": analysis.expertise_level,
+                        "session_id": memory_ctx.get("session_id"),
+                        "truth_engine": "no_verified_memory",
+                    },
+                    "time_ms": elapsed,
+                }
 
         context = self.context_builder.build(
             user_profile=memory_ctx.get("user_profile", {}),

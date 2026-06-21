@@ -67,12 +67,23 @@ class KnowledgeGraph:
         if not sb:
             return False
         try:
+            res = sb.table("knowledge_graph") \
+                .select("weight, access_count") \
+                .eq("id", triple_id) \
+                .limit(1) \
+                .execute()
+            if not res or not res.data:
+                return False
+            row = res.data[0]
+            current_weight = float(row.get("weight") or 0.0)
+            current_access = int(row.get("access_count") or 0)
+            
             now = datetime.now(timezone.utc).isoformat()
             sb.table("knowledge_graph") \
                 .update({
-                    "weight": sb.raw(f"weight + {additional_weight}"),
+                    "weight": current_weight + additional_weight,
                     "last_seen": now,
-                    "access_count": sb.raw("access_count + 1"),
+                    "access_count": current_access + 1,
                 }) \
                 .eq("id", triple_id) \
                 .execute()

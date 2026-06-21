@@ -125,7 +125,7 @@ class ConsciousBrain:
             Exception: If Orchestrator initialization fails.
         """
         try:
-            from app.javis.orchestrator import Orchestrator
+            from app.core.orchestrator import Orchestrator
 
             self.orchestrator = Orchestrator()
             self._initialized = True

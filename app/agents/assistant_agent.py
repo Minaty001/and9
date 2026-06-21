@@ -65,7 +65,7 @@ class AssistantAgent:
         return {"agent": self.name, "success": True, "result": response, "metadata": {"task": "chat"}}
 
     def _handle_device(self, query: str, params: dict | None = None) -> dict:
-        result_dict = handle_device_command(query, params or {})
+        result_dict = handle_device_command(query)
         if isinstance(result_dict, str):
             return {"agent": self.name, "success": True, "result": result_dict, "metadata": {"task": "device"}}
 

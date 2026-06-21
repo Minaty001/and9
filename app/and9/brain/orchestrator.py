@@ -1,0 +1,246 @@
+"""
+AND9 — Brain Orchestrator (Phase 18 of Refactor).
+
+The main processing pipeline for all AND9 queries.
+
+Pipeline:
+    1. Normalize via router/normalizer.py
+    2. Detect intent via router/intent_router.py
+    3. Execute action via android/android_executor.py
+    4. Log via core/logger.py
+    5. Return BrainResult-compatible dict
+
+Design rules:
+    - Device actions ALWAYS beat search actions
+    - SEARCH is the last intent checked
+    - Chrome is NEVER used as fallback for device commands
+    - All actions pass through the Android Executor
+    - Every request is logged through the QueryLogger
+"""
+import logging
+import time
+from typing import Any, Dict, Optional
+
+from app.and9.brain_types import BrainResult, BrainType, IntentType
+from app.and9.router.normalizer import QueryNormalizer
+from app.and9.router.intent_router import detect_intent, _extract_label
+from app.and9.android.android_executor import execute as execute_action
+from app.and9.core.logger import get_logger, is_debug_enabled
+from app.and9.subconscious_brain import SubconsciousBrain
+
+logger = logging.getLogger(__name__)
+
+
+class Orchestrator:
+    """Main AND9 processing pipeline.
+
+    Processes user queries through the full pipeline:
+    Normalize → Detect Intent → Execute Action → Log → Return
+
+    Attributes:
+        normalizer: QueryNormalizer instance.
+        subconscious: SubconsciousBrain for pattern learning.
+        events_sys: Optional EventSystem for reminder persistence.
+    """
+
+    def __init__(self, events_sys=None, enable_patterns: bool = True):
+        self.normalizer = QueryNormalizer()
+        self.subconscious = SubconsciousBrain(enable_learning=enable_patterns)
+        self.events_sys = events_sys
+        self.query_logger = get_logger()
+        logger.info("AND9 Orchestrator initialized (patterns=%s, debug=%s)",
+                     enable_patterns, is_debug_enabled())
+
+    def process(self, query: str) -> Dict[str, Any]:
+        """Process a user query through the full AND9 pipeline.
+
+        Args:
+            query: Raw user input string.
+
+        Returns:
+            Dict with response, action, payload, brain, intent,
+            parameters, time_ms, success, metadata.
+        """
+        start = time.perf_counter()
+        logger.info("AND9 processing: '%s'", query)
+
+        if not query or not query.strip():
+            result = BrainResult(
+                response="Kya karu? Mujhe samajh nahi aaya. Kuch type karo! 😊",
+                brain=BrainType.REFLEX,
+            )
+            self._log_result(query, "", "", {}, result)
+            return result.to_dict()
+
+        try:
+            # Step 1: Normalize
+            normalized, was_modified = self.normalizer.normalize(query)
+            logger.debug("Normalized: '%s' → '%s' (modified=%s)",
+                         query, normalized, was_modified)
+
+            # Step 2: Detect intent
+            intent_name, action_type, params = detect_intent(normalized)
+
+            if not intent_name:
+                result = BrainResult(
+                    response="Kya karu? Mujhe samajh nahi aaya. Zara aur clearly boliye! 🤔",
+                    brain=BrainType.REFLEX,
+                    execution_time_ms=(time.perf_counter() - start) * 1000,
+                )
+                self._log_result(query, normalized, "", params, result)
+                return result.to_dict()
+
+            logger.debug("Intent: %s | Action: %s | Params: %s",
+                         intent_name, action_type, params)
+
+            # Step 3: Execute action
+            result = self._execute(intent_name, action_type, params, start)
+
+            # Step 4: Record in subconscious
+            if result.success:
+                self.subconscious.record_action(result, query)
+
+            self._log_result(query, normalized, intent_name, params, result)
+            return result.to_dict()
+
+        except Exception as e:
+            elapsed = (time.perf_counter() - start) * 1000
+            logger.error("AND9 pipeline error: %s", e, exc_info=True)
+            result = BrainResult(
+                response=f"Oops! Kuch gadbad ho gayi: {str(e)}. Phir se try karo! 😅",
+                action="ERROR",
+                brain=BrainType.REFLEX,
+                execution_time_ms=elapsed,
+                success=False,
+            )
+            return result.to_dict()
+
+    def _execute(self, intent_name: str, action_type: Optional[str],
+                 params: dict, start: float) -> BrainResult:
+        """Execute an action based on detected intent.
+
+        This is where Chrome fallback is prevented — device actions
+        never go to Chrome. Only explicit SEARCH intent goes to browser.
+        """
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        # ── Chat (no action needed) → conscious brain ──────────────
+        if intent_name == "chat":
+            return self._handle_chat(params, start)
+
+        # ── Search → browser/Chrome ────────────────────────────────
+        if intent_name == "search":
+            return self._handle_search(params, start)
+
+        # ── Emergency ──────────────────────────────────────────────
+        if intent_name == "emergency":
+            return BrainResult(
+                response="🚨 EMERGENCY! Main help bhej raha hoon! Call kar raha hoon emergency services!",
+                action="EMERGENCY",
+                payload={"type": "emergency", "number": "112"},
+                brain=BrainType.REFLEX,
+                intent=IntentType.EMERGENCY,
+                execution_time_ms=elapsed_ms,
+            )
+
+        # ── All device actions → Android Executor ──────────────────
+        # This includes: call, message, open_app, camera, flashlight,
+        # youtube, alarm, reminder, timer, wifi, bluetooth, volume,
+        # airplane_mode, go_home
+        if action_type:
+            handler_result = execute_action(
+                action_type=action_type,
+                params=params,
+                events_sys=self.events_sys,
+            )
+            return BrainResult(
+                response=handler_result.get("response", "Done! ✅"),
+                action=handler_result.get("action", action_type.upper()),
+                payload=handler_result.get("payload"),
+                brain=BrainType.REFLEX,
+                intent=self._intent_from_name(intent_name),
+                parameters=params,
+                execution_time_ms=(time.perf_counter() - start) * 1000,
+                metadata=handler_result.get("metadata", {}),
+            )
+
+        # ── Fallback (shouldn't happen) ────────────────────────────
+        return BrainResult(
+            response="Main and9 hoon. Kya kar sakta hoon aapke liye? 😊",
+            brain=BrainType.REFLEX,
+            execution_time_ms=(time.perf_counter() - start) * 1000,
+        )
+
+    def _handle_chat(self, params: dict, start: float) -> BrainResult:
+        """Route to Conscious Brain for LLM processing."""
+        from app.and9.conscious_brain import ConsciousBrain
+        conscious = ConsciousBrain()
+        query = params.get("query", "")
+        result = conscious.execute(query)
+        result.execution_time_ms = (time.perf_counter() - start) * 1000
+        return result
+
+    def _handle_search(self, params: dict, start: float) -> BrainResult:
+        """Handle web search — sends to Chrome/browser."""
+        query = params.get("query", "")
+        search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+        return BrainResult(
+            response=f"Web pe '{query}' search kar raha hoon 🔍",
+            action="SEARCH",
+            payload={
+                "action": "android.intent.action.VIEW",
+                "package": "com.android.chrome",
+                "component": "com.android.chrome/com.google.android.apps.chrome.Main",
+                "data": search_url,
+            },
+            brain=BrainType.REFLEX,
+            intent=IntentType.SEARCH,
+            parameters=params,
+            execution_time_ms=(time.perf_counter() - start) * 1000,
+        )
+
+    def _intent_from_name(self, name: str) -> Optional[IntentType]:
+        """Convert intent name string to IntentType enum."""
+        mapping = {
+            "emergency": IntentType.EMERGENCY,
+            "call": IntentType.CALL,
+            "message": IntentType.MESSAGE,
+            "open_app": IntentType.OPEN_APP,
+            "camera": IntentType.CAMERA,
+            "flashlight": IntentType.FLASHLIGHT,
+            "youtube": IntentType.YOUTUBE,
+            "alarm": IntentType.SET_ALARM,
+            "reminder": IntentType.SET_REMINDER,
+            "timer": IntentType.SET_TIMER,
+            "volume": IntentType.VOLUME,
+            "wifi": IntentType.WIFI,
+            "bluetooth": IntentType.BLUETOOTH,
+            "airplane": IntentType.AIRPLANE_MODE,
+            "home": IntentType.HOME,
+            "search": IntentType.SEARCH,
+            "chat": IntentType.CHAT,
+        }
+        return mapping.get(name)
+
+    def _log_result(self, query: str, normalized: str,
+                    intent: str, params: dict, result: BrainResult):
+        """Log the query result to the QueryLogger."""
+        self.query_logger.log(
+            raw_query=query,
+            normalized_query=normalized,
+            intent=intent or result.intent.value if result.intent else "",
+            parameters=params or result.parameters,
+            action=result.action or "",
+            payload=result.payload,
+            brain=result.brain.value,
+            execution_time_ms=result.execution_time_ms,
+            success=result.success,
+        )
+
+    def get_stats(self) -> dict:
+        """Get system statistics."""
+        return {
+            "subconscious": self.subconscious.get_stats(),
+            "history": self.subconscious.get_history(limit=10),
+            "logs": self.query_logger.get_stats(),
+        }

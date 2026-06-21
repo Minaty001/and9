@@ -94,6 +94,7 @@ class CodingAgent:
         return None, None
 
     def _execute_python(self, code: str, timeout: int = 10) -> str:
+        tmp = None
         try:
             with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as f:
                 f.write(code)
@@ -105,7 +106,8 @@ class CodingAgent:
         except Exception as e:
             return f"[Error: {e}]"
         finally:
-            try:
-                os.unlink(tmp)
-            except Exception:
-                pass
+            if tmp is not None:
+                try:
+                    os.unlink(tmp)
+                except Exception:
+                    pass

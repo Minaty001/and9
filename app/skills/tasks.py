@@ -243,7 +243,7 @@ def handle_device_command(query: str) -> dict:
 
     # Open App — keyword-based, no LLM
     if "open" in q or "launch" in q:
-        match = re.match(r"^(?:open|launch)\s+(.+)$", q)
+        match = re.search(r"\b(?:open|launch)\s+(.+)$", q)
         app_name = match.group(1).strip() if match else ""
         if not app_name:
             return {"reply": "Tell me which app to open.", "action": "none"}

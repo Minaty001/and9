@@ -123,6 +123,19 @@ create table if not exists events (
 create index if not exists idx_events_time on events(event_time);
 create index if not exists idx_events_done on events(done);
 
+-- 10. Working Memory
+create table if not exists working_memory (
+    id           bigserial primary key,
+    session_id   bigint,
+    focus        text,
+    current_task text,
+    state        text default 'idle',
+    metadata     jsonb default '{}'::jsonb,
+    created_at   timestamptz default now(),
+    updated_at   timestamptz default now()
+);
+create index if not exists idx_working_session on working_memory(session_id);
+
 -- Enable Row Level Security (optional but recommended)
 -- alter table chat_history          enable row level security;
 -- alter table user_facts            enable row level security;
@@ -133,3 +146,4 @@ create index if not exists idx_events_done on events(done);
 -- alter table goals                 enable row level security;
 -- alter table projects              enable row level security;
 -- alter table events                enable row level security;
+-- alter table working_memory        enable row level security;

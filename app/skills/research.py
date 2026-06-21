@@ -48,7 +48,7 @@ def fetch_page(url: str, max_chars: int = 4000) -> str:
             return ""
         try:
             from bs4 import BeautifulSoup
-            soup = BeautifulSoup(resp.text, "lxml")
+            soup = BeautifulSoup(resp.text, "html.parser")
             for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
                 tag.decompose()
             text = soup.get_text(separator=" ", strip=True)

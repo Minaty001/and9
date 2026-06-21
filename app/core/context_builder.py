@@ -171,7 +171,7 @@ class ContextBuilder:
         lines: list[str] = ["═══ CURRENT CONTEXT ═══"]
 
         emotion = _safe_get(analysis, "emotion", None)
-        intensity = _safe_get(analysis, "intensity", None)
+        intensity = _safe_get(analysis, "emotion_intensity", None)
         if emotion:
             intensity_str = f" (intensity: {intensity}/5)" if intensity else ""
             lines.append(f"User ka current mood: {emotion}{intensity_str}")

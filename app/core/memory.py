@@ -512,11 +512,14 @@ class Memory:
 
     def confirm_fact(self, category: str, key: str):
         """Mark a fact as verified and update confirmation timestamp."""
-        if not self._ok: return
-        self._safe(lambda: self._q("semantic_memory")
-                   .update({"last_confirmed": datetime.now(timezone.utc).isoformat(),
-                            "verified": True})
-                   .eq("category", category).eq("fact_key", key).execute())
+        if self._ok:
+            self._safe(lambda: self._q("semantic_memory")
+                       .update({"last_confirmed": datetime.now(timezone.utc).isoformat(),
+                                "verified": True})
+                       .eq("category", category).eq("fact_key", key).execute())
+        else:
+            if (category, key) in self._mem["semantic"]:
+                self._mem["semantic"][(category, key)]["verified"] = True
 
     def forget_fact(self, category: str, key: str) -> bool:
         if self._ok:
