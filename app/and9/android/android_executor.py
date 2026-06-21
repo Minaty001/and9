@@ -106,98 +106,16 @@ def execute(action_type: str, params: Dict[str, Any] = None,
 
 def _call_handler(handler_path: str, action_type: str,
                   params: dict, events_sys=None) -> dict:
-    """Dynamically import and call a handler function.
+    """Dynamically route and execute via the Skill Registry.
 
     Args:
-        handler_path: Module path (e.g., "actions.call_actions.execute_call").
-        action_type: Original action type for context.
+        handler_path: Module path (legacy, ignored).
+        action_type: Original action type.
         params: Parameters to pass to handler.
         events_sys: Optional EventSystem.
 
     Returns:
         Handler result dict.
     """
-    # Parse handler path: "actions.call_actions.execute_call"
-    parts = handler_path.split(".")
-    if len(parts) < 2:
-        raise ValueError(f"Invalid handler path: {handler_path}")
-
-    module_path = "app.and9." + ".".join(parts[:-1])
-    func_name = parts[-1]
-
-    import importlib
-    module = importlib.import_module(module_path)
-    handler = getattr(module, func_name)
-
-    # Build kwargs based on handler signature and params
-    if action_type in ("set_alarm",):
-        return handler(
-            hour=params.get("hour", 7),
-            minute=params.get("minute", 0),
-            label=params.get("label"),
-        )
-    elif action_type == "set_timer":
-        return handler(
-            duration_seconds=params.get("duration_seconds", 60),
-            label=params.get("label", "AND9 Timer"),
-        )
-    elif action_type == "set_reminder":
-        return handler(
-            trigger_at=params.get("trigger_at", {}),
-            label=params.get("label", "AND9 Reminder"),
-            events_sys=events_sys,
-        )
-    elif action_type == "call":
-        return handler(
-            contact=params.get("contact"),
-            number=params.get("number"),
-            action_type=params.get("action_type", "contact"),
-        )
-    elif action_type == "send_sms":
-        return handler(
-            contact=params.get("contact"),
-            number=params.get("number"),
-            message=params.get("message", ""),
-        )
-    elif action_type == "open_app":
-        return handler(app_name=params.get("app_name", ""))
-    elif action_type in ("youtube_search", "youtube_play"):
-        if action_type == "youtube_search":
-            from app.and9.actions.youtube_actions import execute_youtube_search
-            return execute_youtube_search(query=params.get("query", ""))
-        else:
-            from app.and9.actions.youtube_actions import execute_youtube_play
-            return execute_youtube_play(query=params.get("query", ""))
-    elif action_type in ("flashlight", "wifi", "bluetooth", "airplane_mode"):
-        from app.and9.actions.device_actions import (
-            handle_flashlight, handle_wifi, handle_bluetooth, handle_airplane_mode
-        )
-        q = f"{action_type} {'on' if params.get('state') is True else 'off' if params.get('state') is False else ''}"
-        handlers = {
-            "flashlight": handle_flashlight,
-            "wifi": handle_wifi,
-            "bluetooth": handle_bluetooth,
-            "airplane_mode": handle_airplane_mode,
-        }
-        return handlers[action_type](q)
-    elif action_type == "open_camera":
-        from app.and9.actions.device_actions import handle_camera
-        return handle_camera()
-    elif action_type == "go_home":
-        from app.and9.actions.device_actions import handle_home
-        return handle_home()
-    elif action_type in ("volume_up", "volume_down", "volume_mute", "volume_max"):
-        from app.and9.actions.device_actions import handle_volume
-        keywords = {
-            "volume_up": "up",
-            "volume_down": "down",
-            "volume_mute": "mute",
-            "volume_max": "max",
-        }
-        return handle_volume(keywords.get(action_type, "up"))
-    elif action_type == "close_app":
-        from app.and9.actions.app_actions import execute_close_app
-        return execute_close_app()
-    else:
-        # Generic call with kwargs
-        return handler(**params)
+    from app.and9.android.skill_registry import execute_skill
+    return execute_skill(action_type, params, events_sys)

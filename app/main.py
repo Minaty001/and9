@@ -78,13 +78,27 @@ def _init_and9(app: Flask) -> None:
     except Exception as e:
         _startup_logger.error("AND9 registry check error: %s", e)
 
-    # Phase 8: start reminder scheduler
+    # Priority 1: validate Android handler coverage
     try:
-        from app.and9.reminders.scheduler import start_scheduler
-        start_scheduler()
-        _startup_logger.info("AND9 Reminder scheduler started.")
+        from app.and9.android.validate_handlers import validate_android_handlers
+        validate_android_handlers()
+        _startup_logger.info("AND9 Android Handler Coverage validated.")
+    except RuntimeError as e:
+        _startup_logger.critical("AND9 Handler Coverage FAILED: %s", e)
+        # Non-fatal in dev — fatal in production
+        import os
+        if os.environ.get("AND9_STRICT_VALIDATION", "0") == "1":
+            raise
     except Exception as e:
-        _startup_logger.warning("AND9 reminder scheduler error: %s", e)
+        _startup_logger.warning("AND9 handler coverage check error: %s", e)
+
+    # Priority 3: start standalone reminder worker
+    try:
+        from app.reminders.worker import start_worker
+        start_worker()
+        _startup_logger.info("AND9 Reminder Worker started.")
+    except Exception as e:
+        _startup_logger.error("Failed to start AND9 reminder worker: %s", e)
 
     # Phase 4: preload dynamic package cache
     try:

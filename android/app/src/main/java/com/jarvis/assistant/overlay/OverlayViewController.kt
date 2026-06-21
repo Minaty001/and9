@@ -28,6 +28,7 @@ import androidx.core.content.ContextCompat
 import com.jarvis.assistant.R
 import com.jarvis.assistant.services.JarvisAccessibilityService
 import com.jarvis.assistant.services.JarvisAssistantSession
+import com.jarvis.assistant.voice.ContactLookupManager
 import com.jarvis.assistant.voice.DebugLogger
 import com.jarvis.assistant.voice.JarvisBackendClient
 import com.jarvis.assistant.voice.JarvisTts
@@ -65,16 +66,32 @@ class OverlayViewController(
         // Only these actions are allowed. Any action not in this list
         // is silently ignored.
         val ACTION_WHITELIST = setOf(
+            // App management
             "open_app", "close_app", "home", "go_home", "back", "go_back",
+            // Flashlight
             "torch", "flashlight", "strobe", "blink", "blink_flashlight",
-            "volume", "browser", "open_browser", "search", "web_search",
-            "camera", "open_camera", "settings", "open_settings",
-            "wifi", "wifi_settings", "screenshot", "screenshot",
-            "notification", "notifications", "vibrate",
-            "alarm", "set_alarm",
+            "flashlight_on", "flashlight_off",
+            // Volume
+            "volume", "volume_up", "volume_down", "volume_mute", "volume_max",
+            // Browser / search
+            "browser", "open_browser", "search", "web_search",
+            // Camera
+            "camera", "open_camera",
+            // Settings / connectivity
+            "settings", "open_settings", "wifi", "wifi_settings", "bluetooth",
+            // Misc
+            "screenshot", "notification", "notifications", "vibrate",
+            // Time
+            "alarm", "set_alarm", "set_timer", "set_reminder",
+            // Media
+            "youtube_search", "youtube_play",
+            // Contact lookup (server-initiated)
+            "contacts_lookup",
         )
 
-        // ── DANGEROUS ACTIONS — require user confirmation ──────────
+        // ── DANGEROUS ACTIONS — require explicit user confirmation ──
+        // Call goes through ContactLookupManager first, then user sees
+        // the resolved number before dialing.
         val DANGEROUS_ACTIONS = setOf(
             "call", "make_call", "phone_call",
             "create_file", "write_file", "make_file",
@@ -103,6 +120,7 @@ class OverlayViewController(
 
     fun init() {
         setupButtons()
+        syncInstalledApps()
         if (hasMicPermission()) {
             buildRecognizer()
         } else {
@@ -125,6 +143,28 @@ class OverlayViewController(
         }
         closeButton.setOnClickListener {
             dismissOverlay()
+        }
+    }
+
+    private fun syncInstalledApps() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val pm = context.packageManager
+                val intent = Intent(Intent.ACTION_MAIN, null).apply {
+                    addCategory(Intent.CATEGORY_LAUNCHER)
+                }
+                val apps = pm.queryIntentActivities(intent, 0)
+                val appsJson = JSONObject()
+                for (app in apps) {
+                    val label = app.loadLabel(pm).toString()
+                    val pkg = app.activityInfo.packageName
+                    appsJson.put(pkg, label)
+                }
+                backend.syncApps(appsJson)
+                Log.d(TAG, "Synced ${apps.size} installed apps to backend.")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to sync installed apps: ${e.message}")
+            }
         }
     }
 
@@ -409,6 +449,46 @@ class OverlayViewController(
                     Log.w(TAG, "Missing alarm parameters")
                 }
             }
+            "set_timer" -> {
+                // Priority 4: timer with internal fallback
+                val durationSecs = metadata.optInt("length", -1)
+                    .takeIf { it > 0 }
+                    ?: metadata.optString("payload").trim().toIntOrNull()
+                    ?: -1
+                val labelVal = metadata.optString("label", "AND9 Timer")
+                if (durationSecs > 0) {
+                    setTimer(durationSecs, labelVal)
+                } else {
+                    Log.w(TAG, "set_timer missing duration")
+                }
+            }
+            "set_reminder" -> {
+                val titleVal = metadata.optString("title",
+                    metadata.optString("label", "AND9 Reminder"))
+                val triggerAt = metadata.optLong("trigger_at", 0L)
+                Log.d(TAG, "Reminder scheduled: '$titleVal' at $triggerAt")
+                showStatus("Reminder set: $titleVal ⏰")
+                speakReply("Reminder set kar diya!")
+            }
+            "youtube_search", "youtube_play" -> {
+                val queryVal = metadata.optString("query",
+                    metadata.optString("data", ""))
+                if (queryVal.isNotEmpty()) {
+                    openYoutube(queryVal)
+                } else {
+                    // Open YouTube home
+                    openApp("com.google.android.youtube")
+                }
+            }
+            "contacts_lookup" -> {
+                // Priority 2: resolve contact name via ContactsContract
+                val contactQuery = metadata.optString("contact_query", payload)
+                if (contactQuery.isNotEmpty()) {
+                    resolveAndCall(contactQuery, metadata)
+                } else {
+                    Log.w(TAG, "contacts_lookup missing contact_query")
+                }
+            }
             "open_app" -> {
                 val packageToOpen = if (payload.isNotEmpty()) payload else appName
                 if (packageToOpen.isNotEmpty()) {
@@ -433,6 +513,7 @@ class OverlayViewController(
             "camera", "open_camera" -> openCamera()
             "settings", "open_settings" -> openSettings(payload)
             "wifi", "wifi_settings" -> openWifiSettings()
+            "bluetooth" -> openSettings("bluetooth")
             "screenshot" -> takeScreenshot()
             "notification", "notifications" -> openNotifications()
             "vibrate" -> triggerVibrate()
@@ -740,6 +821,122 @@ class OverlayViewController(
     }
 
     // ── Helpers ──────────────────────────────────────────────────
+
+    // ── Priority 2: Contact resolution + dial ───────────────────────
+
+    private fun resolveAndCall(contactQuery: String, metadata: JSONObject) {
+        showStatus("Looking up $contactQuery...")
+        CoroutineScope(Dispatchers.IO).launch {
+            val result = ContactLookupManager.findContact(context, contactQuery)
+            mainHandler.post {
+                if (result != null) {
+                    Log.d(TAG, "Contact resolved: ${result.name} → ${result.phone}")
+                    showStatus("Calling ${result.name}...")
+                    speakReply("${result.name} ko call kar raha hoon")
+                    dialNumber(result.phone)
+                } else {
+                    showStatus("Contact nahi mila: $contactQuery")
+                    speakReply("Contact nahi mila. Kripya number bataiye.")
+                }
+            }
+        }
+    }
+
+    private fun dialNumber(number: String) {
+        try {
+            val cleanNumber = number.replace(Regex("[^+0-9]"), "")
+            val intent = Intent(android.content.Intent.ACTION_CALL,
+                android.net.Uri.parse("tel:$cleanNumber")).apply {
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            dismissOverlay()
+        } catch (e: Exception) {
+            Log.e(TAG, "Dial failed: ${e.message}")
+            showStatus("Call failed: ${e.message}")
+        }
+    }
+
+    // ── Priority 4: Timer with internal fallback ─────────────────────
+
+    private fun setTimer(durationSeconds: Int, label: String) {
+        try {
+            val intent = Intent(android.provider.AlarmClock.ACTION_SET_TIMER).apply {
+                putExtra(android.provider.AlarmClock.EXTRA_LENGTH, durationSeconds)
+                putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, label)
+                putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI, false)
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            // Verify that an activity can handle this intent
+            val resolvedActivities = context.packageManager.queryIntentActivities(intent, 0)
+            if (resolvedActivities.isNotEmpty()) {
+                context.startActivity(intent)
+                Log.d(TAG, "Timer set via AlarmClock: ${durationSeconds}s")
+            } else {
+                // Internal fallback — no Clock app available
+                internalTimerStart(durationSeconds, label)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Timer failed, using internal: ${e.message}")
+            internalTimerStart(durationSeconds, label)
+        }
+    }
+
+    private fun internalTimerStart(seconds: Int, label: String) {
+        Log.d(TAG, "Internal timer started: ${seconds}s for '$label'")
+        showStatus("⏱ Timer: ${formatDuration(seconds)} — $label")
+        CoroutineScope(Dispatchers.Default).launch {
+            var remaining = seconds
+            while (remaining > 0 && !isDestroyedOrDismissed) {
+                delay(1000)
+                remaining--
+                if (remaining % 10 == 0 || remaining <= 5) {
+                    mainHandler.post { showStatus("⏱ ${formatDuration(remaining)} remaining — $label") }
+                }
+            }
+            if (!isDestroyedOrDismissed) {
+                mainHandler.post {
+                    showStatus("⏰ Timer done! $label")
+                    speakReply("Timer khatam! $label")
+                    triggerVibrate()
+                }
+            }
+        }
+    }
+
+    private fun formatDuration(totalSeconds: Int): String {
+        val h = totalSeconds / 3600
+        val m = (totalSeconds % 3600) / 60
+        val s = totalSeconds % 60
+        return when {
+            h > 0  -> "${h}h ${m}m"
+            m > 0  -> "${m}m ${s}s"
+            else   -> "${s}s"
+        }
+    }
+
+    // ── Priority 2 (cont.): YouTube deep-link ───────────────────────
+
+    private fun openYoutube(query: String) {
+        try {
+            val encoded = android.net.Uri.encode(query)
+            val uri = android.net.Uri.parse("https://www.youtube.com/results?search_query=$encoded")
+            val intent = Intent(android.content.Intent.ACTION_VIEW, uri).apply {
+                setPackage("com.google.android.youtube")
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            val activities = context.packageManager.queryIntentActivities(intent, 0)
+            if (activities.isNotEmpty()) {
+                context.startActivity(intent)
+            } else {
+                // YouTube not installed — open in browser
+                openBrowser("https://www.youtube.com/results?search_query=$encoded")
+            }
+            dismissOverlay()
+        } catch (e: Exception) {
+            Log.e(TAG, "YouTube open failed: ${e.message}")
+        }
+    }
 
     private fun setAlarm(hour: Int, minutes: Int, label: String) {
         try {

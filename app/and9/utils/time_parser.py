@@ -80,8 +80,14 @@ _ABS_BAJE = re.compile(
 )
 
 # ── Day-offset keywords ────────────────────────────────────────────
-_TOMORROW_KW = re.compile(r'\b(kal|tomorrow|kal\s+subah|agle\s+din)\b', re.IGNORECASE)
-_TODAY_KW    = re.compile(r'\b(aaj|today|aaj\s+raat|aaj\s+subah)\b', re.IGNORECASE)
+_TOMORROW_KW = re.compile(r'\b(kal|tomorrow|agle\s+din)\b', re.IGNORECASE)
+_TODAY_KW    = re.compile(r'\b(aaj|today|tonight)\b', re.IGNORECASE)
+
+# ── Semantic time keywords ─────────────────────────────────────────
+_MORNING_KW = re.compile(r'\b(subah|morning)\b', re.IGNORECASE)
+_AFTERNOON_KW = re.compile(r'\b(dopehar|afternoon)\b', re.IGNORECASE)
+_EVENING_KW = re.compile(r'\b(shaam|evening)\b', re.IGNORECASE)
+_NIGHT_KW = re.compile(r'\b(raat|night|tonight)\b', re.IGNORECASE)
 
 
 def parse_time(query: str) -> dict:
@@ -223,6 +229,21 @@ def _parse_absolute(q: str) -> Optional[dict]:
             hour = int(m.group(1))
             minute = int(m.group(2))
             matched_raw = m.group(0)
+
+    # Priority 5: Try Semantic time ("morning", "evening", "tonight", "kal raat")
+    if hour is None:
+        if _MORNING_KW.search(q):
+            hour, minute = 9, 0
+            matched_raw = "morning"
+        elif _AFTERNOON_KW.search(q):
+            hour, minute = 14, 0
+            matched_raw = "afternoon"
+        elif _EVENING_KW.search(q):
+            hour, minute = 18, 0
+            matched_raw = "evening"
+        elif _NIGHT_KW.search(q):
+            hour, minute = 21, 0
+            matched_raw = "night"
 
     if hour is None or not (0 <= hour <= 23 and 0 <= minute <= 59):
         return None

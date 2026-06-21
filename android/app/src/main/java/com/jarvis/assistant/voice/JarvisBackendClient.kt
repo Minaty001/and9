@@ -88,6 +88,24 @@ class JarvisBackendClient(private val context: Context) {
         })
     }
 
+    // ── Priority 6: Dynamic Package Sync ───────────────────────────
+
+    fun syncApps(appsJson: JSONObject) {
+        val url = if (baseUrl.endsWith("/")) "${baseUrl}and9/apps" else "$baseUrl/and9/apps"
+        val body = appsJson.toString().toRequestBody("application/json".toMediaType())
+        val request = Request.Builder().url(url).post(body).build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                DebugLogger.log(TAG, "Failed to sync apps: ${e.message}")
+            }
+            override fun onResponse(call: Call, response: Response) {
+                DebugLogger.log(TAG, "Apps synced. Status: ${response.code}")
+                response.close()
+            }
+        })
+    }
+
     // ── REMOVED (Constitution V3 Rule 5/6) ─────────────────────────
     // chatGroq() — removed. Android must never call LLM directly.
     // chatOpenAI() — removed. Android must never call LLM directly.

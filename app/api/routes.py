@@ -644,6 +644,21 @@ def and9_process():
         }), 500
 
 
+@api_bp.route("/and9/apps", methods=["POST"])
+def and9_sync_apps():
+    """POST /api/and9/apps — sync installed apps from Android.
+
+    Body JSON:
+        Dict of package_name -> label
+    """
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Expected JSON dict"}), 400
+
+    from app.and9.apps.package_resolver import get_resolver
+    get_resolver().update_dynamic_cache(data)
+    return jsonify({"status": "synced", "count": len(data)})
+
 @api_bp.route("/and9/stats", methods=["GET"])
 def and9_stats():
     """GET /api/and9/stats — Get AND9 system statistics."""

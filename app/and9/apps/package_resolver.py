@@ -378,6 +378,21 @@ class PackageResolver:
             logger.warning("Failed to load installed_apps.json: %s", e)
         return False
 
+    def update_dynamic_cache(self, apps: Dict[str, str]) -> None:
+        """Update dynamic cache from Android client and save to disk."""
+        try:
+            self._dynamic = apps
+            self._dynamic_by_label = {
+                label.lower(): pkg
+                for pkg, label in apps.items()
+            }
+            os.makedirs(os.path.dirname(_INSTALLED_APPS_PATH), exist_ok=True)
+            with open(_INSTALLED_APPS_PATH, 'w', encoding='utf-8') as f:
+                json.dump(apps, f, ensure_ascii=False)
+            logger.info("Saved %d installed apps to cache.", len(apps))
+        except Exception as e:
+            logger.error("Failed to save installed apps cache: %s", e)
+
     # ── Resolution ───────────────────────────────────────────────
 
     def resolve(self, app_name: str) -> Optional[dict]:
@@ -477,3 +492,12 @@ class PackageResolver:
     def list_aliases(self) -> Dict[str, str]:
         """Return all aliases."""
         return dict(self.aliases)
+
+_resolver_instance = None
+
+def get_resolver() -> PackageResolver:
+    """Get the singleton PackageResolver instance."""
+    global _resolver_instance
+    if _resolver_instance is None:
+        _resolver_instance = PackageResolver()
+    return _resolver_instance

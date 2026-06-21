@@ -30,6 +30,7 @@ from urllib.parse import quote_plus
 from app.and9.brain_types import BrainResult, BrainType, IntentType
 from app.and9.router.normalizer import QueryNormalizer
 from app.and9.router.intent_router import detect_intent
+from app.and9.router.intent_validator import validate_intent
 from app.and9.android.android_executor import execute as execute_action
 from app.and9.core.logger import get_logger, is_debug_enabled
 from app.and9.core.intent_trace import TraceContext, log_trace
@@ -109,6 +110,19 @@ class Orchestrator:
                     trace.set_result("failure", "no_intent_detected")
                     return result.to_dict()
 
+                # Priority 7: Validate Intent Parameters
+                is_valid, validation_msg = validate_intent(intent_name, params)
+                if not is_valid:
+                    result = BrainResult(
+                        response=validation_msg,
+                        brain=BrainType.REFLEX,
+                        execution_time_ms=(time.perf_counter() - start) * 1000,
+                        success=False
+                    )
+                    self._log_result(query, normalized, intent_name, params, result)
+                    trace.set_result("failure", "validation_failed")
+                    return result.to_dict()
+
                 logger.debug("Intent: %s | Action: %s | Params: %s",
                              intent_name, action_type, params)
 
@@ -127,12 +141,22 @@ class Orchestrator:
                 elapsed = (time.perf_counter() - start) * 1000
                 logger.error("AND9 pipeline error: %s", e, exc_info=True)
                 trace.set_result("failure", str(e))
+                
+                # Priority 9: Run Self-Healing Diagnostics
+                from app.and9.core.diagnostics import run_diagnostics
+                # Best effort to grab intent variables, fallback to empty string if unbound
+                i_name = locals().get("intent_name", "")
+                a_type = locals().get("action_type", "")
+                p_dict = locals().get("params", {})
+                diag_report = run_diagnostics(e, i_name, a_type, p_dict)
+                
                 result = BrainResult(
-                    response=f"Oops! Kuch gadbad ho gayi: {str(e)}. Phir se try karo! 😅",
+                    response=f"Oops! Kuch gadbad ho gayi: {str(e)}. Phir se try karo! 😅\n\n[Diagnostic: {diag_report['recommendation']}]",
                     action="ERROR",
                     brain=BrainType.REFLEX,
                     execution_time_ms=elapsed,
                     success=False,
+                    metadata={"diagnostics": diag_report}
                 )
                 return result.to_dict()
 

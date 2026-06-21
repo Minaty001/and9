@@ -11,11 +11,12 @@ package resolver layer.
 import logging
 from typing import Optional
 
-from app.and9.apps.package_resolver import PackageResolver
+from app.and9.apps.package_resolver import get_resolver
 
 logger = logging.getLogger(__name__)
 
-_package_resolver = PackageResolver()
+# Single source of truth for app resolution
+_package_resolver = get_resolver()
 
 
 def execute_open_app(app_name: str) -> dict:
