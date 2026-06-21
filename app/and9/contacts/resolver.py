@@ -1,170 +1,133 @@
 """
-AND9 — Contact Resolver (Phase 4 of Refactor).
+AND9 — Contact Resolver (Phase 3 Rebuild).
 
-Contact lookup system designed for Android's ContactsContract API.
-Currently uses a hardcoded contact database as fallback for when
-the device-side content provider is not accessible.
+Uses Android's ContactsContract.CommonDataKinds.Phone API for contact lookup.
+The Python backend does NOT store or hardcode any phone numbers.
 
-In production:
-    Use ContactsContract.CommonDataKinds.Phone via Android API
-    to query the device's contact database dynamically.
+Flow:
+    call mummy
+        ↓
+    ContactsResolver.resolve("mummy")
+        ↓
+    Returns: {"lookup_required": True, "contact_name": "mummy"}
+        ↓
+    Android client queries ContactsContract
+        ↓
+    Number found → dial
+    Multiple matches → ask user: "Which contact?"
+    Not found → inform user
 
-The resolver supports:
-    - Exact name matching
-    - Partial/fuzzy name matching
-    - Relationship terms (mummy, papa, bhai, etc.)
+The backend only handles routing logic.
+All actual contact data lives on the Android device.
 """
-import logging
 import re
+import logging
 from typing import Optional, Dict
 
 logger = logging.getLogger(__name__)
 
-
-# ── Hardcoded Contact Database ───────────────────────────────────
-# Maps Hindi relationship terms and nicknames to phone numbers.
-# Format: "name": "+91XXXXXXXXXX"
-# Replace with ContactsContract query in production.
-_CONTACTS: Dict[str, str] = {
-    # Family
-    "mummy": "+919999990001",
-    "maa": "+919999990001",
-    "mamma": "+919999990001",
-    "papa": "+919999990002",
-    "pita": "+919999990002",
-    "bhai": "+919999990003",
-    "bhaiya": "+919999990003",
-    "didi": "+919999990004",
-    "didi ji": "+919999990004",
-    "bhabhi": "+919999990005",
-    "bhabhi ji": "+919999990005",
-    "chacha": "+919999990006",
-    "chacha ji": "+919999990006",
-    "chachi": "+919999990007",
-    "chachi ji": "+919999990007",
-    "tauji": "+919999990008",
-    "tau": "+919999990008",
-    "tai": "+919999990009",
-    "tai ji": "+919999990009",
-    "nana": "+919999990010",
-    "nana ji": "+919999990010",
-    "nani": "+919999990011",
-    "nani ji": "+919999990011",
-    "dada": "+919999990012",
-    "dada ji": "+919999990012",
-    "dadi": "+919999990013",
-    "dadi ji": "+919999990013",
-
-    # Friends
-    "saif": "+919999990021",
-    "saif ali": "+919999990021",
-    "amit": "+919999990022",
-    "amit kumar": "+919999990022",
-    "rahul": "+919999990023",
-    "rahul bhai": "+919999990023",
-    "priya": "+919999990024",
-    "priya didi": "+919999990024",
-    "ankit": "+919999990025",
-    "ankit bhai": "+919999990025",
-    "neha": "+919999990026",
-    "neha didi": "+919999990026",
-    "sachin": "+919999990027",
-    "sachin bhai": "+919999990027",
-
-    # Work
-    "boss": "+919999990031",
-    "sir": "+919999990031",
-
-    # Generic
-    "friend": "+919999990041",
-    "dost": "+919999990041",
-}
+# Phone number pattern
+_PHONE_PATTERN = re.compile(r'^\+?\d[\d\s\-()\+]{6,18}$')
 
 
 class ContactsResolver:
-    """Resolve contact names to phone numbers.
+    """Resolve contact names to lookup requests for the Android client.
 
-    Supports exact, prefix, and fuzzy name matching against
-    the contact database.
+    The resolver no longer holds any phone numbers or contact data.
+    It acts as a validator/classifier for the contact field:
+      - Direct numbers → return dial payload immediately
+      - Names → return lookup_required payload for Android to resolve
+        via ContactsContract.CommonDataKinds.Phone
 
     Usage:
         resolver = ContactsResolver()
         result = resolver.resolve("mummy")
-        # → {"name": "mummy", "number": "+919999990001", "display": "Mummy"}
+        # → {"lookup_required": True, "contact_name": "mummy",
+        #    "display": "Mummy", "number": None}
+
+        result = resolver.resolve("9876543210")
+        # → {"lookup_required": False, "number": "9876543210",
+        #    "display": "9876543210", "contact_name": None}
     """
 
-    def __init__(self):
-        self._contacts = _CONTACTS
+    def resolve(self, name: str) -> Optional[Dict]:
+        """Resolve a contact name or phone number.
 
-    def resolve(self, name: str) -> Optional[Dict[str, str]]:
-        """Resolve a contact name to phone number and display info.
+        For phone numbers: returns a direct-dial payload.
+        For names: returns a lookup_required payload for Android.
 
         Args:
-            name: Contact name (e.g., "mummy", "saif ali", "+919876543210").
+            name: Contact name (e.g., "mummy", "amit kumar")
+                  or phone number (e.g., "+919876543210", "9876543210").
 
         Returns:
-            Dict with keys: name, number, display.
-            If name is a phone number, returns it directly.
-            Returns None if no match found.
+            Dict with resolution result, or None if name is empty.
+
+        Examples:
+            >>> r = ContactsResolver()
+            >>> r.resolve("mummy")
+            {'lookup_required': True, 'contact_name': 'mummy',
+             'display': 'Mummy', 'number': None, 'action_type': 'contact'}
+
+            >>> r.resolve("+919876543210")
+            {'lookup_required': False, 'contact_name': None,
+             'number': '+919876543210', 'display': '+919876543210',
+             'action_type': 'dial'}
         """
         if not name or not name.strip():
             return None
 
-        name_clean = name.lower().strip()
+        name_clean = name.strip()
 
-        # If it's already a phone number, return as-is
-        if re.match(r'^\+?\d{7,15}$', name_clean):
+        # ── Direct phone number ───────────────────────────────────
+        if _PHONE_PATTERN.match(name_clean):
             return {
-                "name": name_clean,
+                "lookup_required": False,
+                "contact_name": None,
                 "number": name_clean,
                 "display": name_clean,
+                "action_type": "dial",
             }
 
-        # Exact match
-        if name_clean in self._contacts:
-            number = self._contacts[name_clean]
-            return {
-                "name": name_clean,
-                "number": number,
-                "display": name_clean.title(),
-            }
+        # ── Contact name → Android must resolve ───────────────────
+        # Strip relational suffixes that are not part of the name
+        clean_name = self._clean_name(name_clean)
 
-        # Partial match — check if query contains a known name
-        # or vice versa
-        for contact_name, number in self._contacts.items():
-            if name_clean in contact_name or contact_name in name_clean:
-                return {
-                    "name": contact_name,
-                    "number": number,
-                    "display": contact_name.title(),
-                }
+        return {
+            "lookup_required": True,
+            "contact_name": clean_name.lower(),
+            "display": clean_name.title(),
+            "number": None,
+            "action_type": "contact",
+        }
 
-        # Custom name (not in database, not a number)
-        if len(name_clean) > 1:
-            return {
-                "name": name_clean,
-                "number": "",
-                "display": name_clean.title(),
-            }
+    def _clean_name(self, name: str) -> str:
+        """Strip trailing noise words from a contact name.
 
-        return None
+        Examples:
+            "mummy ko" → "mummy"
+            "amit kumar bhai" → "amit kumar bhai"  (preserved, might be real)
+        """
+        # Strip trailing "ko", "se", "ka", "ki" (Hinglish postpositions)
+        name = re.sub(r'\s+(?:ko|se|ka|ki|ke|ne)\s*$', '', name, flags=re.IGNORECASE)
+        return name.strip()
 
-    def list_contacts(self) -> Dict[str, str]:
-        """Return the full contact database."""
-        return dict(self._contacts)
+    def is_number(self, value: str) -> bool:
+        """Check if a string looks like a phone number."""
+        return bool(_PHONE_PATTERN.match(value.strip()))
 
-    def add_contact(self, name: str, number: str) -> bool:
-        """Add a contact to the database (in-memory only).
+    def build_lookup_payload(self, contact_name: str) -> dict:
+        """Build the payload sent to Android for contact resolution.
 
-        Args:
-            name: Contact name.
-            number: Phone number.
+        Android receives this and queries ContactsContract:
+            ContactsContract.CommonDataKinds.Phone
+                WHERE display_name LIKE '%{contact_name}%'
 
         Returns:
-            True if added successfully.
+            Payload dict for the Android action layer.
         """
-        name_key = name.lower().strip()
-        if name_key and number:
-            self._contacts[name_key] = number
-            return True
-        return False
+        return {
+            "action": "CONTACTS_LOOKUP",
+            "query": contact_name.lower().strip(),
+            "android_api": "ContactsContract.CommonDataKinds.Phone",
+        }

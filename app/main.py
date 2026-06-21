@@ -54,6 +54,49 @@ _limiter = RateLimiter(limit=30, window_sec=60)
 
 # ── Flask Factory ─────────────────────────────────────────────
 
+_startup_logger = logging.getLogger("and9.startup")
+
+
+def _init_and9(app: Flask) -> None:
+    """Run AND9 startup initialization sequence.
+
+    Called once when the Flask app is created.
+    Phases executed:
+        Phase 12 — Validate action registry (assert all actions registered)
+        Phase 8  — Start reminder scheduler background thread
+        Phase 4  — Load installed_apps.json dynamic cache
+        Phase 15 — Intent trace DB auto-initialized on import
+    """
+    # Phase 12: validate action registry
+    try:
+        from app.and9.android.action_registry import validate_registry
+        validate_registry()
+        _startup_logger.info("AND9 Action Registry validated.")
+    except AssertionError as e:
+        _startup_logger.critical("AND9 Action Registry FAILED: %s", e)
+        raise  # Fatal
+    except Exception as e:
+        _startup_logger.error("AND9 registry check error: %s", e)
+
+    # Phase 8: start reminder scheduler
+    try:
+        from app.and9.reminders.scheduler import start_scheduler
+        start_scheduler()
+        _startup_logger.info("AND9 Reminder scheduler started.")
+    except Exception as e:
+        _startup_logger.warning("AND9 reminder scheduler error: %s", e)
+
+    # Phase 4: preload dynamic package cache
+    try:
+        from app.and9.apps.package_resolver import PackageResolver
+        PackageResolver()
+        _startup_logger.info("AND9 PackageResolver initialized.")
+    except Exception as e:
+        _startup_logger.warning("AND9 PackageResolver error: %s", e)
+
+    _startup_logger.info("AND9 initialized. Three-Brain Architecture ACTIVE.")
+
+
 def create_app() -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="")
@@ -70,6 +113,9 @@ def create_app() -> Flask:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
+
+    # ── AND9 Startup Initialization (Phase 12, 15) ───────────────
+    _init_and9(app)
 
     # ── Request ID ──────────────────────────────────────────────
     @app.before_request

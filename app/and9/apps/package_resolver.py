@@ -1,41 +1,47 @@
 """
-AND9 — Dynamic Package Resolver (Phase 6 of Refactor).
+AND9 — Dynamic Package Resolver (Phase 4 Rebuild).
 
 Resolves app names to Android Intent launch parameters.
-Merges IntentExecutor.APP_MAP (60+ apps) with Hindi aliases
-and short codes for comprehensive coverage.
 
-Supports:
-    - Exact name resolution
-    - Alias resolution (yt→youtube, wa→whatsapp, insta→instagram)
-    - Fuzzy matching for partial names
+Resolution order:
+    1. Dynamic cache  — installed_apps.json (written by Android at startup)
+    2. Alias map      — short codes (yt, wa, insta, etc.)
+    3. Static app_map — known fallback packages
+    4. Fuzzy match    — for typos / partial names
+    5. None           — inform user, NEVER open Chrome as fallback
 
-In production, this should also query Android PackageManager
-for dynamically discovering installed apps.
+Android side:
+    PackageManager.queryIntentActivities() writes installed_apps.json on startup.
+    Format: {"com.google.android.youtube": "YouTube", ...}
 """
+import json
 import logging
+import os
 from difflib import get_close_matches
-from typing import Optional
+from typing import Optional, Dict, List
 
 logger = logging.getLogger(__name__)
+
+# Path where Android writes the installed apps cache
+_INSTALLED_APPS_PATH = os.environ.get(
+    "AND9_INSTALLED_APPS_PATH",
+    "/app/.jarvis_data/installed_apps.json"
+)
 
 
 class PackageResolver:
     """Resolve app names to Android Intent launch parameters.
 
-    Maintains an extended app mapping with Hindi aliases and
-    region-specific name variants common in Indian mobile usage.
-
     Attributes:
-        app_map: Dict mapping canonical app name → Intent dict.
-        aliases: Dict mapping alias → canonical name.
+        app_map:  Static dict of known apps → Intent params.
+        aliases:  Short names / alternate spellings → canonical name.
+        _dynamic: Dict of package_name → label from installed_apps.json.
     """
 
     def __init__(self):
-        # ── Extended App Map ────────────────────────────────────
-        # Merges IntentExecutor.APP_MAP coverage with extra aliases.
-        self.app_map = {
-            # ── Social & Communication ──────────────────────────
+        # ── Static App Map (fallback / bootstrap) ────────────────
+        self.app_map: Dict[str, dict] = {
+            # Social & Communication
             "youtube": {
                 "action": "android.intent.action.MAIN",
                 "package": "com.google.android.youtube",
@@ -90,8 +96,7 @@ class PackageResolver:
                 "component": "com.snapchat.android/.LandingPageActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
-
-            # ── Browsers ────────────────────────────────────────
+            # Browsers
             "chrome": {
                 "action": "android.intent.action.VIEW",
                 "package": "com.android.chrome",
@@ -104,12 +109,16 @@ class PackageResolver:
                 "component": "org.mozilla.firefox/org.mozilla.gecko.BrowserApp",
                 "category": "android.intent.category.LAUNCHER",
             },
-
-            # ── System ──────────────────────────────────────────
+            # System
             "camera": {
-                "action": "android.intent.action.MAIN",
+                "action": "android.media.action.STILL_IMAGE_CAMERA",
                 "package": "com.android.camera2",
-                "component": "com.android.camera2/.CameraActivity",
+                "category": "android.intent.category.DEFAULT",
+            },
+            "gallery": {
+                "action": "android.intent.action.MAIN",
+                "package": "com.google.android.apps.photos",
+                "component": "com.google.android.apps.photos/.home.HomeActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
             "calculator": {
@@ -166,14 +175,7 @@ class PackageResolver:
                 "component": "com.android.vending/.AssetBrowserActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
-
-            # ── Maps & Travel ───────────────────────────────────
-            "maps": {
-                "action": "android.intent.action.MAIN",
-                "package": "com.google.android.apps.maps",
-                "component": "com.google.android.apps.maps/.MapsActivity",
-                "category": "android.intent.category.LAUNCHER",
-            },
+            # Maps & Travel
             "google maps": {
                 "action": "android.intent.action.MAIN",
                 "package": "com.google.android.apps.maps",
@@ -192,16 +194,14 @@ class PackageResolver:
                 "component": "nc.ola.cabs/.activities.home.HomeActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
-
-            # ── Email ───────────────────────────────────────────
+            # Email
             "gmail": {
                 "action": "android.intent.action.MAIN",
                 "package": "com.google.android.gm",
                 "component": "com.google.android.gm/.ConversationListActivityGmail",
                 "category": "android.intent.category.LAUNCHER",
             },
-
-            # ── Music & Video ───────────────────────────────────
+            # Music & Video
             "spotify": {
                 "action": "android.intent.action.MAIN",
                 "package": "com.spotify.music",
@@ -226,8 +226,7 @@ class PackageResolver:
                 "component": "in.startv.hotstar/.ui.base.controller.NavigationActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
-
-            # ── Shopping ────────────────────────────────────────
+            # Shopping
             "flipkart": {
                 "action": "android.intent.action.MAIN",
                 "package": "com.flipkart.android",
@@ -236,8 +235,8 @@ class PackageResolver:
             },
             "amazon": {
                 "action": "android.intent.action.MAIN",
-                "package": "com.amazon.amazon",
-                "component": "com.amazon.amazon/.app.activity.HomeActivity",
+                "package": "com.amazon.mShop.android.shopping",
+                "component": "com.amazon.mShop.android.shopping/.HomeActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
             "swiggy": {
@@ -252,8 +251,7 @@ class PackageResolver:
                 "component": "com.application.zomato/.common.base.activity.BaseSplashActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
-
-            # ── Payments ────────────────────────────────────────
+            # Payments
             "google pay": {
                 "action": "android.intent.action.MAIN",
                 "package": "com.google.android.apps.nbu.paisa.user",
@@ -272,8 +270,7 @@ class PackageResolver:
                 "component": "net.one97.paytm/.AudiBanglaActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
-
-            # ── Productivity ────────────────────────────────────
+            # Productivity
             "drive": {
                 "action": "android.intent.action.MAIN",
                 "package": "com.google.android.apps.docs",
@@ -295,70 +292,188 @@ class PackageResolver:
         }
 
         # ── Alias Map ────────────────────────────────────────────
-        self.aliases = {
+        self.aliases: Dict[str, str] = {
+            # YouTube
             "yt": "youtube", "ytb": "youtube", "you tube": "youtube",
+            "youtube app": "youtube",
+            # WhatsApp
             "wa": "whatsapp", "wp": "whatsapp", "what's app": "whatsapp",
+            "whatsapp app": "whatsapp",
+            # Telegram
             "tg": "telegram", "tele": "telegram",
+            # Instagram
             "ig": "instagram", "insta": "instagram",
+            # Facebook
             "fb": "facebook", "face book": "facebook",
+            # Snapchat
             "snap": "snapchat",
+            # Twitter/X
             "twit": "twitter", "x": "twitter",
+            # Maps
             "maps": "google maps", "google map": "google maps",
-            "gmail": "gmail", "mail": "gmail",
+            # Gmail
+            "mail": "gmail",
+            # Play Store
             "play": "play store", "playstore": "play store",
+            "play store app": "play store",
+            # Calculator
             "calc": "calculator", "calci": "calculator",
+            # Camera
             "cam": "camera",
+            # Settings
             "setting": "settings", "set": "settings",
+            # Files
             "file manager": "files", "file": "files",
+            # Docs/Sheets
             "doc": "docs", "sheet": "sheets",
+            # Google Pay
             "gpay": "google pay", "g pay": "google pay", "gp": "google pay",
+            # PhonePe
             "pp": "phonepe", "phone pe": "phonepe",
+            # Paytm
             "pt": "paytm",
+            # Flipkart
             "flip": "flipkart",
+            # Amazon
             "amz": "amazon",
+            # Prime Video
             "prime": "prime video",
+            # Netflix
             "net": "netflix",
+            # Hotstar
             "star": "hotstar", "hot star": "hotstar",
-            "swig": "swiggy",
-            "zom": "zomato",
-            "uber cab": "uber",
-            "ola cab": "ola", "ola cabs": "ola",
+            # Food
+            "swig": "swiggy", "zom": "zomato",
+            # Ride
+            "uber cab": "uber", "ola cab": "ola", "ola cabs": "ola",
         }
 
-    def resolve(self, app_name: str) -> Optional[dict]:
-        """Resolve an app name to an Android Intent launch dict.
+        # ── Dynamic cache (loaded from installed_apps.json) ───────
+        self._dynamic: Dict[str, str] = {}  # package → label
+        self._dynamic_by_label: Dict[str, str] = {}  # label_lower → package
+        self.load_dynamic_cache()
 
-        Args:
-            app_name: Canonical or alias app name (lowercase).
+    # ── Dynamic Cache ─────────────────────────────────────────────
+
+    def load_dynamic_cache(self) -> bool:
+        """Load installed_apps.json written by Android PackageManager.
+
+        Called at startup. Safe to call multiple times (refreshes cache).
 
         Returns:
-            Intent dict or None.
+            True if cache loaded successfully, False otherwise.
+        """
+        try:
+            if os.path.exists(_INSTALLED_APPS_PATH):
+                with open(_INSTALLED_APPS_PATH, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                self._dynamic = data
+                self._dynamic_by_label = {
+                    label.lower(): pkg
+                    for pkg, label in data.items()
+                }
+                logger.info("Loaded %d installed apps from cache.", len(data))
+                return True
+        except Exception as e:
+            logger.warning("Failed to load installed_apps.json: %s", e)
+        return False
+
+    # ── Resolution ───────────────────────────────────────────────
+
+    def resolve(self, app_name: str) -> Optional[dict]:
+        """Resolve an app name to Android Intent launch parameters.
+
+        Resolution order:
+            1. Dynamic cache (installed_apps.json label match)
+            2. Alias map
+            3. Static app_map (exact)
+            4. Fuzzy match
+            5. None (caller must inform user — never Chrome fallback)
+
+        Args:
+            app_name: App name as spoken by user (any case).
+
+        Returns:
+            Intent dict or None if not found.
         """
         name = app_name.lower().strip()
+        if not name:
+            return None
 
-        # Check alias map first
+        # 1. Dynamic cache — label match
+        pkg = self._dynamic_by_label.get(name)
+        if pkg:
+            return self._build_dynamic_intent(pkg, self._dynamic[pkg])
+
+        # 2. Alias map
         canonical = self.aliases.get(name)
         if canonical:
-            return self.app_map.get(canonical)
+            intent = self.app_map.get(canonical)
+            if intent:
+                return intent
+            # Check dynamic too
+            pkg = self._dynamic_by_label.get(canonical)
+            if pkg:
+                return self._build_dynamic_intent(pkg, self._dynamic[pkg])
 
-        # Direct lookup
-        return self.app_map.get(name)
+        # 3. Static app_map exact match
+        intent = self.app_map.get(name)
+        if intent:
+            return intent
+
+        # 4. Fuzzy match
+        fuzzy_name = self.fuzzy_match(name)
+        if fuzzy_name:
+            return self.app_map.get(fuzzy_name) or self._resolve_dynamic_fuzzy(fuzzy_name)
+
+        # 5. Not found — caller must handle (never Chrome)
+        logger.info("App not resolved: '%s'", app_name)
+        return None
 
     def fuzzy_match(self, query: str) -> Optional[str]:
-        """Find the best matching app name for a partial query."""
-        all_names = set(self.app_map.keys()) | set(self.aliases.keys())
+        """Find the best matching canonical app name for a partial query.
+
+        Args:
+            query: Partial or misspelled app name.
+
+        Returns:
+            Canonical app name string, or None.
+        """
+        all_names = (
+            set(self.app_map.keys())
+            | set(self.aliases.keys())
+            | set(self._dynamic_by_label.keys())
+        )
         matches = get_close_matches(query.lower(), all_names, n=1, cutoff=0.6)
         if matches:
             best = matches[0]
-            if best in self.aliases:
-                return self.aliases[best]
-            return best
+            return self.aliases.get(best, best)
         return None
 
-    def list_apps(self) -> list[str]:
-        """Return sorted list of all known app names."""
-        return sorted(self.app_map.keys())
+    def _build_dynamic_intent(self, package: str, label: str) -> dict:
+        """Build a launcher intent for a dynamically discovered app."""
+        return {
+            "action": "android.intent.action.MAIN",
+            "package": package,
+            "label": label,
+            "category": "android.intent.category.LAUNCHER",
+            "dynamic": True,
+        }
 
-    def list_aliases(self) -> dict:
+    def _resolve_dynamic_fuzzy(self, name: str) -> Optional[dict]:
+        """Try to find a dynamic app by fuzzy label match."""
+        matches = get_close_matches(name, self._dynamic_by_label.keys(), n=1, cutoff=0.6)
+        if matches:
+            pkg = self._dynamic_by_label[matches[0]]
+            label = self._dynamic.get(pkg, matches[0])
+            return self._build_dynamic_intent(pkg, label)
+        return None
+
+    def list_apps(self) -> List[str]:
+        """Return sorted list of all known app names (static + dynamic)."""
+        dynamic_labels = list(self._dynamic_by_label.keys())
+        return sorted(set(self.app_map.keys()) | set(dynamic_labels))
+
+    def list_aliases(self) -> Dict[str, str]:
         """Return all aliases."""
         return dict(self.aliases)

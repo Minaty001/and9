@@ -1,137 +1,189 @@
 """
-AND9 — Call Actions (Phase 5 of Refactor).
+AND9 — Call Actions (Phase 11 Rebuild).
 
-Executes phone calls with contact resolution. Always resolves
-contact names to phone numbers before dialing — never dials
-string names directly.
+Executes phone calls via Android ContactsContract + direct dial.
 
-Supports:
-    call mummy          → resolve "mummy" → dial number
-    call amit kumar     → resolve "amit kumar" → dial number
-    dial 9876543210     → dial number directly
-    phone +919876543210 → dial number directly
+Flow for contact names:
+    call mummy
+        ↓
+    extract_entities("call", query) → contact_name="mummy"
+        ↓
+    ContactsResolver.resolve("mummy")
+        ↓
+    lookup_required: True → emit CONTACTS_LOOKUP to Android
+        ↓
+    Android: ContactsContract.CommonDataKinds.Phone query
+        ↓
+    Number found → CALL intent with tel:number
+    Multiple matches → Android asks user
+    Not found → inform user
+
+Supported commands (all patterns in command_dictionary.py):
+    call mummy / call papa / call bhai / call amit kumar
+    mummy ko call karo / amit ko phone lagao
+    phone lagao mummy / dial mummy
+    call 9876543210 / phone +919876543210 / dial 9876543210
 """
 import logging
 import re
 from typing import Optional
 
 from app.and9.contacts.resolver import ContactsResolver
-from app.skills.intent_executor import IntentExecutor
 
 logger = logging.getLogger(__name__)
 
+_resolver = ContactsResolver()
 
-def execute_call(contact: Optional[str] = None,
-                 number: Optional[str] = None,
-                 action_type: str = "contact") -> dict:
-    """Execute a phone call via IntentExecutor.
-
-    Args:
-        contact: Contact name to resolve (e.g., "mummy", "amit kumar").
-        number: Direct phone number to dial.
-        action_type: "contact" or "dial".
-
-    Returns:
-        Dict with response, action, payload, and optional metadata.
-    """
-    # If we have a number already, use it directly
-    if number:
-        try:
-            result = IntentExecutor.make_call(number)
-        except Exception as e:
-            logger.error("IntentExecutor.make_call failed: %s", e)
-            result = None
-
-        return {
-            "response": f"Call kar raha hoon {number}... 📞",
-            "action": "CALL",
-            "payload": result or _build_call_payload(number),
-            "metadata": {"number": number},
-        }
-
-    # Resolve contact name
-    if contact:
-        resolver = ContactsResolver()
-        resolved = resolver.resolve(contact)
-
-        if resolved and resolved.get("number"):
-            number = resolved["number"]
-            display = resolved["display"]
-            try:
-                result = IntentExecutor.make_call(number)
-            except Exception as e:
-                logger.error("IntentExecutor.make_call failed: %s", e)
-                result = None
-
-            return {
-                "response": f"Call kar raha hoon {display} ko... 📞",
-                "action": "CALL",
-                "payload": result or _build_call_payload(number),
-                "metadata": {"contact": resolved},
-            }
-        elif resolved and not resolved.get("number"):
-            return {
-                "response": f"{resolved['display']} ka number nahi hai mere paas. Kya aap number bata sakte hain? 📋",
-                "action": "CALL",
-                "payload": {"action": "android.intent.action.CALL", "data": ""},
-                "metadata": {"contact": resolved},
-            }
-
-    return {
-        "response": "Kise call karna hai? Kripya naam ya number boliye! 📞",
-        "action": "CALL",
-        "payload": {"action": "android.intent.action.CALL", "data": ""},
-    }
+# Android intent constants
+_ACTION_CALL = "android.intent.action.CALL"
+_ACTION_DIAL = "android.intent.action.DIAL"
+_ACTION_SENDTO = "android.intent.action.SENDTO"
+_ACTION_CONTACTS_LOOKUP = "CONTACTS_LOOKUP"
 
 
-def _build_call_payload(number: str) -> dict:
-    """Build a standard Android CALL intent payload."""
-    return {
-        "action": "android.intent.action.CALL",
-        "data": f"tel:{number}",
-    }
+def execute_call(
+    contact: Optional[str] = None,
+    number: Optional[str] = None,
+    contact_name: Optional[str] = None,
+    action_type: str = "contact",
+    lookup_required: bool = False,
+    **kwargs,
+) -> dict:
+    """Execute a phone call or contact lookup.
 
-
-def execute_message(contact: Optional[str] = None,
-                    number: Optional[str] = None,
-                    message: str = "") -> dict:
-    """Execute sending an SMS via Android intent.
+    Accepts both old-style (contact=, number=) and new entity_extractor
+    style (contact_name=, lookup_required=) parameters.
 
     Args:
-        contact: Contact name to resolve.
-        number: Direct phone number.
-        message: Message text content.
+        contact:         Contact name (old style, backwards compat).
+        number:          Phone number for direct dial.
+        contact_name:    Contact name (new style from entity_extractor).
+        action_type:     "contact" | "dial".
+        lookup_required: If True, Android must resolve via ContactsContract.
 
     Returns:
         Dict with response, action, payload.
     """
-    if number:
-        payload = {
-            "action": "android.intent.action.SENDTO",
-            "data": f"sms:{number}",
-            "extra_text": message or "Hello!",
-        }
+    # ── Normalize parameters (support both old and new style) ─────
+    effective_name = contact_name or contact
+    effective_number = number
+
+    # ── Direct number dial ────────────────────────────────────────
+    if effective_number and _resolver.is_number(effective_number):
+        clean_number = re.sub(r'[\s\-()]', '', effective_number)
         return {
-            "response": f"Message bhej raha hoon {number} ko... 💬",
-            "action": "SEND_SMS",
-            "payload": payload,
-            "metadata": {"number": number, "message": message},
+            "response": f"Call kar raha hoon {effective_number}... 📞",
+            "action": "CALL",
+            "payload": {
+                "action": _ACTION_CALL,
+                "data": f"tel:{clean_number}",
+            },
+            "metadata": {"number": clean_number, "type": "direct_dial"},
         }
 
-    if contact:
-        resolver = ContactsResolver()
-        resolved = resolver.resolve(contact)
-        if resolved and resolved.get("number"):
-            payload = {
-                "action": "android.intent.action.SENDTO",
-                "data": f"sms:{resolved['number']}",
-                "extra_text": message or "Hello!",
-            }
+    # ── Contact name → Android resolves via ContactsContract ──────
+    if effective_name:
+        resolved = _resolver.resolve(effective_name)
+
+        if resolved is None:
             return {
-                "response": f"Message bhej raha hoon {resolved['display']} ko... 💬",
+                "response": "Kise call karna hai? Kripya naam ya number boliye! 📞",
+                "action": "CALL",
+                "payload": {},
+            }
+
+        if resolved.get("action_type") == "dial":
+            # Name turned out to be a number
+            return execute_call(number=resolved["number"])
+
+        if resolved.get("lookup_required"):
+            # Emit CONTACTS_LOOKUP — Android resolves
+            contact_disp = resolved["display"]
+            lookup_payload = _resolver.build_lookup_payload(resolved["contact_name"])
+            return {
+                "response": f"{contact_disp} ko call kar raha hoon... 📞",
+                "action": "CALL",
+                "payload": {
+                    "action": _ACTION_CONTACTS_LOOKUP,
+                    "contact_query": resolved["contact_name"],
+                    "display": contact_disp,
+                    "on_resolve": {
+                        "action": _ACTION_CALL,
+                        "data_template": "tel:{number}",
+                    },
+                    "android_api": "ContactsContract.CommonDataKinds.Phone",
+                },
+                "metadata": {"contact_name": resolved["contact_name"]},
+            }
+
+    # ── No name and no number ─────────────────────────────────────
+    return {
+        "response": "Kise call karna hai? Kripya naam ya number boliye! 📞",
+        "action": "CALL",
+        "payload": {},
+    }
+
+
+def execute_message(
+    contact: Optional[str] = None,
+    number: Optional[str] = None,
+    contact_name: Optional[str] = None,
+    message: str = "",
+    lookup_required: bool = False,
+    **kwargs,
+) -> dict:
+    """Send an SMS message via Android intent.
+
+    For contact names → emits CONTACTS_LOOKUP first.
+    For direct numbers → sends immediately.
+
+    Args:
+        contact:      Contact name (backwards compat).
+        number:       Direct phone number.
+        contact_name: Contact name (new style).
+        message:      SMS text content.
+
+    Returns:
+        Dict with response, action, payload.
+    """
+    effective_name = contact_name or contact
+    effective_number = number
+
+    # ── Direct number SMS ─────────────────────────────────────────
+    if effective_number and _resolver.is_number(effective_number):
+        clean_number = re.sub(r'[\s\-()]', '', effective_number)
+        return {
+            "response": f"Message bhej raha hoon {effective_number} ko... 💬",
+            "action": "SEND_SMS",
+            "payload": {
+                "action": _ACTION_SENDTO,
+                "data": f"sms:{clean_number}",
+                "extra_text": message or "",
+            },
+            "metadata": {"number": clean_number, "message": message},
+        }
+
+    # ── Contact name SMS ─────────────────────────────────────────
+    if effective_name:
+        resolved = _resolver.resolve(effective_name)
+
+        if resolved and resolved.get("lookup_required"):
+            contact_disp = resolved["display"]
+            return {
+                "response": f"{contact_disp} ko message bhej raha hoon... 💬",
                 "action": "SEND_SMS",
-                "payload": payload,
-                "metadata": {"contact": resolved, "message": message},
+                "payload": {
+                    "action": _ACTION_CONTACTS_LOOKUP,
+                    "contact_query": resolved["contact_name"],
+                    "display": contact_disp,
+                    "on_resolve": {
+                        "action": _ACTION_SENDTO,
+                        "data_template": "sms:{number}",
+                        "extra_text": message or "",
+                    },
+                    "android_api": "ContactsContract.CommonDataKinds.Phone",
+                },
+                "metadata": {"contact_name": resolved["contact_name"], "message": message},
             }
 
     return {

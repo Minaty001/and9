@@ -1,5 +1,5 @@
 """
-AND9 — Brain Orchestrator (Phase 18 of Refactor).
+AND9 — Brain Orchestrator (Phase 15 Refactor).
 
 The main processing pipeline for all AND9 queries.
 
@@ -7,25 +7,32 @@ Pipeline:
     1. Normalize via router/normalizer.py
     2. Detect intent via router/intent_router.py
     3. Execute action via android/android_executor.py
-    4. Log via core/logger.py
+    4. Trace log via core/intent_trace.py (Phase 15)
     5. Return BrainResult-compatible dict
+
+Cognitive Architecture:
+    Reflex Brain  → instant device actions (<100ms)
+    Subconscious  → pattern learning
+    Conscious Brain → LLM reasoning (last resort)
 
 Design rules:
     - Device actions ALWAYS beat search actions
-    - SEARCH is the last intent checked
+    - SEARCH is the LAST intent checked (priority 17)
     - Chrome is NEVER used as fallback for device commands
     - All actions pass through the Android Executor
-    - Every request is logged through the QueryLogger
+    - Every request is traced through intent_trace
 """
 import logging
 import time
 from typing import Any, Dict, Optional
+from urllib.parse import quote_plus
 
 from app.and9.brain_types import BrainResult, BrainType, IntentType
 from app.and9.router.normalizer import QueryNormalizer
-from app.and9.router.intent_router import detect_intent, _extract_label
+from app.and9.router.intent_router import detect_intent
 from app.and9.android.android_executor import execute as execute_action
 from app.and9.core.logger import get_logger, is_debug_enabled
+from app.and9.core.intent_trace import TraceContext, log_trace
 from app.and9.subconscious_brain import SubconsciousBrain
 
 logger = logging.getLogger(__name__)
@@ -54,6 +61,13 @@ class Orchestrator:
     def process(self, query: str) -> Dict[str, Any]:
         """Process a user query through the full AND9 pipeline.
 
+        Pipeline:
+            1. Normalize (Hindi → English)
+            2. Detect intent (router)
+            3. Execute action (android_executor)
+            4. Trace log (intent_trace)
+            5. Return result dict
+
         Args:
             query: Raw user input string.
 
@@ -72,48 +86,55 @@ class Orchestrator:
             self._log_result(query, "", "", {}, result)
             return result.to_dict()
 
-        try:
-            # Step 1: Normalize
-            normalized, was_modified = self.normalizer.normalize(query)
-            logger.debug("Normalized: '%s' → '%s' (modified=%s)",
-                         query, normalized, was_modified)
+        with TraceContext(query) as trace:
+            try:
+                # Step 1: Normalize
+                normalized, was_modified = self.normalizer.normalize(query)
+                trace.set_normalized(normalized)
+                logger.debug("Normalized: '%s' → '%s' (modified=%s)",
+                             query, normalized, was_modified)
 
-            # Step 2: Detect intent
-            intent_name, action_type, params = detect_intent(normalized)
+                # Step 2: Detect intent
+                intent_name, action_type, params = detect_intent(normalized)
+                trace.set_intent(intent_name or "", params)
+                trace.set_action(action_type or "")
 
-            if not intent_name:
-                result = BrainResult(
-                    response="Kya karu? Mujhe samajh nahi aaya. Zara aur clearly boliye! 🤔",
-                    brain=BrainType.REFLEX,
-                    execution_time_ms=(time.perf_counter() - start) * 1000,
-                )
-                self._log_result(query, normalized, "", params, result)
+                if not intent_name:
+                    result = BrainResult(
+                        response="Kya karu? Mujhe samajh nahi aaya. Zara aur clearly boliye! 🤔",
+                        brain=BrainType.REFLEX,
+                        execution_time_ms=(time.perf_counter() - start) * 1000,
+                    )
+                    self._log_result(query, normalized, "", params, result)
+                    trace.set_result("failure", "no_intent_detected")
+                    return result.to_dict()
+
+                logger.debug("Intent: %s | Action: %s | Params: %s",
+                             intent_name, action_type, params)
+
+                # Step 3: Execute action
+                result = self._execute(intent_name, action_type, params, start)
+
+                # Step 4: Record in subconscious
+                if result.success:
+                    self.subconscious.record_action(result, query)
+
+                self._log_result(query, normalized, intent_name, params, result)
+                trace.set_result("success" if result.success else "failure")
                 return result.to_dict()
 
-            logger.debug("Intent: %s | Action: %s | Params: %s",
-                         intent_name, action_type, params)
-
-            # Step 3: Execute action
-            result = self._execute(intent_name, action_type, params, start)
-
-            # Step 4: Record in subconscious
-            if result.success:
-                self.subconscious.record_action(result, query)
-
-            self._log_result(query, normalized, intent_name, params, result)
-            return result.to_dict()
-
-        except Exception as e:
-            elapsed = (time.perf_counter() - start) * 1000
-            logger.error("AND9 pipeline error: %s", e, exc_info=True)
-            result = BrainResult(
-                response=f"Oops! Kuch gadbad ho gayi: {str(e)}. Phir se try karo! 😅",
-                action="ERROR",
-                brain=BrainType.REFLEX,
-                execution_time_ms=elapsed,
-                success=False,
-            )
-            return result.to_dict()
+            except Exception as e:
+                elapsed = (time.perf_counter() - start) * 1000
+                logger.error("AND9 pipeline error: %s", e, exc_info=True)
+                trace.set_result("failure", str(e))
+                result = BrainResult(
+                    response=f"Oops! Kuch gadbad ho gayi: {str(e)}. Phir se try karo! 😅",
+                    action="ERROR",
+                    brain=BrainType.REFLEX,
+                    execution_time_ms=elapsed,
+                    success=False,
+                )
+                return result.to_dict()
 
     def _execute(self, intent_name: str, action_type: Optional[str],
                  params: dict, start: float) -> BrainResult:
@@ -181,9 +202,9 @@ class Orchestrator:
         return result
 
     def _handle_search(self, params: dict, start: float) -> BrainResult:
-        """Handle web search — sends to Chrome/browser."""
+        """Handle web search — Chrome allowed ONLY here (priority 17 = last resort)."""
         query = params.get("query", "")
-        search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+        search_url = f"https://www.google.com/search?q={quote_plus(query)}"
         return BrainResult(
             response=f"Web pe '{query}' search kar raha hoon 🔍",
             action="SEARCH",

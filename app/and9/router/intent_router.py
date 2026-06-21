@@ -1,25 +1,56 @@
 """
-AND9 — Central Intent Router (Phase 3 of Refactor).
+AND9 — Central Intent Router (Phase 5 Refactor).
 
-Single-file intent detection with strict priority ordering.
-Device actions ALWAYS beat search. Search is always last.
+Single-responsibility: CLASSIFY ONLY.
+All entity extraction is delegated to entity_extractor.py.
+All regex patterns are imported from command_dictionary.py.
 
-Priority order:
+AND9 Cognitive Architecture — Execution Priority:
     EMERGENCY (1) → CALL (2) → MESSAGE (3) → OPEN_APP (4) →
-    CAMERA (5) → FLASHLIGHT (6) → YOUTUBE (7) → ALARM (8) →
-    REMINDER (9) → TIMER (10) → DEVICE_CONTROL (11) →
-    SEARCH (12) → CHAT (13)
+    CAMERA (5) → FLASHLIGHT (6) → BLUETOOTH (7) → WIFI (8) →
+    VOLUME (9) → YOUTUBE (10) → MUSIC (11) → ALARM (12) →
+    REMINDER (13) → TIMER (14) → GOAL (15) → AUTOMATION (16) →
+    SEARCH (17) → CHAT (18)
 
-Each intent returns structured parameters for the action layer.
+Search is ALWAYS last. Device actions ALWAYS win.
+Chrome is NEVER opened except for SEARCH/NEWS/WEB_LOOKUP.
 """
 import re
+import logging
 from typing import Optional, Tuple
 
 from app.and9.core.constants import ActionType
+from app.and9.router.command_dictionary import (
+    EMERGENCY,
+    CALL_CONTACT, CALL_NUMBER, IS_PHONE_NUMBER,
+    MESSAGE,
+    OPEN_APP_TRIGGERS, OPEN_APP_SPECIFIC,
+    CAMERA,
+    FLASHLIGHT, FLASHLIGHT_ON, FLASHLIGHT_OFF,
+    BLUETOOTH, TOGGLE_ON, TOGGLE_OFF,
+    WIFI,
+    VOLUME, VOLUME_UP, VOLUME_DOWN, VOLUME_MUTE, VOLUME_MAX,
+    YOUTUBE_TRIGGER, YOUTUBE_PLAY_TRIGGER, YOUTUBE_OPEN_ONLY,
+    MUSIC_TRIGGER,
+    ALARM_TRIGGER,
+    REMINDER_TRIGGER,
+    TIMER_TRIGGER,
+    GOAL_TRIGGER,
+    AUTOMATION_TRIGGER,
+    SEARCH_TRIGGER,
+    GO_HOME,
+    AIRPLANE_MODE,
+)
+from app.and9.router.entity_extractor import extract_entities
+
+logger = logging.getLogger(__name__)
 
 
 def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
-    """Classify a normalized query into an intent with parameters.
+    """Classify a normalized query into an intent with extracted parameters.
+
+    The router ONLY classifies — no regex extraction happens here.
+    All entity extraction is handled by entity_extractor.extract_entities().
 
     Args:
         query: Lowercased, normalized query string.
@@ -27,232 +58,187 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
     Returns:
         Tuple of (intent_name, action_type, parameters_dict).
         intent_name is None for empty queries.
-        action_type is the ActionType value to execute.
-        parameters_dict contains extracted structured data.
+        action_type is an ActionType value string.
+        parameters_dict contains extracted structured entities.
 
-    Example:
-        >>> detect_intent("call mummy")
-        ('call', 'call', {'number': '', 'contact': 'mummy', 'action_type': 'contact'})
-        >>> detect_intent("hello")
-        ('chat', None, {'query': 'hello'})
+    Priority order:
+        1. EMERGENCY   7. BLUETOOTH  13. REMINDER
+        2. CALL        8. WIFI       14. TIMER
+        3. MESSAGE     9. VOLUME     15. GOAL
+        4. OPEN_APP   10. YOUTUBE    16. AUTOMATION
+        5. CAMERA     11. MUSIC      17. SEARCH
+        6. FLASHLIGHT 12. ALARM      18. CHAT
     """
     q = query.lower().strip()
     if not q:
         return None, None, {}
 
-    # ── Priority 1: EMERGENCY ───────────────────────────────────
-    if re.search(r'\b(emergency|help|bachao|danger|accident|sos|911|112)\b', q):
-        return 'emergency', ActionType.EMERGENCY.value, {'type': 'emergency'}
+    # ── Priority 1: EMERGENCY ─────────────────────────────────────
+    for pattern in EMERGENCY:
+        if pattern.search(q):
+            return 'emergency', ActionType.EMERGENCY.value, {'type': 'emergency'}
 
-    # ── Priority 2: CALL ────────────────────────────────────────
-    m = re.search(r'(call|dial|phone)\s+(.+)', q)
-    if m:
-        target = m.group(2).strip().rstrip('ko').strip()
-        # Check if it's a phone number
-        if re.match(r'^\+?\d[\d\s\-()]{6,15}$', target):
-            number = re.sub(r'[\s\-()]', '', target)
-            return 'call', ActionType.CALL.value, {'number': number, 'action_type': 'dial'}
-        else:
-            return 'call', ActionType.CALL.value, {'contact': target, 'action_type': 'contact'}
+    # ── Priority 2: CALL ─────────────────────────────────────────
+    # Check call patterns before open (avoids "call" being caught by app launch)
+    for pattern in CALL_NUMBER:
+        if pattern.search(q):
+            return 'call', ActionType.CALL.value, extract_entities('call', q)
 
-    # ── Priority 3: MESSAGE ─────────────────────────────────────
-    if re.search(r'\b(message|msg|sms|text)\b', q):
-        m = re.search(r'(?:message|msg|sms|text)\s+(.+?)(?:\s+(.+))?$', q)
-        if m:
-            target = m.group(1).strip()
-            text = m.group(2).strip() if m.group(2) else ''
-            if re.match(r'^\+?\d[\d\s\-()]{6,15}$', target):
-                number = re.sub(r'[\s\-()]', '', target)
-                return 'message', ActionType.SEND_SMS.value, {'number': number, 'message': text}
-            return 'message', ActionType.SEND_SMS.value, {'contact': target, 'message': text}
-        return 'message', ActionType.SEND_SMS.value, {}
+    for pattern in CALL_CONTACT:
+        if pattern.search(q):
+            return 'call', ActionType.CALL.value, extract_entities('call', q)
 
-    # ── Priority 4: OPEN_APP (generic) ──────────────────────────
-    # But first check device-specific intents that start with "open"
-    if re.search(r'\bopen\b', q):
-        # Check for camera
-        if re.search(r'\bcamera\b', q):
-            return 'camera', ActionType.OPEN_CAMERA.value, {}
-        # Check for YouTube open
-        if re.search(r'\byoutube\b', q) and not re.search(r'\b(search|play)\b', q):
-            return 'youtube', ActionType.YOUTUBE_SEARCH.value, {'action': 'open'}
+    # ── Priority 3: MESSAGE ──────────────────────────────────────
+    if MESSAGE[0].search(q):
+        return 'message', ActionType.SEND_SMS.value, extract_entities('message', q)
+
+    # ── Priority 4: OPEN APP ─────────────────────────────────────
+    # First ensure it's not a device-specific command masquerading as open
+    has_open_trigger = OPEN_APP_TRIGGERS.search(q)
+
+    if has_open_trigger:
+        # Camera is Priority 5 but "camera kholo" triggers open — handle here
+        for pattern in CAMERA:
+            if pattern.search(q):
+                return 'camera', ActionType.OPEN_CAMERA.value, {}
+
+        # YouTube open → Priority 10, but "youtube kholo" is app launch
+        if YOUTUBE_TRIGGER.search(q) and not YOUTUBE_PLAY_TRIGGER.search(q):
+            params = extract_entities('youtube', q)
+            if params.get('action') == 'open':
+                return 'youtube', ActionType.YOUTUBE_SEARCH.value, params
+            # Has a query → youtube search
+            return 'youtube', ActionType.YOUTUBE_SEARCH.value, params
 
         # Generic app open
-        m = re.search(r'\bopen\s+(.+)$', q)
-        if m:
-            app_name = m.group(1).strip()
-            return 'open_app', ActionType.LAUNCH_APP.value, {'app_name': app_name}
-        # <app> open pattern
-        m = re.search(r'^(.+?)\s+open$', q)
-        if m:
-            app_name = m.group(1).strip()
-            return 'open_app', ActionType.LAUNCH_APP.value, {'app_name': app_name}
+        params = extract_entities('open_app', q)
+        if params.get('app_name'):
+            return 'open_app', ActionType.LAUNCH_APP.value, params
 
-    # ── Priority 5: CAMERA ──────────────────────────────────────
-    if re.search(r'\b(camera|photo|picture|selfie)\b', q):
-        return 'camera', ActionType.OPEN_CAMERA.value, {}
+    # ── Priority 5: CAMERA ───────────────────────────────────────
+    for pattern in CAMERA:
+        if pattern.search(q):
+            return 'camera', ActionType.OPEN_CAMERA.value, {}
 
-    # ── Priority 6: FLASHLIGHT ──────────────────────────────────
-    if re.search(r'\b(flashlight|torch|flash|light)\b', q):
-        # Determine on/off state
+    # ── Priority 6: FLASHLIGHT ───────────────────────────────────
+    if FLASHLIGHT.search(q):
         state = None
-        if re.search(r'\b(on|enable|kholo|chalu)\b', q):
+        if FLASHLIGHT_ON.search(q):
             state = True
-        elif re.search(r'\b(off|disable|band|bnd)\b', q):
+        elif FLASHLIGHT_OFF.search(q):
             state = False
-        return 'flashlight', ActionType.FLASHLIGHT.value, {'state': state}
+        action = ActionType.FLASHLIGHT_ON.value if state is True \
+            else ActionType.FLASHLIGHT_OFF.value if state is False \
+            else ActionType.FLASHLIGHT.value
+        return 'flashlight', action, {'state': state}
 
-    # ── Priority 7: YOUTUBE ─────────────────────────────────────
-    if re.search(r'\byoutube\b', q):
-        if re.search(r'\b(play|bajao|chalao|sunao)\b', q):
-            return 'youtube', ActionType.YOUTUBE_PLAY.value, {'action': 'play', 'query': q}
-        if re.search(r'\bsearch\b', q):
-            m = re.search(r'youtube\s+search\s+(.+)$', q)
-            sq = m.group(1).strip() if m else q
-            return 'youtube', ActionType.YOUTUBE_SEARCH.value, {'action': 'search', 'query': sq}
-        # Default: just open YouTube
-        return 'youtube', ActionType.YOUTUBE_SEARCH.value, {'action': 'open'}
-    # Music/song commands also go to YouTube
-    if re.search(r'\b(song|music|play|gaana|gana|geet|bajao|sunao|playlist|track)\b', q):
-        return 'youtube', ActionType.YOUTUBE_PLAY.value, {'action': 'play', 'query': q}
-
-    # ── Priority 8: ALARM ───────────────────────────────────────
-    if re.search(r'\balarm\b', q):
-        time_params = _extract_time(q)
-        return 'alarm', ActionType.SET_ALARM.value, time_params or {'type': 'unknown'}
-
-    # ── Priority 9: REMINDER ────────────────────────────────────
-    if re.search(r'\b(remind|reminder|yaad)\b', q):
-        time_params = _extract_time(q)
-        label = _extract_label(q)
-        params = time_params or {'type': 'unknown'}
-        if label:
-            params['label'] = label
-        return 'reminder', ActionType.SET_REMINDER.value, params
-
-    # ── Priority 10: TIMER ──────────────────────────────────────
-    if re.search(r'\btimer\b', q):
-        duration = _extract_duration(q)
-        return 'timer', ActionType.SET_TIMER.value, {'duration_seconds': duration} if duration else {'type': 'unknown'}
-
-    # ── Priority 11: DEVICE_CONTROL ─────────────────────────────
-    # Volume
-    if re.search(r'\b(volume|mute|unmute|silent)\b', q):
-        if re.search(r'\b(up|badhao|higher|louder|increase)\b', q):
-            return 'volume', ActionType.VOLUME_UP.value, {}
-        if re.search(r'\b(down|kam|lower|decrease|less)\b', q):
-            return 'volume', ActionType.VOLUME_DOWN.value, {}
-        if re.search(r'\b(mute|silent)\b', q):
-            return 'volume', ActionType.VOLUME_MUTE.value, {}
-        return 'volume', ActionType.VOLUME_UP.value, {}
-
-    # WiFi
-    if re.search(r'\b(wifi|wi-fi|wlan)\b', q):
-        state = bool(re.search(r'\b(on|enable|chalu)\b', q)) if re.search(r'\b(on|enable|off|disable|band|chalu)\b', q) else None
-        return 'wifi', ActionType.WIFI.value, {'state': state}
-
-    # Bluetooth
-    if re.search(r'\bbluetooth\b', q):
-        state = bool(re.search(r'\b(on|enable|chalu)\b', q)) if re.search(r'\b(on|enable|off|disable|band|chalu)\b', q) else None
+    # ── Priority 7: BLUETOOTH ────────────────────────────────────
+    if BLUETOOTH.search(q):
+        state = None
+        if TOGGLE_ON.search(q):
+            state = True
+        elif TOGGLE_OFF.search(q):
+            state = False
         return 'bluetooth', ActionType.BLUETOOTH.value, {'state': state}
 
-    # Airplane mode
-    if re.search(r'\b(airplane\s*mode|flight\s*mode)\b', q):
-        state = bool(re.search(r'\b(on|enable)\b', q)) if re.search(r'\b(on|enable|off|disable)\b', q) else None
+    # ── Priority 8: WIFI ─────────────────────────────────────────
+    if WIFI.search(q):
+        state = None
+        if TOGGLE_ON.search(q):
+            state = True
+        elif TOGGLE_OFF.search(q):
+            state = False
+        return 'wifi', ActionType.WIFI.value, {'state': state}
+
+    # ── Airplane mode (between WiFi and Volume) ───────────────────
+    if AIRPLANE_MODE.search(q):
+        state = None
+        if TOGGLE_ON.search(q):
+            state = True
+        elif TOGGLE_OFF.search(q):
+            state = False
         return 'airplane', ActionType.AIRPLANE_MODE.value, {'state': state}
 
-    # Go home
-    if re.search(r'\bgo\s*home\b', q):
+    # ── Priority 9: VOLUME ───────────────────────────────────────
+    if VOLUME.search(q):
+        if VOLUME_MAX.search(q):
+            return 'volume', ActionType.VOLUME_MAX.value, {}
+        if VOLUME_MUTE.search(q):
+            return 'volume', ActionType.VOLUME_MUTE.value, {}
+        if VOLUME_UP.search(q):
+            return 'volume', ActionType.VOLUME_UP.value, {}
+        if VOLUME_DOWN.search(q):
+            return 'volume', ActionType.VOLUME_DOWN.value, {}
+        return 'volume', ActionType.VOLUME_UP.value, {}
+
+    # ── Go Home (device control) ─────────────────────────────────
+    if GO_HOME.search(q):
         return 'home', ActionType.GO_HOME.value, {}
 
-    # ── Priority 12: SEARCH (always last for device actions) ───
-    if re.search(r'\b(search|find|who|what|where|how|google|weather|news)\b', q):
-        return 'search', ActionType.SEARCH.value, {'query': q}
+    # ── Priority 10: YOUTUBE ─────────────────────────────────────
+    if YOUTUBE_TRIGGER.search(q):
+        params = extract_entities('youtube', q)
+        action = params.get('action', 'open')
+        if action == 'play':
+            return 'youtube', ActionType.YOUTUBE_PLAY.value, params
+        if action == 'search':
+            return 'youtube', ActionType.YOUTUBE_SEARCH.value, params
+        return 'youtube', ActionType.YOUTUBE_SEARCH.value, params
 
-    # ── Priority 13: CHAT (default fallback) ────────────────────
-    return 'chat', None, {'query': q}
+    # ── Priority 11: MUSIC ───────────────────────────────────────
+    if MUSIC_TRIGGER.search(q):
+        params = extract_entities('youtube', q)
+        params['action'] = 'play'
+        return 'youtube', ActionType.YOUTUBE_PLAY.value, params
 
+    # ── Priority 12: ALARM ───────────────────────────────────────
+    if ALARM_TRIGGER.search(q):
+        return 'alarm', ActionType.SET_ALARM.value, extract_entities('alarm', q)
+
+    # ── Priority 13: REMINDER ────────────────────────────────────
+    if REMINDER_TRIGGER.search(q):
+        return 'reminder', ActionType.SET_REMINDER.value, extract_entities('reminder', q)
+
+    # ── Priority 14: TIMER ───────────────────────────────────────
+    if TIMER_TRIGGER.search(q):
+        return 'timer', ActionType.SET_TIMER.value, extract_entities('timer', q)
+
+    # ── Priority 15: GOAL ────────────────────────────────────────
+    if GOAL_TRIGGER.search(q):
+        return 'goal', ActionType.CHAT.value, {'query': q}
+
+    # ── Priority 16: AUTOMATION ──────────────────────────────────
+    if AUTOMATION_TRIGGER.search(q):
+        return 'automation', ActionType.CHAT.value, {'query': q}
+
+    # ── Priority 17: SEARCH (LAST for device actions) ────────────
+    if SEARCH_TRIGGER.search(q):
+        return 'search', ActionType.SEARCH.value, extract_entities('search', q)
+
+    # ── Priority 18: CHAT (default fallback) ─────────────────────
+    return 'chat', ActionType.CHAT.value, {'query': q}
+
+
+# ── Backwards compatibility shims ────────────────────────────────
+# These are kept so existing callers don't break during migration.
+# They delegate to the unified time parser.
 
 def _extract_time(query: str) -> dict:
-    """Extract time parameters from a query.
-
-    Returns dict with 'type': 'absolute' or 'relative' and
-    time-specific fields.
-    """
-    q = query.lower().strip()
-
-    # Relative: "after 10 minutes", "in 5 seconds"
-    m = re.search(r'(?:after|in|baad|me|ke\s*baad)\s+(\d+)\s*(second|sec|minute|min|hour|hr)s?', q)
-    if m:
-        n = int(m.group(1))
-        unit = m.group(2)
-        mult = {"second": 1, "sec": 1, "minute": 60, "min": 60, "hour": 3600, "hr": 3600}
-        return {"type": "relative", "seconds": n * mult.get(unit, 1)}
-
-    # Absolute: "7 am", "7:30 pm", "7 baje"
-    m = re.search(r'(\d{1,2})(?::(\d{2}))?\s*(am|pm|AM|PM|baje)?', q)
-    if m:
-        hour = int(m.group(1))
-        minute = int(m.group(2) or 0)
-        meridiem = (m.group(3) or "am").lower()
-        if meridiem == "baje":
-            meridiem = "am"
-        if meridiem == "pm" and hour < 12:
-            hour += 12
-        if meridiem == "am" and hour == 12:
-            hour = 0
-        if 0 <= hour <= 23 and 0 <= minute <= 59:
-            return {"type": "absolute", "hour": hour, "minute": minute}
-
-    return {}
+    """DEPRECATED: Use app.and9.utils.time_parser.parse_time() instead."""
+    from app.and9.utils.time_parser import parse_time
+    result = parse_time(query)
+    if result['type'] == 'unknown':
+        return {}
+    return result
 
 
 def _extract_duration(query: str) -> Optional[int]:
-    """Extract duration in seconds from a timer query."""
-    q = query.lower().strip()
-    total = 0
-    found = False
-
-    m = re.search(r'(\d+(?:\.\d+)?)\s*(hour|hr)s?', q)
-    if m:
-        total += float(m.group(1)) * 3600
-        found = True
-    m = re.search(r'(\d+(?:\.\d+)?)\s*(minute|min)s?', q)
-    if m:
-        total += float(m.group(1)) * 60
-        found = True
-    m = re.search(r'(\d+(?:\.\d+)?)\s*(second|sec)s?', q)
-    if m:
-        total += float(m.group(1))
-        found = True
-
-    return int(total) if found else None
+    """DEPRECATED: Use app.and9.utils.time_parser.parse_duration() instead."""
+    from app.and9.utils.time_parser import parse_duration
+    return parse_duration(query)
 
 
 def _extract_label(query: str) -> Optional[str]:
-    """Extract reminder label by stripping action keywords and time."""
-    q = query.lower().strip()
-    for word in [
-        "set alarm", "set reminder", "set timer",
-        "alarm", "reminder", "timer",
-        "remind me to", "remind me about", "remind me for",
-        "remind me", "yaad dilana", "yaad dila",
-    ]:
-        q = q.replace(word, " ")
-
-    q = re.sub(
-        r'(?:after|in|baad|me|ke\s*baad|for|at|ko)\s+'
-        r'\d+(?:\.\d+)?\s*(?:second|sec|minute|min|hour|hr)s?',
-        '', q
-    )
-    q = re.sub(r'\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM|baje)?', '', q)
-
-    noise = ["minute", "minutes", "second", "seconds", "hour", "hours",
-             "sec", "min", "hr", "hrs", "baad", "me", "ke", "ka", "ki",
-             "ko", "se", "par", "pe", "after", "in", "for", "at",
-             "baje", "bajkar"]
-    for w in noise:
-        q = q.replace(f" {w} ", " ")
-
-    q = re.sub(r'\s+', ' ', q).strip()
-    return q if q and len(q) > 1 else None
+    """DEPRECATED: Use app.and9.router.entity_extractor._extract_label() instead."""
+    from app.and9.router.entity_extractor import _extract_label
+    return _extract_label(query)

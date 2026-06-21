@@ -1,106 +1,139 @@
 """
-AND9 — YouTube Actions (Phase 7 of Refactor).
+AND9 — YouTube Actions (Phase 10 Rebuild).
 
-Handles YouTube search, play, and open commands.
-Always sends intents to the YouTube app — NEVER to Chrome.
+Handles YouTube open, search, and play commands.
+Priority: YOUTUBE_SEARCH > SEARCH.
+NEVER routes to Chrome. ALWAYS uses YouTube app.
 
-Supports:
-    youtube kholo                   → open YouTube app
-    search cooking on youtube       → YouTube search
-    play song despacito             → YouTube play/search
-    gaana chalao                     → song search
+Supported commands:
+    youtube kholo / youtube open karo
+    youtube search <query> / search <query> on youtube
+    youtube pe search karo / youtube par search karo
+    youtube kholo aur search karo <query>
+    youtube pe video search karo / youtube pe song search karo
+    play <song> on youtube / <song> youtube pe bajao
+    play song / play music / gaana chalao / song bajao
 """
 import logging
 from typing import Optional
+from urllib.parse import quote_plus
 
-from app.and9.core.config import YOUTUBE_PACKAGE
+from app.and9.core.config import YOUTUBE_PACKAGE, YOUTUBE_COMPONENT
 
 logger = logging.getLogger(__name__)
 
+# YouTube Intent constants
+_YOUTUBE_VIEW_ACTION = "android.intent.action.VIEW"
+_YOUTUBE_SEARCH_BASE = "https://www.youtube.com/results?search_query="
+_YOUTUBE_HOME_URL = "https://www.youtube.com/"
 
-def execute_youtube_search(query: str = "") -> dict:
-    """Search YouTube for a query.
 
-    If query is empty, just opens the YouTube app.
+def execute_youtube_search(query: str = "", action: str = "search") -> dict:
+    """Search or open YouTube. Never opens Chrome.
 
     Args:
-        query: Search terms.
+        query:  Search query. Empty string = open YouTube home.
+        action: "search", "play", or "open".
 
     Returns:
-        Dict with response, action, payload.
-        Payload always targets YouTube package — never Chrome.
+        Dict with response, action, payload targeting YouTube only.
+
+    Examples:
+        >>> execute_youtube_search("despacito")
+        {'response': "YouTube pe 'despacito' search kar raha hoon 🔍▶️", ...}
+
+        >>> execute_youtube_search("")
+        {'response': 'YouTube khol raha hoon! ▶️', ...}
     """
-    if not query or query.strip() == "":
+    # ── Open YouTube home ─────────────────────────────────────────
+    if not query or not query.strip():
+        return _open_youtube_home()
+
+    clean_query = query.strip()
+    search_url = _YOUTUBE_SEARCH_BASE + quote_plus(clean_query)
+
+    if action == "play":
+        # Play intent: same URL but different response tone
         return {
-            "response": "YouTube khol raha hoon! ▶️",
-            "action": "YOUTUBE_SEARCH",
+            "response": f"YouTube pe '{clean_query}' baja raha hoon 🎵▶️",
+            "action": "YOUTUBE_PLAY",
             "payload": {
-                "action": "android.intent.action.VIEW",
+                "action": _YOUTUBE_VIEW_ACTION,
                 "package": YOUTUBE_PACKAGE,
-                "data": "https://www.youtube.com/",
+                "component": YOUTUBE_COMPONENT,
+                "data": search_url,
             },
         }
 
-    search_url = f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}"
     return {
-        "response": f"YouTube pe '{query}' search kar raha hoon 🔍▶️",
+        "response": f"YouTube pe '{clean_query}' search kar raha hoon 🔍▶️",
         "action": "YOUTUBE_SEARCH",
         "payload": {
-            "action": "android.intent.action.VIEW",
+            "action": _YOUTUBE_VIEW_ACTION,
             "package": YOUTUBE_PACKAGE,
+            "component": YOUTUBE_COMPONENT,
             "data": search_url,
         },
     }
 
 
 def execute_youtube_play(query: str = "") -> dict:
-    """Play/search music or video on YouTube.
+    """Play a song or video on YouTube. Never opens Chrome.
 
-    First tries the JARVIS music handler for rich playback.
-    Falls back to YouTube search.
+    Cleans action words from the query, then searches YouTube.
 
     Args:
-        query: Song/video name or search terms.
+        query: Song/video name or raw search terms.
 
     Returns:
-        Dict with response, action, payload.
+        Dict with response, action, payload targeting YouTube only.
+
+    Examples:
+        >>> execute_youtube_play("tum hi ho sunao")
+        {'response': "YouTube pe 'tum hi ho' baja raha hoon 🎵▶️", ...}
     """
-    if not query or query.strip() == "":
-        return execute_youtube_search("trending music")
+    if not query or not query.strip():
+        return _open_youtube_home()
 
-    # Clean query: remove action words
-    play_query = query.lower()
-    for word in ["play", "song", "music", "bajao", "sunao", "chalao"]:
-        play_query = play_query.replace(word, " ").strip()
-    if not play_query:
-        play_query = query.strip()
+    # Clean media action words from query
+    clean_query = _clean_media_query(query)
+    if not clean_query:
+        clean_query = query.strip()
 
-    # Try JARVIS music handler first
-    try:
-        from app.skills.youtube import handle_music_request
-        result = handle_music_request(play_query)
-        if result and "response" in result:
-            return {
-                "response": f"Baja raha hoon '{play_query}' 🎵",
-                "action": "MUSIC_PLAY",
-                "payload": result,
-            }
-    except ImportError:
-        logger.debug("youtube-search-python not available, using search fallback")
-    except Exception as e:
-        logger.error("Music handler error: %s", e)
+    return execute_youtube_search(clean_query, action="play")
 
-    # Fallback: YouTube search
-    search_url = (
-        f"https://www.youtube.com/results?"
-        f"search_query={play_query.replace(' ', '+')}+music"
-    )
+
+def _open_youtube_home() -> dict:
+    """Open YouTube app home page."""
     return {
-        "response": f"YouTube pe '{play_query}' dhundh raha hoon 🎵🔍",
+        "response": "YouTube khol raha hoon! ▶️",
         "action": "YOUTUBE_SEARCH",
         "payload": {
-            "action": "android.intent.action.VIEW",
+            "action": _YOUTUBE_VIEW_ACTION,
             "package": YOUTUBE_PACKAGE,
-            "data": search_url,
+            "component": YOUTUBE_COMPONENT,
+            "data": _YOUTUBE_HOME_URL,
         },
     }
+
+
+def _clean_media_query(q: str) -> str:
+    """Strip YouTube/media action words to get the actual search query.
+
+    Examples:
+        "tum hi ho sunao"   → "tum hi ho"
+        "song bajao despacito" → "despacito"
+        "play despacito on youtube" → "despacito"
+    """
+    import re
+    noise_words = [
+        r"\byoutube\b", r"\bpe\b", r"\bpar\b", r"\baur\b",
+        r"\bsearch\b", r"\bkaro\b", r"\bplay\b", r"\bon\b",
+        r"\bsunao\b", r"\bbajao\b", r"\bchalao\b", r"\blaga\b", r"\bdo\b",
+        r"\bsong\b", r"\bgaana\b", r"\bgana\b", r"\bmusic\b",
+        r"\bvideo\b", r"\bkholo\b", r"\bopen\b",
+    ]
+    result = q.lower().strip()
+    for pattern in noise_words:
+        result = re.sub(pattern, " ", result, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", result).strip()
