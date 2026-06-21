@@ -114,31 +114,70 @@ python3 scripts/rebuild_user_apk.py
 and9/
   ├── android/               (Native Android client — no direct LLM calls)
   ├── app/
-  │    ├── and9/             ← 🆕 AND9 — Multi-Brain AI Operating System
-  │    │    ├── brain_types.py        (BrainType/IntentType enums, BrainResult)
-  │    │    ├── normalizer.py         (Hindi → English command normalization)
-  │    │    ├── priority_router.py    (20-intent priority-ordered detection)
-  │    │    ├── reflex_brain.py       (Instant <100ms reflex dispatcher)
-  │    │    ├── reflex_apps.py        (40+ app alias resolution)
-  │    │    ├── reflex_device.py      (Flashlight/volume/WiFi/BT handlers)
-  │    │    ├── reflex_media.py       (YouTube search/play handlers)
-  │    │    ├── reflex_calls.py       (Call/message with contact resolution)
-  │    │    ├── reflex_alarm.py       (Alarm/timer/reminder with time parsing)
-  │    │    ├── subconscious_brain.py (Pattern learning & habit detection)
-  │    │    ├── conscious_brain.py    (LLM reasoning via JARVIS Orchestrator)
-  │    │    ├── and9.py              (Main orchestrator — routing pipeline)
-  │    │    └── __init__.py          (Public API exports)
+  │    ├── and9/             ← AND9 — Modular Reflex Intent Engine
+  │    │    ├── __init__.py              (Public API — AND9 class, BrainType, IntentType)
+  │    │    ├── and9.py                  (Thin orchestrator wrapper)
+  │    │    ├── brain_types.py           (BrainType/IntentType enums, BrainResult)
+  │    │    ├── conscious_brain.py       (LLM reasoning via JARVIS Orchestrator)
+  │    │    ├── subconscious_brain.py    (Pattern learning & habit detection)
+  │    │    ├── normalizer.py            (Redirect → router/normalizer.py)
+  │    │    │
+  │    │    ├── router/                  ← Intent routing pipeline
+  │    │    │    ├── normalizer.py       (Hindi → English regex normalization)
+  │    │    │    └── intent_router.py    (13-category priority-ordered detection)
+  │    │    │
+  │    │    ├── intents/                 ← Intent parsers (delegate to router)
+  │    │    │    ├── call_intents.py
+  │    │    │    ├── alarm_intents.py
+  │    │    │    ├── timer_intents.py
+  │    │    │    ├── reminder_intents.py
+  │    │    │    ├── media_intents.py
+  │    │    │    ├── app_intents.py
+  │    │    │    └── search_intents.py
+  │    │    │
+  │    │    ├── actions/                 ← Action executors
+  │    │    │    ├── call_actions.py     (Call/SMS with contact resolution)
+  │    │    │    ├── alarm_actions.py
+  │    │    │    ├── timer_actions.py
+  │    │    │    ├── reminder_actions.py
+  │    │    │    ├── app_actions.py
+  │    │    │    ├── youtube_actions.py
+  │    │    │    └── device_actions.py   (Flashlight, volume, WiFi, BT, etc.)
+  │    │    │
+  │    │    ├── android/                 ← Android execution layer
+  │    │    │    ├── action_registry.py  (20 actions with Android intent mapping)
+  │    │    │    └── android_executor.py (Single entry point for all actions)
+  │    │    │
+  │    │    ├── contacts/
+  │    │    │    └── resolver.py         (20+ Hindi contacts, fuzzy matching)
+  │    │    ├── apps/
+  │    │    │    └── package_resolver.py (40+ apps, 50+ aliases)
+  │    │    ├── media/
+  │    │    │    └── youtube_handler.py  (YouTube app routing only)
+  │    │    ├── alarms/
+  │    │    │    └── alarm_manager.py
+  │    │    ├── timers/
+  │    │    │    └── timer_manager.py
+  │    │    ├── reminders/
+  │    │    │    └── scheduler.py
+  │    │    ├── brain/
+  │    │    │    └── orchestrator.py     (Full pipeline orchestrator)
+  │    │    └── core/
+  │    │         ├── logger.py           (Per-request debug logging)
+  │    │         ├── constants.py
+  │    │         └── config.py
+  │    │
   │    ├── agents/           (LLM orchestrators & coding/research agents)
   │    ├── api/              (REST endpoints & socket routers)
   │    ├── core/
-  │    │    ├── truth_engine.py      ← 🆕 Truth-First validation gate
+  │    │    ├── truth_engine.py      ← Truth-First validation gate
   │    │    ├── memory.py            (Supabase memory with source tracking)
   │    │    ├── personality.py       (Truth-First system prompt)
   │    │    ├── orchestrator.py      (Cognitive pipeline with Truth Engine)
   │    │    ├── context_builder.py   (Truth-first context assembly)
   │    │    ├── understanding.py     (Regex-only entity extraction)
   │    │    ├── reflection.py        (No LLM fact extraction)
-  │    │    ├── brain.py             (LLM interface, no fact extraction)
+  │    │    ├── brain.py             (LLM provider abstraction)
   │    │    ├── goal_tracker.py      (Goal management)
   │    │    ├── events.py            (Event/reminder system)
   │    │    └── supabase_schema.sql  (DB schema with source/confidence/verified)
@@ -163,35 +202,59 @@ and9/
 
 ---
 
-## 🧠 AND9 — Multi-Brain AI Operating System
+## 🧠 AND9 — Modular Reflex Intent Engine
 
-**AND9** (`app/and9/`) is a cognitive architecture that layers three brains on top of JARVIS v4, inspired by cognitive science:
+**AND9** (`app/and9/`) is a modular, stateless intent processing engine for Android voice commands. It is organized into three layers:
 
-### Brain Layers
+### Architecture Layers
 
-| Brain | Target Latency | Capability | Intent Examples |
-|-------|---------------|------------|----------------|
-| 🧠 **Reflex** | <100ms | Deterministic, no-LLM actions | App launch, flashligth, call, alarm, timer |
-| 🧠 **Subconscious** | ~200ms | Pattern learning, habit detection | Time-of-day suggestions, sequential automation |
-| 🧠 **Conscious** | ~1-5s | LLM reasoning, planning, complex tasks | Chat, search, goals, code generation |
+| Layer | Directory | Responsibility |
+|-------|-----------|---------------|
+| 🧭 **Router** | `router/` | Normalize query → Detect intent + extract params |
+| ⚡ **Actions** | `actions/` | Execute action (call, alarm, app launch, device control) |
+| 📱 **Android** | `android/` | Action registry with Android intent mapping + executor |
+
+Support modules handle contacts resolution, package lookup, media routing, alarm/timer/reminder management, and debug logging.
 
 ### Processing Pipeline
 
 ```
-User Query → Normalize (Hindi→English) → Priority Router → Route to Brain → Execute → Record Pattern → Response
+User Query → Normalize (Hindi→English) → Detect Intent (13 categories) → Execute Action → Log → Response
 ```
+
+### Intent Categories (Priority Order)
+
+| Priority | Intent | Examples |
+|----------|--------|---------|
+| 1 | EMERGENCY | `emergency`, `help`, `bachao` |
+| 2 | CALL | `call mummy`, `dial 98765...` |
+| 3 | SEND_SMS | `message mummy mein ghar aa raha hoon` |
+| 4 | OPEN_APP | `open whatsapp`, `youtube kholo` |
+| 5 | OPEN_CAMERA | `camera kholo`, `selfie lo` |
+| 6 | FLASHLIGHT | `torch on karo`, `flashlight off` |
+| 7 | YOUTUBE | `youtube search sad songs`, `gaana chalao` |
+| 8 | SET_ALARM | `alarm 7 am`, `alarm lagao 7 baje` |
+| 9 | SET_REMINDER | `remind me after 10 minutes...` |
+| 10 | SET_TIMER | `timer 5 minutes`, `timer lagao` |
+| 11 | DEVICE_CONTROL | `volume badhao`, `wifi on`, `home jao` |
+| 12 | SEARCH | `search python tutorial`, `who is...` |
+| 13 | CHAT | `hello kaise ho` (→ conscious brain / LLM) |
 
 ### Key Design Decisions
 
-1. **Priority-Ordered Intent Detection**: 20 intents checked in strict priority order. Emergency (1) > Call (2) > Camera (5) > Flashlight (6) > Bluetooth (7) > WiFi (8) > Volume (10) > Open App (4) > ... > Chat (20). Device-specific intents checked BEFORE generic `open` to prevent misclassification.
+1. **Priority-Ordered Intent Detection**: 13 categories checked in strict priority order. SEARCH is always last — device commands (call, camera, flashlight, alarm, timer, YouTube) are all detected before generic search.
 
 2. **Single-Pass Hindi Normalization**: Uses regex alternation (longest-match-first) instead of sequential `str.replace()` to prevent double-replacement (e.g., "home jao" → "go home", not "go go home").
 
-3. **Fully Stateless Reflex Layer**: All reflex handlers are pure functions — parse query, return intent payload. No LLM calls, no state mutations, zero side effects.
+3. **Fully Stateless Action Layer**: All action handlers are pure functions — parse params, return intent payloads. No LLM calls, no state mutations, zero side effects.
 
-4. **Pattern Learning Background**: Subconscious brain records every action (max 1000 entries) and detects time-based patterns (3+ occurrences at same hour) and sequential patterns (2+ occurrences of action follow).
+4. **Chrome Fallback Eliminated**: Only SEARCH intent opens a browser URL. All device commands (alarm, timer, call, camera, flashlight, WiFi, Bluetooth, volume, home, app launch, YouTube) route through the Android Action Registry and Executor — never to Chrome.
 
-5. **Lazy-Loaded Conscious Brain**: JARVIS Orchestrator is only imported when a Chat/Search/Goal intent is detected — zero overhead for reflex-only interactions.
+5. **Contact Resolution Before Dialing**: `execute_call()` always resolves contact names to phone numbers via `ContactsResolver` before dialing. Never dials string names directly.
+
+6. **YouTube Always Routes to YouTube App**: YouTube commands always target `com.google.android.youtube` package — never Chrome. Music fallback (`gaana chalao`) attempts JARVIS music handler then falls back to YouTube search URL.
+
+7. **Smart Brain Delegation**: Emergency/call/sms intents bypass LLM entirely — only CHAT and SEARCH intents reach the conscious brain. This keeps response times under 5ms for reflex actions vs 1-5s for LLM responses.
 
 ### API Endpoints
 
