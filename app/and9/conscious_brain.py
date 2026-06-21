@@ -69,7 +69,7 @@ class ConsciousBrain:
             if isinstance(response, dict):
                 return BrainResult(
                     response=response.get("response", str(response)),
-                    action=response.get("action"),
+                    action=response.get("action") or "chat",
                     payload=response.get("payload"),
                     brain=BrainType.CONSCIOUS,
                     intent=IntentType.CHAT,
@@ -79,6 +79,7 @@ class ConsciousBrain:
 
             return BrainResult(
                 response=str(response),
+                action="chat",
                 brain=BrainType.CONSCIOUS,
                 intent=IntentType.CHAT,
                 execution_time_ms=elapsed,
@@ -107,6 +108,7 @@ class ConsciousBrain:
 
             return BrainResult(
                 response=response_text,
+                action="chat",
                 brain=BrainType.CONSCIOUS,
                 intent=IntentType.CHAT,
                 execution_time_ms=elapsed,
