@@ -4,7 +4,7 @@ services:
     runtime: python
     region: oregon
     plan: free
-    buildCommand: chmod +x build.sh && ./build.sh
+    buildCommand: chmod +x scripts/build.sh && ./scripts/build.sh
     startCommand: gunicorn app.main:app --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
     healthCheckPath: /health
     envVars:
