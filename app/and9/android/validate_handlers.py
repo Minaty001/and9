@@ -28,10 +28,13 @@ from app.and9.android.action_registry import _REQUIRED_ACTIONS
 logger = logging.getLogger(__name__)
 
 # Path to the Kotlin overlay file that dispatches Android actions
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_DEFAULT_KT_PATH = _PROJECT_ROOT / "android" / "app" / "src" / "main" / "java" / "com" / "jarvis" / "assistant" / "overlay" / "OverlayViewController.kt"
+
 _OVERLAY_KT_PATH = Path(
     os.environ.get(
         "AND9_OVERLAY_KT",
-        "/root/and9/android/app/src/main/java/com/jarvis/assistant/overlay/OverlayViewController.kt",
+        str(_DEFAULT_KT_PATH),
     )
 )
 
@@ -73,27 +76,33 @@ _KOTLIN_ALIASES = {
 }
 
 
-def _extract_kotlin_handlers(kt_path: Path) -> Set[str]:
+def _extract_kotlin_handlers(kt_path: Path) -> Set[str] | None:
     """Parse the Kotlin file and extract action string literals from when{} blocks.
 
     Looks for patterns like:
         "open_app"    ->    ...
         "alarm", "set_alarm" ->    ...
 
-    Returns a set of lowercase action strings found.
+    Returns a set of lowercase action strings found, or None if the file cannot be read/accessed.
     """
-    if not kt_path.exists():
-        logger.warning(
-            "OverlayViewController.kt not found at: %s — skipping Kotlin parse.",
-            kt_path,
-        )
-        return set()
-
     try:
+        if not kt_path.exists():
+            logger.warning(
+                "OverlayViewController.kt not found at: %s — skipping Kotlin parse.",
+                kt_path,
+            )
+            return None
         source = kt_path.read_text(encoding="utf-8")
+    except (PermissionError, FileNotFoundError, OSError) as e:
+        logger.warning(
+            "OverlayViewController.kt cannot be read/accessed at %s: %s — skipping Kotlin parse.",
+            kt_path,
+            e,
+        )
+        return None
     except Exception as e:
-        logger.warning("Cannot read Kotlin source %s: %s", kt_path, e)
-        return set()
+        logger.warning("Unexpected error reading Kotlin source %s: %s", kt_path, e)
+        return None
 
     # Match action string literals inside when blocks
     # e.g.  "torch", "flashlight" ->  { ... }
@@ -129,6 +138,12 @@ def validate_android_handlers() -> None:
         RuntimeError: If any critical action lacks an Android handler.
     """
     kt_handlers = _extract_kotlin_handlers(_OVERLAY_KT_PATH)
+    if kt_handlers is None:
+        logger.warning(
+            "Android handler coverage check skipped: Kotlin source file not accessible."
+        )
+        return
+
     kt_normalized = _normalize_actions(kt_handlers)
 
     # Add always-covered sets
@@ -164,6 +179,18 @@ def validate_android_handlers() -> None:
 def get_coverage_report() -> dict:
     """Return a full coverage report dict for diagnostics / admin endpoints."""
     kt_handlers = _extract_kotlin_handlers(_OVERLAY_KT_PATH)
+    if kt_handlers is None:
+        return {
+            "total_required": len(_REQUIRED_ACTIONS),
+            "covered": [],
+            "missing": sorted(_REQUIRED_ACTIONS),
+            "coverage_pct": 0.0,
+            "kotlin_literals_found": [],
+            "kt_path": str(_OVERLAY_KT_PATH),
+            "kt_found": False,
+            "error": "Kotlin source file not found or permission denied.",
+        }
+
     kt_normalized = _normalize_actions(kt_handlers)
     all_covered = kt_normalized | _ACCESSIBILITY_HANDLED | _INTENT_ONLY_ACTIONS
 
