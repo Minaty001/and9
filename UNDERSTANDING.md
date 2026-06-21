@@ -1018,6 +1018,186 @@ ask_llm(messages, model, system, context)
 
 ---
 
+## 🧠 AND9 — Multi-Brain Cognitive Architecture (`app/and9/`)
+
+AND9 is a three-layer cognitive AI system layered on top of JARVIS v4. It processes every user query through a pipeline that progressively routes from fastest brain (Reflex) to slowest (Conscious), only escalating when necessary.
+
+### Brain Layers
+
+| Layer | Brain | File | Speed | Tech |
+|-------|-------|------|-------|------|
+| 1 | **Reflex** | `reflex_brain.py` | <10ms | Regex + keyword matching, 15 handler modules |
+| 2 | **Subconscious** | `subconscious_brain.py` | <5ms overhead | In-memory action history, frequency/sequence detection |
+| 3 | **Conscious** | `conscious_brain.py` | ~1-5s | Wraps JARVIS Orchestrator (Groq/Dolphin LLM) |
+
+### File Map
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `brain_types.py` | 102 | `BrainType` enum (REFLEX/SUBCONSCIOUS/CONSCIOUS), `IntentType` enum (20 intents), `BrainResult` dataclass with `to_dict()` serialization |
+| `normalizer.py` | 139 | Hindi→English single-pass regex normalization (30+ mappings). `normalize()`, `extract_potential_app_name()`, `extract_search_query()` |
+| `priority_router.py` | 216 | Priority-ordered intent detection (20 groups). `detect_intent()` with strict ordering to prevent misclassification. Helper extractors for times, contacts, numbers |
+| `reflex_brain.py` | 297 | Main reflex dispatcher. `ReflexBrain.execute()` pipeline: normalize → detect → dispatch. Routes to correct handler based on IntentType |
+| `reflex_apps.py` | 275 | `ReflexAppResolver` — 40+ app→Intent mappings with Hindi aliases (yt→youtube, wa→whatsapp, insta→instagram). `resolve()` + `fuzzy_match()` |
+| `reflex_device.py` | 142 | Stateless device handlers: flashlight, volume, WiFi, Bluetooth, airplane mode, home, camera. Each returns `{response, action, payload}` |
+| `reflex_media.py` | 70 | YouTube search/play via JARVIS music stack. Falls back gracefully if `youtube-search-python` not installed |
+| `reflex_calls.py` | 210 | Call/message with contact resolution. `_CONTACTS` dict: 20+ Hindi contacts (mummy, papa, bhai, didi, etc.) + fuzzy matching |
+| `reflex_alarm.py` | 220 | Alarm/timer/reminder with time parsing. Absolute (7 am) and relative (after 10 minutes) formats. Noise-word stripping for clean labels |
+| `subconscious_brain.py` | 205 | Pattern detection: time-based (3+ occurrences at same hour) and sequential (2+ action follows). `PatternRecord` dataclass, 1000-entry history cap |
+| `conscious_brain.py` | 115 | Lazy-loaded JARVIS Orchestrator wrapper. Error handling for missing API keys and network issues |
+| `and9.py` | 195 | Main orchestrator. `AND9.process()` pipeline: normalize → route → execute → record. `_route_to_brain()` dispatch logic. `get_stats()` API |
+
+### Intent Priority Order (1 = highest)
+
+| Priority | IntentType | Brain | Example |
+|----------|-----------|-------|---------|
+| 1 | `EMERGENCY` | Reflex | "bachao", "help me", "emergency" |
+| 2 | `CALL` | Reflex | "call mummy", "dial 9876543210" |
+| 3 | `MESSAGE` | Reflex | "message rahul kal milte hain" |
+| 4 | `OPEN_APP` | Reflex | "youtube kholo", "open chrome" |
+| 5 | `CAMERA` | Reflex | "camera kholo", "selfie lo" |
+| 6 | `FLASHLIGHT` | Reflex | "torch on karo", "light off karo" |
+| 7 | `BLUETOOTH` | Reflex | "bluetooth on karo" |
+| 8 | `WIFI` | Reflex | "wifi off karo" |
+| 9 | `AIRPLANE_MODE` | Reflex | "flight mode on karo" |
+| 10 | `VOLUME` | Reflex | "volume badhao", "mute karo" |
+| 11 | `YOUTUBE` | Reflex | "youtube search cooking" |
+| 12 | `MUSIC` | Reflex | "gaana chalao", "play song" |
+| 13 | `SET_ALARM` | Reflex | "alarm 7 am", "alarm lagao 6 baje" |
+| 14 | `SET_REMINDER` | Reflex | "remind me after 10 min meeting" |
+| 15 | `SET_TIMER` | Reflex | "timer 5 minutes" |
+| 16 | `GOAL` | Conscious | "muskil goal set karo" |
+| 17 | `HOME` | Reflex | "home jao", "go home" |
+| 18 | `AUTOMATION` | Subconscious | Pattern-based suggestions |
+| 19 | `SEARCH` | Conscious | "search python tutorial" |
+| 20 | `CHAT` | Conscious | "hello kaise ho" |
+
+### Processing Pipeline
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ User: "call mummy"                                          │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│ 1. Normalize                                                │
+│    normalizer.normalize("call mummy")                       │
+│    → ("call mummy", False)  [already English]               │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│ 2. Detect Intent                                            │
+│    priority_router.detect_intent("call mummy")              │
+│    → (IntentType.CALL, BrainType.REFLEX)                    │
+│    [Matched: r"\bcall\b" pattern]                           │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│ 3. Route to Brain                                           │
+│    AND9._route_to_brain("call mummy")                       │
+│    → BrainType.REFLEX → ReflexBrain.execute()               │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│ 4. Execute Reflex Handler                                   │
+│    reflex_calls.handle_call("call mummy")                   │
+│    → Resolve contact "mummy" → +919999990001                │
+│    → RETURN: CALL intent with tel:+919999990001             │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│ 5. Record Action (Subconscious)                             │
+│    subconscious.record_action(result, query)                │
+│    → PatternRecord(action="CALL", intent="call",            │
+│                    query="call mummy", hour=<now>)          │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│ 6. Return Response                                          │
+│    BrainResult.to_dict() → JSON                             │
+│    {response: "Call kar raha hoon Mummy ko... 📞",          │
+│     action: "CALL", brain: "reflex",                        │
+│     intent: "call", time_ms: 2.4, ...}                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Hindi Normalization Engine
+
+**File**: `normalizer.py`
+
+The normalizer converts 30+ Hindi/Hinglish command phrases into English using a single-pass regex alternation strategy:
+
+```python
+_HINDI_TO_ENGLISH = {
+    "kholo": "open", "chalao": "open",
+    "call lagao": "call",
+    "alarm lagao": "set alarm",
+    "torch on karo": "flashlight on",
+    "home jao": "go home",
+    ...
+}
+# Sorted by length DESC → longest phrase matches first
+# Prevents "home jao" → "go jao" → "go go home"
+```
+
+**Key design**: Regex alternation (`re.sub(r'phrase1|phrase2|...', ...)`) replaces all phrases simultaneously. The longest phrase is tried first, so multi-word phrases (e.g., "torch on karo") always beat sub-matches ("karo" alone).
+
+### Reflex Device Handlers
+
+**File**: `reflex_device.py`
+
+All handlers return a uniform dict `{response, action, payload}`:
+
+| Function | Action Type | Payload Keys |
+|----------|-------------|--------------|
+| `handle_flashlight(q)` | FLASHLIGHT | `state: bool\|"toggle"` |
+| `handle_volume(q)` | VOLUME_UP/DOWN/MUTE/MAX | `level: int` or `delta: int` |
+| `handle_wifi(q)` | WIFI | `state: bool\|"toggle"` |
+| `handle_bluetooth(q)` | BLUETOOTH | `state: bool\|"toggle"` |
+| `handle_airplane_mode(q)` | AIRPLANE_MODE | `state: bool\|"toggle"` |
+| `handle_home()` | GO_HOME | `{}` |
+| `handle_camera()` | LAUNCH_APP | Standard Android Intent |
+
+State detection helpers `_has_on()` / `_has_off()` match keywords like `on`, `enable`, `kholo`, `chalu` for ON and `off`, `disable`, `band`, `bnd` for OFF.
+
+### Contact Resolution
+
+**File**: `reflex_calls.py`
+
+Contacts are resolved via a hardcoded `_CONTACTS` dict with 20+ entries:
+
+```
+mummy→+919999990001, papa→+919999990002, bhai→+919999990003,
+didi→+919999990004, saif→+919999990021, boss→+919999990031, ...
+```
+
+Fuzzy matching supports partial name lookup (`"saif"` matches `"saif ali"`). Phone numbers can be dialed directly (`"call 9876543210"`) without contact resolution.
+
+### Alarm/Reminder Time Parsing
+
+**File**: `reflex_alarm.py`
+
+Three helper functions power temporal commands:
+
+1. `_extract_time(query)`: Returns `{"type": "absolute", "hour": 7, "minute": 0}` or `{"type": "relative", "seconds": 600}`. Absolute time checked AFTER relative to avoid "baad" interference.
+
+2. `_extract_duration_seconds(query)`: Multi-unit support — "2 minutes 30 seconds" → 150s. Uses regex for each unit (hours, minutes, seconds).
+
+3. `_extract_label(query)`: Action word stripping + time expression removal + noise word filtering → clean label. Example: "remind me after 10 minutes meeting with boss" → "meeting with boss".
+
+### Pattern Learning
+
+**File**: `subconscious_brain.py`
+
+| Algorithm | Threshold | Detection Method |
+|-----------|-----------|------------------|
+| Time-based frequency | 3+ occurrences same hour+day | `Counter(r.action for r in history if r.hour==h and r.day_of_week==d)` |
+| Sequential pattern | 2+ occurrences same follow | `history[i].action == last_action` → check `history[i+1].action` |
+
+**Stats endpoint returns**: `total_actions`, `top_actions` (top 10), `unique_actions `, `top_hours` (top 5), `top_days` (top 5).
+
+---
+
 ## API Endpoints Complete Reference
 
 | Method | Endpoint | Body/Params | Returns |

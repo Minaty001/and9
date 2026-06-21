@@ -581,3 +581,76 @@ def cancel_timer(timer_id):
     ok = get_timer_service().cancel(timer_id)
     return jsonify({"cancelled": ok})
 
+
+# ═══════════════════════════════════════════════════════════════
+# AND9 API — Multi-brain AI Operating System
+# ═══════════════════════════════════════════════════════════════
+
+_and9_instance = None
+
+
+def get_and9():
+    global _and9_instance
+    if _and9_instance is None:
+        from app.and9 import AND9
+        from app.core.events import EventSystem
+        _and9_instance = AND9(events_sys=get_events())
+    return _and9_instance
+
+
+@api_bp.route("/and9", methods=["POST"])
+def and9_process():
+    """POST /api/and9 — Process query through AND9 multi-brain system.
+
+    Body JSON:
+        query (str) — User input (Hindi, Hinglish, or English).
+
+    Returns JSON:
+        response (str)        — Natural language reply
+        action (str|null)     — Action type (e.g., "LAUNCH_APP", "CALL")
+        payload (dict|null)   — Action payload/Android intent
+        brain (str)           — Which brain handled it ("reflex"/"conscious")
+        intent (str|null)     — Detected intent type
+        time_ms (float)       — Execution time
+        success (bool)        — Whether execution succeeded
+    """
+    data = request.get_json(silent=True) or {}
+    query = (data.get("query") or "").strip()
+
+    if not query:
+        return jsonify({
+            "response": "Kya karna hai? Kuch batao na!",
+            "action": None,
+            "payload": None,
+            "brain": "conscious",
+            "intent": None,
+            "time_ms": 0,
+            "success": False,
+        }), 400
+
+    try:
+        result = get_and9().process(query)
+        return jsonify(result.to_dict())
+    except Exception as e:
+        logger.exception("AND9 endpoint error")
+        return jsonify({
+            "response": f"AND9 error: {e}",
+            "action": None,
+            "payload": None,
+            "brain": "conscious",
+            "intent": None,
+            "time_ms": 0,
+            "success": False,
+        }), 500
+
+
+@api_bp.route("/and9/stats", methods=["GET"])
+def and9_stats():
+    """GET /api/and9/stats — Get AND9 system statistics."""
+    try:
+        stats = get_and9().get_stats()
+        return jsonify(stats)
+    except Exception as e:
+        logger.exception("AND9 stats error")
+        return jsonify({"error": str(e)}), 500
+

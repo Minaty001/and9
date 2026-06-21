@@ -114,6 +114,20 @@ python3 scripts/rebuild_user_apk.py
 and9/
   ├── android/               (Native Android client — no direct LLM calls)
   ├── app/
+  │    ├── and9/             ← 🆕 AND9 — Multi-Brain AI Operating System
+  │    │    ├── brain_types.py        (BrainType/IntentType enums, BrainResult)
+  │    │    ├── normalizer.py         (Hindi → English command normalization)
+  │    │    ├── priority_router.py    (20-intent priority-ordered detection)
+  │    │    ├── reflex_brain.py       (Instant <100ms reflex dispatcher)
+  │    │    ├── reflex_apps.py        (40+ app alias resolution)
+  │    │    ├── reflex_device.py      (Flashlight/volume/WiFi/BT handlers)
+  │    │    ├── reflex_media.py       (YouTube search/play handlers)
+  │    │    ├── reflex_calls.py       (Call/message with contact resolution)
+  │    │    ├── reflex_alarm.py       (Alarm/timer/reminder with time parsing)
+  │    │    ├── subconscious_brain.py (Pattern learning & habit detection)
+  │    │    ├── conscious_brain.py    (LLM reasoning via JARVIS Orchestrator)
+  │    │    ├── and9.py              (Main orchestrator — routing pipeline)
+  │    │    └── __init__.py          (Public API exports)
   │    ├── agents/           (LLM orchestrators & coding/research agents)
   │    ├── api/              (REST endpoints & socket routers)
   │    ├── core/
@@ -146,6 +160,73 @@ and9/
 | `orchestrator.py` | Pipeline: Understand → Truth Engine → Context → Route → Post-Process |
 | `brain.py` | LLM provider abstraction (Groq primary, Opencode fallback) |
 | `reflection.py` | Session summaries + daily reviews — regex-only fact extraction |
+
+---
+
+## 🧠 AND9 — Multi-Brain AI Operating System
+
+**AND9** (`app/and9/`) is a cognitive architecture that layers three brains on top of JARVIS v4, inspired by cognitive science:
+
+### Brain Layers
+
+| Brain | Target Latency | Capability | Intent Examples |
+|-------|---------------|------------|----------------|
+| 🧠 **Reflex** | <100ms | Deterministic, no-LLM actions | App launch, flashligth, call, alarm, timer |
+| 🧠 **Subconscious** | ~200ms | Pattern learning, habit detection | Time-of-day suggestions, sequential automation |
+| 🧠 **Conscious** | ~1-5s | LLM reasoning, planning, complex tasks | Chat, search, goals, code generation |
+
+### Processing Pipeline
+
+```
+User Query → Normalize (Hindi→English) → Priority Router → Route to Brain → Execute → Record Pattern → Response
+```
+
+### Key Design Decisions
+
+1. **Priority-Ordered Intent Detection**: 20 intents checked in strict priority order. Emergency (1) > Call (2) > Camera (5) > Flashlight (6) > Bluetooth (7) > WiFi (8) > Volume (10) > Open App (4) > ... > Chat (20). Device-specific intents checked BEFORE generic `open` to prevent misclassification.
+
+2. **Single-Pass Hindi Normalization**: Uses regex alternation (longest-match-first) instead of sequential `str.replace()` to prevent double-replacement (e.g., "home jao" → "go home", not "go go home").
+
+3. **Fully Stateless Reflex Layer**: All reflex handlers are pure functions — parse query, return intent payload. No LLM calls, no state mutations, zero side effects.
+
+4. **Pattern Learning Background**: Subconscious brain records every action (max 1000 entries) and detects time-based patterns (3+ occurrences at same hour) and sequential patterns (2+ occurrences of action follow).
+
+5. **Lazy-Loaded Conscious Brain**: JARVIS Orchestrator is only imported when a Chat/Search/Goal intent is detected — zero overhead for reflex-only interactions.
+
+### API Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/api/and9` | `{"query": "..."}` → Full AND9 processing result |
+| `GET` | `/api/and9/stats` | Pattern learning statistics and history |
+
+### Example Usage
+
+```bash
+# Reflex: App launch
+curl -X POST http://localhost:8000/api/and9 \
+  -H "Content-Type: application/json" \
+  -d '{"query":"youtube kholo"}'
+# → {"response":"Youtube khol raha hoon... 📱","action":"LAUNCH_APP","brain":"reflex","time_ms":3.2,...}
+
+# Reflex: Device control
+curl -X POST http://localhost:8000/api/and9 \
+  -H "Content-Type: application/json" \
+  -d '{"query":"torch on karo"}'
+# → {"response":"Flashlight on kar diya! 💡","action":"FLASHLIGHT","brain":"reflex","time_ms":1.8,...}
+
+# Reflex: Call with contact
+curl -X POST http://localhost:8000/api/and9 \
+  -H "Content-Type: application/json" \
+  -d '{"query":"call mummy"}'
+# → {"response":"Call kar raha hoon Mummy ko... 📞","action":"CALL","brain":"reflex","time_ms":2.1,...}
+
+# Conscious: LLM chat
+curl -X POST http://localhost:8000/api/and9 \
+  -H "Content-Type: application/json" \
+  -d '{"query":"hello kaise ho"}'
+# → {"response":"...","brain":"conscious","time_ms":1250,...}
+```
 
 ---
 
