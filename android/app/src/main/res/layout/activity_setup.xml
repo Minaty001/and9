@@ -295,6 +295,35 @@
             android:lineSpacingMultiplier="1.5"
             android:layout_marginTop="16dp" />
 
+        <!-- About JARVIS -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1A1E30"
+            android:padding="20dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🤖 About JARVIS"
+                android:textColor="#00FFFF"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-black"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="JARVIS is an open-source, on-device AI assistant built for Android.&#10;&#10;It features:&#10;• 🎙️ Continuous voice wake-word detection&#10;• 🧠 Multi-brain AI pipeline (Reflex → Subconscious → Conscious)&#10;• 🔦 Device controls — flashlight, volume, WiFi, Bluetooth&#10;• 📞 Hands-free calling &amp; messaging&#10;• ⏰ Alarms, timers &amp; reminders&#10;• ▶️ YouTube &amp; media playback&#10;• 🔍 Web search &amp; app launching&#10;• 📋 Clipboard &amp; accessibility controls&#10;• 🧩 Memory consolidation &amp; self-reflection&#10;&#10;Crafted with ❤️ by Minaty&#10;Open source · Privacy-first · No cloud dependency"
+                android:textColor="#CCFFFFFF"
+                android:textSize="13sp"
+                android:lineSpacingMultiplier="1.4" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
 </ScrollView>

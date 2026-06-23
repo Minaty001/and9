@@ -386,8 +386,6 @@ class CognitiveEngine:
             **{k: v for k, v in context_kwargs.items() if hasattr(CognitiveContext, k)},
         )
 
-        start = time.perf_counter()
-
         # ═══════════════════════════════════════════════════════════
         # BRAIN 1: REFLEX — Instant action (<300ms)
         # ═══════════════════════════════════════════════════════════

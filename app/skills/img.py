@@ -25,7 +25,7 @@ def open_file(filepath):
         else:
             opener = "open" if sys.platform == "darwin" else "xdg-open"
             subprocess.call([opener, filepath])
-    except:
+    except Exception:
         pass
 
 def show_progress(percent, status=""):
@@ -219,7 +219,7 @@ def generate_image(prompt, style="realistic"):
                         print("❌ No image components in response.")
                         return None, None
 
-        except Exception as e:
+        except Exception:
             # Don't break on poll errors, keep trying
             pass
     

@@ -164,7 +164,6 @@ class PatternLearner:
                 last_action: Optional[str] = None) -> Optional[Dict]:
         """Predict the most likely next action based on learned patterns."""
         hour_key = f"hour:{current_hour}"
-        day_key = f"day:{current_day}"
 
         predictions = []
 

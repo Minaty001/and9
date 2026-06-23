@@ -115,12 +115,10 @@ class SelfReflection:
     def _save_reflection(self, reflection: Dict[str, Any]):
         """Persists the reflection record to database and local fallback file."""
         # 1. Try Supabase write
-        supabase_success = False
         if self._supabase_client:
             try:
                 # Table might not exist, ignore if it errors
                 self._supabase_client.table("reflection_log").insert(reflection).execute()
-                supabase_success = True
             except Exception as e:
                 logger.debug(f"Supabase reflection insert failed: {e}")
 

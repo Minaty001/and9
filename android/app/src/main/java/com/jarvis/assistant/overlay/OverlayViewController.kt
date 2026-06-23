@@ -321,7 +321,10 @@ class OverlayViewController(
     fun startListening() {
         if (isDestroyedOrDismissed) return
         if (!hasMicPermission()) return
-        
+
+        // Stop any ongoing TTS when switching to listen mode
+        tts.stop()
+
         val s = service
         if (s == null) {
             shouldStartListeningOnBind = true
@@ -351,6 +354,32 @@ class OverlayViewController(
      */
     fun processTextInput(text: String) {
         val cleanText = text.trim().lowercase()
+
+        // ── Voice commands to stop/interrupt assistant ────────────────
+        // Only process when NOT in confirmation mode
+        if (!isConfirmationPending) {
+            // "mute" → stop speaking and stay silent
+            val muteKeywords = setOf("mute", "silent", "shut up", "chup", "chup raho")
+            if (muteKeywords.any { cleanText.startsWith(it) || cleanText.contains(it) }) {
+                tts.stop()
+                showStatus("Mute kar diya 🔇")
+                stopListening()
+                return
+            }
+
+            // "stop", "suno", "listen", "ruko" → stop speaking and start listening
+            val interruptKeywords = setOf("suno", "listen", "ruko", "rok", "sun", "suniyega", "interrupt")
+            if (interruptKeywords.any { cleanText.startsWith(it) || cleanText.contains(it) }) {
+                tts.stop()
+                showStatus("Suno... boliye 👂")
+                stopListening()
+                mainHandler.postDelayed({
+                    if (!isDestroyedOrDismissed) startListening()
+                }, 200)
+                return
+            }
+        }
+
         if (isConfirmationPending) {
             val confirmKeywords = setOf("yes", "haan", "confirm", "karo", "sure", "ok", "okay", "yeah", "yep", "ha", "haji")
             val cancelKeywords = setOf("no", "nahi", "cancel", "roko", "stop", "nope", "never", "nahin")

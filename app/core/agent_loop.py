@@ -279,7 +279,6 @@ class AgentLoop:
             return
 
         success = getattr(result, 'success', True) if hasattr(result, 'success') else True
-        brain_used = getattr(result, 'processing_level', None)
         time_ms = getattr(result, 'execution_time_ms', 0)
 
         # Generate insights from failures

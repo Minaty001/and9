@@ -64,7 +64,7 @@ def _youtube_search_mapper(params: dict, events_sys: Any) -> dict:
 
 def _device_toggle_mapper(params: dict, events_sys: Any) -> dict:
     state = params.get("state")
-    return {"q": f"on" if state is True else "off" if state is False else ""}
+    return {"q": "on" if state is True else "off" if state is False else ""}
 
 # Registering skills
 register_skill("set_alarm", "app.and9.actions.alarm_actions", "execute_set_alarm", _alarm_mapper)
