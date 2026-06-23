@@ -24,10 +24,15 @@ youtube-search-python~=1.6.6   # YouTube search without API key
 beautifulsoup4~=4.13.0
 
 # ── Image Generation ─────────────────────────────────
-Pillow~=11.2.0           # Image handling
+Pillow>=10.0.0           # Image handling
 
-# ── Utilities ────────────────────────────────────────
-numpy~=2.2.0             # Numerical operations
+# ── NLP ──────────────────────────────────────────────────────────────────────
+spacy~=3.8.0             # Industrial-strength NLP: tokenizer, POS, NER, dep parse
+# After install, download the English model once:
+#   python -m spacy download en_core_web_sm
+
+# ── Utilities ────────────────────────────────────────────────────────────────
+numpy>=2.0.0             # Numerical operations (also used by NLP pipeline)
 python-dotenv~=1.0.0     # .env file support
 
 # ── Testing ──────────────────────────────────────────

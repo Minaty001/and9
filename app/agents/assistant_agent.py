@@ -20,6 +20,7 @@ class AssistantAgent:
             "device_call":    self._handle_device,
             "device_control": self._handle_device,
             "device_storage": self._handle_device,
+            "device":         self._handle_device,
             "image":          self._handle_image,
             "search":         self._handle_search,
             "research":       self._handle_research,

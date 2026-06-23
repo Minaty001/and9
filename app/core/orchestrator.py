@@ -243,7 +243,7 @@ class Orchestrator:
 
         if agent:
             try:
-                result = agent.run(query)
+                result = agent.run(query, intent_name=agent_name)
                 response = str(result.get("result", ""))
                 metadata = result.get("metadata", {})
                 success = result.get("success", True)

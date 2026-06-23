@@ -111,6 +111,38 @@ def _init_and9(app: Flask) -> None:
     _startup_logger.info("AND9 initialized. Three-Brain Architecture ACTIVE.")
 
 
+def _init_personality(app: Flask) -> None:
+    """Initialize the PersonalOS cognitive architecture.
+
+    This is the NEW unified cognitive layer that wraps the existing
+    AND9 three-brain system with:
+    - Agent Loop (continuous Observe→Think→Act→Reflect→Learn)
+    - Cognitive Engine (Reflex + Habit + Reasoning)
+    - Learning System (Pattern, Skill, Preference)
+    - Procedural Memory
+    - Memory Consolidation (Working→Episodic→Semantic)
+    - Automation System (Goals, Habits, Scheduled Actions)
+    - Self-Reflection
+
+    The PersonalOS instance is stored on app.personality_os for
+    access from API routes.
+    """
+    try:
+        from app.core.personality_os import PersonalOS
+
+        personality_os = PersonalOS()
+        personality_os.initialize()
+        app.personality_os = personality_os
+
+        _startup_logger.info("PersonalOS initialized — Full cognitive architecture ACTIVE.")
+        _startup_logger.info(
+            "Systems: Reflex | Habit | Reasoning | Memory | Learning | Automation | Reflection"
+        )
+    except Exception as e:
+        _startup_logger.warning("PersonalOS initialization deferred: %s", e)
+        app.personality_os = None
+
+
 def create_app() -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="")
@@ -130,6 +162,9 @@ def create_app() -> Flask:
 
     # ── AND9 Startup Initialization (Phase 12, 15) ───────────────
     _init_and9(app)
+
+    # ── PersonalOS Cognitive Architecture (Phase 16) ────────────
+    _init_personality(app)
 
     # ── Request ID ──────────────────────────────────────────────
     @app.before_request

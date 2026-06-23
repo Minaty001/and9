@@ -669,3 +669,178 @@ def and9_stats():
         logger.exception("AND9 stats error")
         return jsonify({"error": str(e)}), 500
 
+
+# ═══════════════════════════════════════════════════════════════
+# PersonalOS API — Full Cognitive Architecture
+# ═══════════════════════════════════════════════════════════════
+
+_personality = None
+
+
+def get_personality():
+    """Get or create the PersonalOS singleton.
+
+    Falls back to getting it from the Flask app if already initialized
+    during startup, or creates a new instance on-demand.
+    """
+    global _personality
+    if _personality is not None:
+        return _personality
+
+    # Try to get from Flask app (initialized during startup)
+    try:
+        from flask import current_app
+        if current_app and hasattr(current_app, "personality_os"):
+            _personality = current_app.personality_os
+            if _personality is not None:
+                return _personality
+    except Exception:
+        pass
+
+    # Create on-demand (cold start)
+    from app.core.personality_os import PersonalOS
+    _personality = PersonalOS()
+    _personality.initialize()
+    return _personality
+
+
+@api_bp.route("/personality/process", methods=["POST"])
+def personality_process():
+    """POST /api/personality/process — Process input through full cognitive architecture.
+
+    Body JSON:
+        query  (str)  — User input (Hindi, Hinglish, or English)
+        source (str)  — Optional: "user" | "notification" | "screen" | "system"
+        **context     — Additional context keys
+
+    Returns JSON:
+        response (str)        — Natural language reply
+        brain (str)           — Which brain handled it ("reflex"/"conscious")
+        time_ms (float)       — Processing time
+        success (bool)        — Whether execution succeeded
+        learning (dict|null)  — Any learning that occurred
+        metadata (dict)       — Full processing metadata
+    """
+    data = request.get_json(silent=True) or {}
+    query = (data.get("query") or data.get("message") or "").strip()
+
+    if not query:
+        return jsonify({
+            "response": "Kya karna hai? Kuch batao na!",
+            "brain": "conscious",
+            "time_ms": 0,
+            "success": False,
+            "learning": None,
+            "metadata": {},
+        }), 400
+
+    try:
+        source = data.get("source", "user")
+        context = {k: v for k, v in data.items() if k not in ("query", "message", "source")}
+
+        result = get_personality().process(query, source=source, **context)
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("PersonalityOS process error")
+        return jsonify({
+            "response": f"Personality OS error: {e}",
+            "brain": "conscious",
+            "time_ms": 0,
+            "success": False,
+            "learning": None,
+            "metadata": {"error": str(e)},
+        }), 500
+
+
+@api_bp.route("/personality/stats", methods=["GET"])
+def personality_stats():
+    """GET /api/personality/stats — Full system statistics."""
+    try:
+        stats = get_personality().get_stats()
+        return jsonify(stats)
+    except Exception as e:
+        logger.exception("Personality stats error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/personality/reflection", methods=["GET"])
+def personality_reflection():
+    """GET /api/personality/reflection — Daily reflection summary."""
+    try:
+        reflection = get_personality().get_daily_reflection()
+        return jsonify(reflection)
+    except Exception as e:
+        logger.exception("Personality reflection error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/personality/learnings", methods=["GET"])
+def personality_learnings():
+    """GET /api/personality/learnings — All accumulated learnings.
+
+    Returns patterns, skills, and preferences learned over time.
+    """
+    try:
+        learnings = get_personality().get_all_learnings()
+        return jsonify(learnings)
+    except Exception as e:
+        logger.exception("Personality learnings error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/personality/goals", methods=["GET"])
+def personality_goals():
+    """GET /api/personality/goals — List all goals."""
+    try:
+        summary = get_personality().get_goal_summary()
+        return jsonify({"summary": summary})
+    except Exception as e:
+        logger.exception("Personality goals error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/personality/goals", methods=["POST"])
+def personality_add_goal():
+    """POST /api/personality/goals — Add a new goal.
+
+    Body JSON:
+        title    (str)  — Goal title (required)
+        category (str)  — "personal" | "work" | "health" | "learning"
+        priority (str)  — "low" | "medium" | "high"
+    """
+    data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "").strip()
+    if not title:
+        return jsonify({"error": "title is required"}), 400
+
+    result = get_personality().add_goal(
+        title=title,
+        category=data.get("category", "personal"),
+        priority=data.get("priority", "medium"),
+    )
+    if result.get("success"):
+        return jsonify(result), 201
+    return jsonify(result), 500
+
+
+@api_bp.route("/personality/habits", methods=["POST"])
+def personality_add_habit():
+    """POST /api/personality/habits — Add a new habit to track.
+
+    Body JSON:
+        name      (str)  — Habit name (required)
+        frequency (str)  — "daily" | "weekly" | "weekday"
+    """
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "name is required"}), 400
+
+    result = get_personality().add_habit(
+        name=name,
+        frequency=data.get("frequency", "daily"),
+    )
+    if result.get("success"):
+        return jsonify(result), 201
+    return jsonify(result), 500
+

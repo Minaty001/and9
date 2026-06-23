@@ -1,0 +1,647 @@
+"""
+╔══════════════════════════════════════════════════════════════╗
+║           COGNITIVE ENGINE — Unified Brain Orchestrator      ║
+║   Integrates Reflex, Habit, Reasoning, Memory, Learning      ║
+╚══════════════════════════════════════════════════════════════╝
+
+Every input — user command, notification, screen change, environmental
+observation — flows through this engine. Processing order:
+
+    1. REFLEX BRAIN     (< 300ms) — Instant actions, no LLM
+    2. HABIT BRAIN      (~200ms)  — Pattern matching, habit prediction
+    3. REASONING BRAIN  (1-5s)    — LLM-powered deep thinking
+    4. MEMORY           (~100ms)  — Record, consolidate, learn
+    5. REFLECTION       (async)   — Evaluate, improve, plan
+
+Architecture mirrors the human brain's layered cognitive processing.
+"""
+
+import logging
+import time
+import threading
+from typing import Any, Dict, Optional, Callable
+from enum import Enum
+from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
+
+
+class ProcessingLevel(Enum):
+    """Which cognitive layer processed the input."""
+    REFLEX = "reflex"           # Instant, no thought
+    HABIT = "habit"             # Pattern-based prediction
+    REASONING = "reasoning"     # Deliberate LLM thinking
+    LEARNING = "learning"       # Background learning task
+    REFLECTION = "reflection"   # Self-evaluation
+
+
+@dataclass
+class CognitiveContext:
+    """Full context passed through the cognitive pipeline.
+
+    Each brain layer can read and modify this context.
+    The final result is built from the accumulated context.
+    """
+    raw_input: str
+    normalized_input: str = ""
+    detected_intent: str = ""
+    detected_action: str = ""
+    parameters: dict = field(default_factory=dict)
+    confidence: float = 0.0
+    processing_level: ProcessingLevel = ProcessingLevel.REFLEX
+    response: str = ""
+    payload: Any = None
+    execution_time_ms: float = 0.0
+    success: bool = True
+    user_id: str = "default"
+    session_id: int = 0
+    emotion: str = "neutral"
+    topic: str = "general"
+    metadata: dict = field(default_factory=dict)
+    _start_time: float = field(default_factory=time.perf_counter)
+
+    def elapsed_ms(self) -> float:
+        return (time.perf_counter() - self._start_time) * 1000
+
+    def to_dict(self) -> dict:
+        return {
+            "response": self.response,
+            "intent": self.detected_intent,
+            "action": self.detected_action,
+            "parameters": self.parameters,
+            "confidence": self.confidence,
+            "brain": self.processing_level.value,
+            "time_ms": self.execution_time_ms,
+            "success": self.success,
+            "emotion": self.emotion,
+            "topic": self.topic,
+            "payload": self.payload,
+            "metadata": self.metadata,
+        }
+
+
+class ReflexProcessor:
+    """Brain 1: Instant reflex actions. <300ms target. No LLM. No memory."""
+
+    def __init__(self):
+        self._handlers: Dict[str, Callable] = {}
+        self._intent_map: Dict[str, str] = {}  # keyword → intent
+        self._load_defaults()
+
+    def _load_defaults(self):
+        """Register default reflex patterns - app launches, device controls."""
+        # App launch patterns
+        apps = {
+            "whatsapp": "com.whatsapp",
+            "youtube": "com.google.android.youtube",
+            "chrome": "com.android.chrome",
+            "telegram": "org.telegram.messenger",
+            "instagram": "com.instagram.android",
+            "gmail": "com.google.android.gm",
+            "maps": "com.google.android.apps.maps",
+            "camera": "com.android.camera2",
+            "phone": "com.android.dialer",
+            "settings": "com.android.settings",
+            "calculator": "com.android.calculator2",
+            "calendar": "com.android.calendar",
+            "clock": "com.android.deskclock",
+            "spotify": "com.spotify.music",
+            "playstore": "com.android.vending",
+        }
+        for name, pkg in apps.items():
+            keywords = [
+                f"open {name}", f"launch {name}", f"start {name}",
+                f"{name} kholo", f"{name} open karo", f"{name} chalao",
+            ]
+            for kw in keywords:
+                self._intent_map[kw] = "open_app"
+            self._handlers[f"open_{name}"] = lambda q, p=pkg: {
+                "action": "LAUNCH_APP",
+                "payload": {"package": p, "action": "android.intent.action.VIEW"},
+                "response": f"{pkg.split('.')[-1]} khol raha hoon! 📱",
+            }
+
+        # Media controls
+        media_actions = {
+            "play music": ("PLAY_MUSIC", "Music chala raha hoon! 🎵"),
+            "play song": ("PLAY_MUSIC", "Song chala raha hoon! 🎵"),
+            "gaana chalao": ("PLAY_MUSIC", "Gaana chala raha hoon! 🎵"),
+            "bajao kuch": ("PLAY_MUSIC", "Baja raha hoon! 🎵"),
+            "pause music": ("PAUSE_MUSIC", "Music rok diya! ⏸️"),
+            "stop music": ("PAUSE_MUSIC", "Music band kar diya! ⏹️"),
+            "music rok do": ("PAUSE_MUSIC", "Rok diya! ⏸️"),
+            "next song": ("NEXT_TRACK", "Agla song! ⏭️"),
+            "previous song": ("PREV_TRACK", "Pichla song! ⏮️"),
+            "volume up": ("VOLUME_UP", "Volume badha diya! 🔊"),
+            "volume down": ("VOLUME_DOWN", "Volume kam kar diya! 🔉"),
+            "volume increase": ("VOLUME_UP", "Volume badha diya! 🔊"),
+            "volume decrease": ("VOLUME_DOWN", "Volume kam kar diya! 🔉"),
+            "aawaz badhao": ("VOLUME_UP", "Aawaz badha di! 🔊"),
+            "aawaz kam karo": ("VOLUME_DOWN", "Aawaz kam kar di! 🔉"),
+            "silent mode": ("VOLUME_MUTE", "Silent kar diya! 🔇"),
+            "mute karo": ("VOLUME_MUTE", "Mute kar diya! 🔇"),
+        }
+        for phrase, (action, resp) in media_actions.items():
+            self._intent_map[phrase] = action.lower()
+            self._handlers[action.lower()] = lambda q, a=action, r=resp: {
+                "action": a, "payload": {}, "response": r,
+            }
+
+        # Device controls
+        device_actions = {
+            "flashlight on": ("FLASHLIGHT_ON", "Flashlight on kar diya! 💡"),
+            "flashlight off": ("FLASHLIGHT_OFF", "Flashlight off kar diya! 💡"),
+            "torch on": ("FLASHLIGHT_ON", "Torch on kar diya! 💡"),
+            "torch off": ("FLASHLIGHT_OFF", "Torch off kar diya! 💡"),
+            "flashlight chalu karo": ("FLASHLIGHT_ON", "Flashlight chalu! 💡"),
+            "flashlight band karo": ("FLASHLIGHT_OFF", "Flashlight band! 💡"),
+            "go home": ("GO_HOME", "Home screen! 🏠"),
+            "home screen": ("GO_HOME", "Home screen! 🏠"),
+            "go back": ("GO_BACK", "Back! ↩️"),
+            "wifi on": ("WIFI_ON", "WiFi on! 🌐"),
+            "wifi off": ("WIFI_OFF", "WiFi off! 🌐"),
+            "bluetooth on": ("BLUETOOTH_ON", "Bluetooth on! 🔵"),
+            "bluetooth off": ("BLUETOOTH_OFF", "Bluetooth off! 🔵"),
+            "screenshot lo": ("SCREENSHOT", "Screenshot! 📸"),
+            "take screenshot": ("SCREENSHOT", "Screenshot! 📸"),
+            "open camera": ("OPEN_CAMERA", "Camera khol raha hoon! 📸"),
+            "camera kholo": ("OPEN_CAMERA", "Camera khol raha hoon! 📸"),
+        }
+        for phrase, (action, resp) in device_actions.items():
+            self._intent_map[phrase] = action.lower()
+            self._handlers[action.lower()] = lambda q, a=action, r=resp: {
+                "action": a, "payload": {}, "response": r,
+            }
+
+    def process(self, ctx: CognitiveContext) -> bool:
+        """Try to handle input as a reflex action.
+
+        Returns True if handled (reflex succeeded).
+        Returns False if no reflex matched — pass to next brain.
+        """
+        q = ctx.raw_input.lower().strip()
+
+        # Direct keyword match (fastest path)
+        if q in self._intent_map:
+            intent = self._intent_map[q]
+            handler = self._handlers.get(intent)
+            if handler:
+                result = handler(q)
+                ctx.detected_intent = intent
+                ctx.detected_action = result.get("action", intent.upper())
+                ctx.response = result.get("response", "Done! ✅")
+                ctx.payload = result.get("payload", {})
+                ctx.processing_level = ProcessingLevel.REFLEX
+                ctx.confidence = 1.0
+                ctx.execution_time_ms = ctx.elapsed_ms()
+                logger.info(f"Reflex: Direct match '{q}' → {intent} in {ctx.execution_time_ms:.1f}ms")
+                return True
+
+        # Substring matching (slightly slower but catches variations)
+        best_match = None
+        best_score = 0.0
+        for phrase, intent in self._intent_map.items():
+            if phrase in q:
+                score = len(phrase) / len(q) if len(q) > 0 else 0
+                if score > best_score:
+                    best_score = score
+                    best_match = intent
+
+        if best_match and best_score > 0.3:
+            handler = self._handlers.get(best_match)
+            if handler:
+                result = handler(q)
+                ctx.detected_intent = best_match
+                ctx.detected_action = result.get("action", best_match.upper())
+                ctx.response = result.get("response", "Done! ✅")
+                ctx.payload = result.get("payload", {})
+                ctx.processing_level = ProcessingLevel.REFLEX
+                ctx.confidence = best_score
+                ctx.execution_time_ms = ctx.elapsed_ms()
+                logger.info(f"Reflex: Substring match '{q}' → {best_match} ({best_score:.2f})")
+                return True
+
+        return False
+
+
+class HabitProcessor:
+    """Brain 2: Habit and pattern-based prediction.
+
+    Equivalent to the human subconscious. Learns routines and
+    predicts likely next actions based on time, day, and history.
+    """
+
+    def __init__(self):
+        self._patterns: Dict[str, Dict] = {}  # pattern_key → pattern_data
+        self._lock = threading.Lock()
+
+    def record_action(self, ctx: CognitiveContext):
+        """Record an action for habit learning."""
+        from datetime import datetime
+        now = datetime.now()
+        key = f"{now.hour}:{now.weekday()}"
+        action_key = ctx.detected_intent or ctx.detected_action or "unknown"
+
+        with self._lock:
+            if key not in self._patterns:
+                self._patterns[key] = {
+                    "actions": {},
+                    "total": 0,
+                    "hour": now.hour,
+                    "day": now.weekday(),
+                }
+            pattern = self._patterns[key]
+            pattern["actions"][action_key] = pattern["actions"].get(action_key, 0) + 1
+            pattern["total"] += 1
+
+    def predict(self, ctx: CognitiveContext) -> Optional[Dict]:
+        """Predict likely action based on current time context.
+
+        Returns None if no confident prediction exists.
+        """
+        from datetime import datetime
+        now = datetime.now()
+        key = f"{now.hour}:{now.weekday()}"
+
+        with self._lock:
+            pattern = self._patterns.get(key)
+            if not pattern or pattern["total"] < 2:
+                return None
+
+            # Find most frequent action at this time
+            best_action = max(pattern["actions"], key=pattern["actions"].get)
+            best_count = pattern["actions"][best_action]
+            confidence = best_count / pattern["total"]
+
+            # Minimum confidence threshold
+            if confidence < 0.3 or best_count < 2:
+                return None
+
+            return {
+                "predicted_action": best_action,
+                "confidence": confidence,
+                "occurrences": best_count,
+                "total_at_time": pattern["total"],
+                "hour": pattern["hour"],
+                "day": pattern["day"],
+            }
+
+    def process(self, ctx: CognitiveContext) -> bool:
+        """Check if habit brain has a prediction for this context.
+
+        Returns True if habit prediction is relevant and confident.
+        The habit brain doesn't "handle" the current input — it
+        predicts what should happen next based on patterns.
+        """
+        prediction = self.predict(ctx)
+        if prediction:
+            ctx.metadata["habit_prediction"] = prediction
+            ctx.processing_level = ProcessingLevel.HABIT
+            logger.info(
+                f"Habit: Predicted '{prediction['predicted_action']}' "
+                f"at conf={prediction['confidence']:.2f} "
+                f"(hour={prediction['hour']}, occ={prediction['occurrences']})"
+            )
+            return True
+        return False
+
+    def get_stats(self) -> dict:
+        with self._lock:
+            return {
+                "patterns_learned": len(self._patterns),
+                "total_actions_recorded": sum(p["total"] for p in self._patterns.values()),
+            }
+
+
+class SelfReflection:
+    """Brain 7: Self-reflection and improvement system.
+
+    After every action, evaluates:
+    - Did the action succeed?
+    - What could be improved?
+    - What was learned?
+    - What should be done differently next time?
+
+    Runs daily reviews and generates improvement suggestions.
+    """
+
+    def __init__(self):
+        self._reflection_log: list = []
+        self._lock = threading.Lock()
+
+    def reflect(self, ctx: CognitiveContext) -> Dict:
+        """Evaluate an action and generate reflection.
+
+        Returns reflection data without blocking the main flow.
+        """
+        reflection = {
+            "timestamp": time.time(),
+            "input": ctx.raw_input[:100],
+            "intent": ctx.detected_intent,
+            "action": ctx.detected_action,
+            "brain_used": ctx.processing_level.value,
+            "execution_time_ms": ctx.execution_time_ms,
+            "success": ctx.success,
+            "confidence": ctx.confidence,
+            "improvement_suggestion": "",
+            "learning_opportunity": "",
+        }
+
+        # Generate improvement suggestions
+        if not ctx.success:
+            reflection["improvement_suggestion"] = self._analyze_failure(ctx)
+        elif ctx.execution_time_ms > 2000 and ctx.processing_level == ProcessingLevel.REFLEX:
+            reflection["improvement_suggestion"] = (
+                "Reflex action took too long. Consider optimizing pattern matching."
+            )
+        elif ctx.processing_level == ProcessingLevel.REASONING:
+            reflection["learning_opportunity"] = (
+                "This could be converted to a reflex action if it repeats."
+            )
+
+        with self._lock:
+            self._reflection_log.append(reflection)
+            if len(self._reflection_log) > 1000:
+                self._reflection_log = self._reflection_log[-500:]
+
+        return reflection
+
+    def _analyze_failure(self, ctx: CognitiveContext) -> str:
+        """Generate targeted improvement suggestion for failures."""
+        if not ctx.detected_intent:
+            return "Intent not recognized. Consider adding keywords or patterns."
+        if ctx.execution_time_ms > 5000:
+            return "Slow response. Check LLM latency or network connectivity."
+        return "Generic failure. Consider adding fallback behavior."
+
+    def get_daily_reflection(self) -> Dict:
+        """Generate end-of-day reflection summary."""
+        from datetime import datetime
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        with self._lock:
+            today_log = [
+                r for r in self._reflection_log
+                if datetime.fromtimestamp(r["timestamp"]).strftime("%Y-%m-%d") == today
+            ]
+
+        if not today_log:
+            return {"summary": "No activity recorded today.", "suggestions": []}
+
+        total = len(today_log)
+        successes = sum(1 for r in today_log if r["success"])
+        failures = total - successes
+        avg_time = sum(r["execution_time_ms"] for r in today_log) / total if total > 0 else 0
+        reflex_count = sum(1 for r in today_log if r["brain_used"] == "reflex")
+        reasoning_count = sum(1 for r in today_log if r["brain_used"] == "reasoning")
+
+        suggestions = [
+            r["improvement_suggestion"] for r in today_log
+            if r.get("improvement_suggestion")
+        ]
+
+        return {
+            "summary": (
+                f"Today: {total} actions ({successes} success, {failures} fail). "
+                f"Reflex: {reflex_count}, Reasoning: {reasoning_count}. "
+                f"Avg response: {avg_time:.0f}ms."
+            ),
+            "total_actions": total,
+            "success_rate": successes / total if total > 0 else 1.0,
+            "avg_response_time_ms": round(avg_time, 1),
+            "reflex_vs_reasoning": {"reflex": reflex_count, "reasoning": reasoning_count},
+            "suggestions": list(set(suggestions))[:5],
+            "improvements": self._generate_improvements(today_log),
+        }
+
+    def _generate_improvements(self, today_log: list) -> list:
+        """Generate actionable improvement suggestions."""
+        improvements = []
+
+        # Check for patterns that could be converted to reflexes
+        action_counts = {}
+        for r in today_log:
+            if r["brain_used"] == "reasoning":
+                action_counts[r["intent"]] = action_counts.get(r["intent"], 0) + 1
+
+        for intent, count in action_counts.items():
+            if count >= 3:
+                improvements.append(
+                    f"'{intent}' was handled by reasoning {count} times today. "
+                    "Consider adding as a reflex action."
+                )
+
+        # Check for repeated failures
+        failure_intents = {}
+        for r in today_log:
+            if not r["success"]:
+                failure_intents[r["intent"]] = failure_intents.get(r["intent"], 0) + 1
+
+        for intent, count in failure_intents.items():
+            if count >= 2:
+                improvements.append(
+                    f"'{intent}' failed {count} times. Check the handler implementation."
+                )
+
+        return improvements[:5]
+
+    def get_stats(self) -> dict:
+        with self._lock:
+            return {
+                "total_reflections": len(self._reflection_log),
+                "recent_reflections": len([r for r in self._reflection_log if r["timestamp"] > time.time() - 3600]),
+            }
+
+
+class CognitiveEngine:
+    """THE unified cognitive architecture.
+
+    Processes every input through ALL brain layers in order:
+
+    Input (user command / notification / event)
+      │
+      ├── 1. REFLEX BRAIN (<300ms) ─── Handled? → Return
+      │     Instant actions. No LLM. No memory.
+      │     Opens apps, controls volume, toggles flashlight, etc.
+      │
+      ├── 2. HABIT BRAIN (~200ms) ──── Prediction? → Note + Continue
+      │     Pattern matching. Time/day-based prediction.
+      │     "You usually open WhatsApp at this time..."
+      │
+      ├── 3. REASONING BRAIN (1-5s) ── LLM handles complex tasks
+      │     Planning, coding, research, problem-solving.
+      │     Only invoked when reflex fails.
+      │
+      ├── 4. MEMORY (async) ────────── Record and consolidate
+      │     Save episode, update patterns, learn from outcome.
+      │
+      └── 5. REFLECTION (async) ────── Evaluate and improve
+            Daily review, improvement suggestions, learning.
+    """
+
+    def __init__(
+        self,
+        reflex_processor: Optional[ReflexProcessor] = None,
+        habit_processor: Optional[HabitProcessor] = None,
+        conscious_brain=None,
+        memory_system=None,
+        learning_system=None,
+        enable_learning: bool = True,
+    ):
+        self.reflex = reflex_processor or ReflexProcessor()
+        self.habit = habit_processor or HabitProcessor()
+        self.conscious = conscious_brain  # Reasoning/LLM brain
+        self.memory = memory_system       # Memory system
+        self.learning = learning_system    # Learning system
+        self.reflection = SelfReflection()
+        self.enable_learning = enable_learning
+
+        # Stats
+        self._stats = {
+            "total_processed": 0,
+            "reflex_handled": 0,
+            "habit_predicted": 0,
+            "reasoning_used": 0,
+            "failures": 0,
+            "avg_time_ms": 0.0,
+        }
+
+    def process(self, raw_input: str, **context_kwargs) -> CognitiveContext:
+        """Process any input through the full cognitive pipeline.
+
+        Args:
+            raw_input: The user's command, notification text, etc.
+            **context_kwargs: Additional context (user_id, emotion, topic, etc.)
+
+        Returns:
+            CognitiveContext with the processing result.
+        """
+        ctx = CognitiveContext(
+            raw_input=raw_input,
+            **{k: v for k, v in context_kwargs.items() if hasattr(CognitiveContext, k)},
+        )
+
+        start = time.perf_counter()
+
+        # ═══════════════════════════════════════════════════════════
+        # BRAIN 1: REFLEX — Instant action (<300ms)
+        # ═══════════════════════════════════════════════════════════
+        handled = self.reflex.process(ctx)
+        if handled:
+            self._update_stats(ctx)
+            logger.info(f"CognitiveEngine: Reflex handled '{raw_input[:50]}' in {ctx.execution_time_ms:.0f}ms")
+            self._post_process(ctx)
+            return ctx
+
+        # ═══════════════════════════════════════════════════════════
+        # BRAIN 2: HABIT — Check for pattern-based prediction
+        # ═══════════════════════════════════════════════════════════
+        has_habit = self.habit.process(ctx)
+        if has_habit:
+            self._stats["habit_predicted"] += 1
+
+        # ═══════════════════════════════════════════════════════════
+        # BRAIN 3: REASONING — LLM-powered deep thinking
+        # ═══════════════════════════════════════════════════════════
+        if self.conscious:
+            try:
+                ctx.processing_level = ProcessingLevel.REASONING
+                result = self._dispatch_to_conscious(ctx)
+                ctx.response = result.get("response", "")
+                ctx.detected_intent = result.get("intent", ctx.detected_intent)
+                ctx.detected_action = result.get("action", ctx.detected_action)
+                ctx.payload = result.get("payload")
+                ctx.success = result.get("success", True)
+                ctx.execution_time_ms = ctx.elapsed_ms()
+                self._stats["reasoning_used"] += 1
+                logger.info(f"CognitiveEngine: Reasoning handled '{raw_input[:50]}' in {ctx.execution_time_ms:.0f}ms")
+            except Exception as e:
+                ctx.response = f"Samajhne mein problem hui: {str(e)}. Please try again! 😅"
+                ctx.success = False
+                ctx.execution_time_ms = ctx.elapsed_ms()
+                logger.error(f"CognitiveEngine: Reasoning failed: {e}", exc_info=True)
+        else:
+            # No reasoning brain available
+            ctx.response = "Mujhe samajh nahi aaya. Kya kar sakta hoon aapke liye? 😊"
+            ctx.success = False
+            ctx.execution_time_ms = ctx.elapsed_ms()
+
+        self._update_stats(ctx)
+        self._post_process(ctx)
+        return ctx
+
+    def _dispatch_to_conscious(self, ctx: CognitiveContext) -> dict:
+        """Route to the conscious/reasoning brain."""
+        if hasattr(self.conscious, 'execute'):
+            result = self.conscious.execute(ctx.raw_input)
+            if hasattr(result, 'to_dict'):
+                return result.to_dict()
+            return result if isinstance(result, dict) else {"response": str(result)}
+        elif hasattr(self.conscious, 'run'):
+            result = self.conscious.run(ctx.raw_input)
+            return result if isinstance(result, dict) else {"response": str(result)}
+        return {"response": str(self.conscious), "success": True}
+
+    def _post_process(self, ctx: CognitiveContext):
+        """Async post-processing: memory, learning, reflection."""
+        def _background():
+            try:
+                # Record in habit brain
+                self.habit.record_action(ctx)
+
+                # Record in memory
+                if self.memory:
+                    self._record_to_memory(ctx)
+
+                # Learn from outcome
+                if self.enable_learning and self.learning:
+                    self.learning.observe(ctx)
+
+                # Reflect
+                self.reflection.reflect(ctx)
+
+            except Exception as e:
+                logger.warning(f"CognitiveEngine: Post-process error: {e}")
+
+        threading.Thread(target=_background, daemon=True).start()
+
+    def _record_to_memory(self, ctx: CognitiveContext):
+        """Record the action in memory systems."""
+        try:
+            if hasattr(self.memory, 'add_episode'):
+                self.memory.add_episode(
+                    role="user" if ctx.processing_level != ProcessingLevel.REASONING else "assistant",
+                    content=ctx.raw_input[:500],
+                    topic=ctx.topic or ctx.detected_intent or "general",
+                    emotion=ctx.emotion or "neutral",
+                    importance=3 if ctx.processing_level == ProcessingLevel.REASONING else 1,
+                )
+        except Exception as e:
+            logger.debug(f"Memory recording skipped: {e}")
+
+    def _update_stats(self, ctx: CognitiveContext):
+        s = self._stats
+        s["total_processed"] += 1
+        if ctx.processing_level == ProcessingLevel.REFLEX:
+            s["reflex_handled"] += 1
+        elif ctx.processing_level == ProcessingLevel.REASONING:
+            s["reasoning_used"] += 1
+        if not ctx.success:
+            s["failures"] += 1
+
+        # Running average
+        n = s["total_processed"]
+        s["avg_time_ms"] = s["avg_time_ms"] * (n - 1) / n + ctx.execution_time_ms / n
+
+    def get_stats(self) -> dict:
+        return {
+            **self._stats,
+            "reflex_actions": len(self.reflex._handlers),
+            "reflex_patterns": len(self.reflex._intent_map),
+            "habit_patterns": self.habit.get_stats(),
+            "reflection": self.reflection.get_stats(),
+        }
+
+    def get_daily_reflection(self) -> Dict:
+        """Get end-of-day reflection."""
+        return self.reflection.get_daily_reflection()
