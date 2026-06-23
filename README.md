@@ -293,6 +293,20 @@ curl -X POST http://localhost:8000/api/and9 \
 
 ---
 
+## 🛠️ Recent Stability & Bug Fixes
+
+A comprehensive sweep was performed to resolve critical runtime errors and logic flaws across the intent execution and orchestration pipelines:
+
+1. **Parameter Mismatches in Device Actions**: Fixed a `TypeError` where action handlers (`handle_flashlight`, `handle_wifi`, `handle_bluetooth`, `handle_airplane_mode`, `handle_volume`) expected `query` or custom arguments, but `skill_registry` invoked them with mismatched keywords (e.g., `q`, `keyword`).
+2. **Missing Search Action Handler**: Implemented the missing `handle_search()` function in [device_actions.py](file:///root/and9/app/and9/actions/device_actions.py) which was mapped in the registry but not actually defined.
+3. **Skill Registry Omissions**: Corrected missing skill registrations for `flashlight_on`, `flashlight_off`, and `search` in [skill_registry.py](file:///root/and9/app/and9/android/skill_registry.py) which previously fell back to empty configurations.
+4. **Orchestrator Log Operator Precedence**: Resolved a logical bug in [orchestrator.py](file:///root/and9/app/and9/brain/orchestrator.py)'s `_log_result()` where intent logging dropped when `result.intent` was `None` due to incorrect logical evaluation.
+5. **Datetime Manipulation in Reminders**: Fixed a runtime `TypeError` in [reminder_actions.py](file:///root/and9/app/and9/actions/reminder_actions.py) where `datetime.replace()` was incorrectly passed `None` values (e.g. `hour=None`).
+6. **Local Variable Anti-pattern in Alarms**: Removed dynamic local evaluation anti-pattern (`locals().get("day_offset", 0)`) in [alarm_actions.py](file:///root/and9/app/and9/actions/alarm_actions.py), replacing it with clean, explicit initialization.
+7. **Nested Event Loop Block in API Routes**: Replaced problematic `asyncio.run()` invocation in [routes.py](file:///root/and9/app/api/routes.py) with a robust helper `_run_async()` to avoid throwing runtime errors when an event loop is already running.
+
+---
+
 ## 🧪 Running Tests
 
 ```bash
