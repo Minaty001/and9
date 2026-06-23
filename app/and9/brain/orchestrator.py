@@ -276,10 +276,11 @@ class Orchestrator:
     def _log_result(self, query: str, normalized: str,
                     intent: str, params: dict, result: BrainResult):
         """Log the query result to the QueryLogger."""
+        effective_intent = intent or (result.intent.value if result.intent else "")
         self.query_logger.log(
             raw_query=query,
             normalized_query=normalized,
-            intent=intent or result.intent.value if result.intent else "",
+            intent=effective_intent,
             parameters=params or result.parameters,
             action=result.action or "",
             payload=result.payload,

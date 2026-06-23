@@ -77,6 +77,8 @@ register_skill("close_app", "app.and9.actions.app_actions", "execute_close_app",
 register_skill("youtube_search", "app.and9.actions.youtube_actions", "execute_youtube_search", _youtube_search_mapper)
 register_skill("youtube_play", "app.and9.actions.youtube_actions", "execute_youtube_play", _youtube_search_mapper)
 register_skill("flashlight", "app.and9.actions.device_actions", "handle_flashlight", lambda p, e: {"q": f"flashlight {'on' if p.get('state') is True else 'off' if p.get('state') is False else ''}"})
+register_skill("flashlight_on", "app.and9.actions.device_actions", "handle_flashlight", lambda p, e: {"q": "flashlight on"})
+register_skill("flashlight_off", "app.and9.actions.device_actions", "handle_flashlight", lambda p, e: {"q": "flashlight off"})
 register_skill("wifi", "app.and9.actions.device_actions", "handle_wifi", lambda p, e: {"q": f"wifi {'on' if p.get('state') is True else 'off' if p.get('state') is False else ''}"})
 register_skill("bluetooth", "app.and9.actions.device_actions", "handle_bluetooth", lambda p, e: {"q": f"bluetooth {'on' if p.get('state') is True else 'off' if p.get('state') is False else ''}"})
 register_skill("airplane_mode", "app.and9.actions.device_actions", "handle_airplane_mode", lambda p, e: {"q": f"airplane_mode {'on' if p.get('state') is True else 'off' if p.get('state') is False else ''}"})
@@ -86,6 +88,7 @@ register_skill("volume_up", "app.and9.actions.device_actions", "handle_volume", 
 register_skill("volume_down", "app.and9.actions.device_actions", "handle_volume", lambda p, e: {"keyword": "down"})
 register_skill("volume_mute", "app.and9.actions.device_actions", "handle_volume", lambda p, e: {"keyword": "mute"})
 register_skill("volume_max", "app.and9.actions.device_actions", "handle_volume", lambda p, e: {"keyword": "max"})
+register_skill("search", "app.and9.actions.device_actions", "handle_search", lambda p, e: {"query": p.get("query", "")})
 
 
 def execute_skill(action_type: str, params: dict, events_sys: Any = None) -> dict:

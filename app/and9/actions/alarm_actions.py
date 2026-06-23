@@ -51,6 +51,7 @@ def execute_set_alarm(
         {'response': 'Alarm 10 minutes baad lagega! ⏰', 'action': 'SET_ALARM', ...}
     """
     label = label or "AND9 Alarm"
+    day_offset = 0  # 0=today, 1=tomorrow
 
     # ── Parse from query if provided ──────────────────────────────
     if query:
@@ -102,7 +103,6 @@ def execute_set_alarm(
         }
 
     display = format_time(hour, minute)
-    day_offset = locals().get("day_offset", 0)
     day_label = " (kal)" if day_offset else ""
 
     return {

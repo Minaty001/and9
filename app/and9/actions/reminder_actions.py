@@ -47,16 +47,25 @@ def execute_set_reminder(trigger_at: dict,
     reminder_time = None
 
     if trigger_at["type"] == "absolute":
+        hour = trigger_at.get("hour") or 0
+        minute = trigger_at.get("minute") or 0
         reminder_time = now.replace(
-            hour=trigger_at["hour"],
-            minute=trigger_at["minute"],
+            hour=hour,
+            minute=minute,
             second=0, microsecond=0,
         )
         if reminder_time < now:
             reminder_time += timedelta(days=1)
 
     elif trigger_at["type"] == "relative":
-        reminder_time = now + timedelta(seconds=trigger_at["seconds"])
+        seconds = trigger_at.get("seconds")
+        if not seconds:
+            return {
+                "response": "Reminder ka time samajh nahi aaya. Seconds missing. ⏰",
+                "action": "SET_REMINDER",
+                "payload": {},
+            }
+        reminder_time = now + timedelta(seconds=seconds)
 
     # Persist via EventSystem if available
     persisted = False

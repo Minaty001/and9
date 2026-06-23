@@ -41,7 +41,13 @@ _DB_PATH = os.environ.get(
     "AND9_TRACES_DB",
     "/app/.jarvis_data/intent_traces.db"
 )
-os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+try:
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+except OSError as _mkdir_err:
+    logging.getLogger(__name__).warning(
+        "Could not create traces DB directory '%s': %s",
+        os.path.dirname(_DB_PATH), _mkdir_err
+    )
 
 # Short-term memory buffer size
 MAX_SHORT_TERM_TRACES = int(os.environ.get("AND9_SHORT_TERM_SIZE", "50"))

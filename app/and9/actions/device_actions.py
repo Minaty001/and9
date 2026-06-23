@@ -20,9 +20,9 @@ import re
 logger = logging.getLogger(__name__)
 
 
-def handle_flashlight(query: str) -> dict:
+def handle_flashlight(q: str = "", query: str = "") -> dict:
     """Toggle flashlight on/off based on query context."""
-    q = query.lower()
+    q = (q or query).lower()
     has_on = bool(re.search(r'\b(on|enable|kholo|chalu)\b', q))
     has_off = bool(re.search(r'\b(off|disable|band|bnd)\b', q))
 
@@ -34,9 +34,15 @@ def handle_flashlight(query: str) -> dict:
         return {"response": "Flashlight toggle kar diya! 💡", "action": "FLASHLIGHT", "payload": {"state": "toggle"}}
 
 
-def handle_volume(query: str) -> dict:
-    """Adjust volume based on query context."""
-    q = query.lower()
+def handle_volume(keyword: str = "", q: str = "", query: str = "") -> dict:
+    """Adjust volume based on query context.
+
+    Args:
+        keyword: Direction keyword from skill_registry ("up", "down", "mute", "max").
+        q:       Raw query string (legacy).
+        query:   Raw query string (legacy).
+    """
+    q = (keyword or q or query).lower()
     if any(kw in q for kw in ["mute", "silent", "zero", "0"]):
         return {"response": "Phone mute kar diya! 🔇", "action": "VOLUME_MUTE", "payload": {"level": 0}}
     if any(kw in q for kw in ["unmute", "sound on"]):
@@ -50,9 +56,9 @@ def handle_volume(query: str) -> dict:
     return {"response": "Volume badha diya! 🔊", "action": "VOLUME_UP", "payload": {"delta": 2}}
 
 
-def handle_wifi(query: str) -> dict:
+def handle_wifi(q: str = "", query: str = "") -> dict:
     """Toggle WiFi on/off."""
-    q = query.lower()
+    q = (q or query).lower()
     has_on = bool(re.search(r'\b(on|enable|chalu)\b', q))
     has_off = bool(re.search(r'\b(off|disable|band|bnd)\b', q))
     if has_on and not has_off:
@@ -62,9 +68,9 @@ def handle_wifi(query: str) -> dict:
     return {"response": "WiFi toggle kar diya! 🌐", "action": "WIFI", "payload": {"state": "toggle"}}
 
 
-def handle_bluetooth(query: str) -> dict:
+def handle_bluetooth(q: str = "", query: str = "") -> dict:
     """Toggle Bluetooth on/off."""
-    q = query.lower()
+    q = (q or query).lower()
     has_on = bool(re.search(r'\b(on|enable|chalu)\b', q))
     has_off = bool(re.search(r'\b(off|disable|band|bnd)\b', q))
     if has_on and not has_off:
@@ -74,9 +80,9 @@ def handle_bluetooth(query: str) -> dict:
     return {"response": "Bluetooth toggle kar diya! 🔵", "action": "BLUETOOTH", "payload": {"state": "toggle"}}
 
 
-def handle_airplane_mode(query: str) -> dict:
+def handle_airplane_mode(q: str = "", query: str = "") -> dict:
     """Toggle airplane mode on/off."""
-    q = query.lower()
+    q = (q or query).lower()
     has_on = bool(re.search(r'\b(on|enable)\b', q))
     has_off = bool(re.search(r'\b(off|disable)\b', q))
     if has_on and not has_off:
@@ -101,5 +107,39 @@ def handle_camera() -> dict:
             "package": "com.android.camera2",
             "component": "com.android.camera2/.CameraActivity",
             "category": "android.intent.category.LAUNCHER",
+        },
+    }
+
+
+def handle_search(query: str = "", q: str = "") -> dict:
+    """Perform a web search via Android Chrome/browser intent.
+
+    Args:
+        query: Search query string.
+        q:     Alternative query parameter name.
+
+    Returns:
+        Dict with response, action, and browser payload.
+    """
+    from urllib.parse import quote_plus
+    from app.and9.core.config import CHROME_PACKAGE, CHROME_COMPONENT
+
+    search_term = (query or q).strip()
+    if not search_term:
+        return {
+            "response": "Kya search karna hai? Topic batao. 🔍",
+            "action": "SEARCH",
+            "payload": {},
+        }
+
+    search_url = f"https://www.google.com/search?q={quote_plus(search_term)}"
+    return {
+        "response": f"Web pe '{search_term}' search kar raha hoon 🔍",
+        "action": "SEARCH",
+        "payload": {
+            "action": "android.intent.action.VIEW",
+            "package": CHROME_PACKAGE,
+            "component": CHROME_COMPONENT,
+            "data": search_url,
         },
     }

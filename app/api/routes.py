@@ -515,7 +515,7 @@ def tts_voices():
             ]
             return indian
 
-        voices = asyncio.run(_get_voices())
+        voices = _run_async(_get_voices())
         return jsonify({"voices": voices, "default_hinglish": _VOICE_EN_IN, "default_hindi": _VOICE_HI_IN})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
