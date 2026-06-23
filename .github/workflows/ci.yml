@@ -73,3 +73,70 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+
+  deploy-to-s3:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install AWS CLI
+      run: |
+        python -m pip install --upgrade pip
+        pip install awscli boto3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Build application artifacts
+      run: |
+        # Build any static assets, bundles, etc.
+        mkdir -p build
+        # Example: Copy files that need to be deployed
+        cp -r app/ build/ || true
+        cp requirements.txt build/ || true
+
+    - name: Deploy to S3
+      env:
+        S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+      run: |
+        if [ -z "$S3_BUCKET" ]; then
+          echo "S3_BUCKET not configured, skipping S3 deployment"
+          exit 0
+        fi
+        
+        # Sync build artifacts to S3
+        aws s3 sync build/ s3://$S3_BUCKET/builds/${{ github.sha }}/ \
+          --delete \
+          --cache-control "max-age=3600"
+        
+        # Optional: Update latest pointer
+        aws s3 sync build/ s3://$S3_BUCKET/latest/ \
+          --delete \
+          --cache-control "max-age=300"
+
+    - name: Invalidate CloudFront (optional)
+      if: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+      env:
+        DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+      run: |
+        aws cloudfront create-invalidation \
+          --distribution-id $DISTRIBUTION_ID \
+          --paths "/*"
+
+    - name: Deployment Summary
+      run: |
+        echo "✅ Deployment complete!"
+        echo "S3 Bucket: ${{ secrets.AWS_S3_BUCKET }}"
+        echo "Commit SHA: ${{ github.sha }}"
+        echo "Timestamp: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
