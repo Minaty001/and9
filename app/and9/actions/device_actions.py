@@ -43,10 +43,11 @@ def handle_volume(keyword: str = "", q: str = "", query: str = "") -> dict:
         query:   Raw query string (legacy).
     """
     q = (keyword or q or query).lower()
+    # Check unmute BEFORE mute (since "mute" is a substring of "unmute")
+    if any(kw in q for kw in ["unmute", "sound on"]):
+        return {"response": "Sound wapas on kar diya! 🔊", "action": "VOLUME_MAX", "payload": {"level": 7}}
     if any(kw in q for kw in ["mute", "silent", "zero", "0"]):
         return {"response": "Phone mute kar diya! 🔇", "action": "VOLUME_MUTE", "payload": {"level": 0}}
-    if any(kw in q for kw in ["unmute", "sound on"]):
-        return {"response": "Sound wapas on kar diya! 🔊", "action": "VOLUME_UNMUTE", "payload": {"level": 7}}
     if any(kw in q for kw in ["max", "full", "100", "highest"]):
         return {"response": "Volume full kar diya! 🔊📢", "action": "VOLUME_MAX", "payload": {"level": 15}}
     if any(kw in q for kw in ["up", "badhao", "higher", "louder", "increase"]):
@@ -134,7 +135,7 @@ def handle_search(query: str = "", q: str = "") -> dict:
 
     search_url = f"https://www.google.com/search?q={quote_plus(search_term)}"
     return {
-        "response": f"Web pe '{search_term}' search kar restoration kar raha hoon 🔍",
+        "response": f"Web pe '{search_term}' search kar raha hoon 🔍",
         "action": "SEARCH",
         "payload": {
             "action": "android.intent.action.VIEW",

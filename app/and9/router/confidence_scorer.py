@@ -118,7 +118,10 @@ def score_intent(intent: str, query: str, params: Dict[str, Any]) -> float:
             return 0.55
 
     elif intent == "timer":
-        has_duration = params.get("length") is not None or params.get("duration") is not None
+        # entity_extractor returns duration_seconds; also check legacy keys for compat
+        has_duration = (params.get("duration_seconds") is not None
+                        or params.get("length") is not None
+                        or params.get("duration") is not None)
         if has_duration and has_trigger_word:
             return 0.98
         elif has_duration:

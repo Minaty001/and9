@@ -157,7 +157,7 @@ class Orchestrator:
                 from app.and9.actions.action_verifier import verify_action
                 
                 # Check if it is a simple greeting and we can suggest a habit
-                if intent_name in ("chat", "emergency") and normalized in ("hello", "jarvis", "assistant", "hey jarvis", "hi", "hey"):
+                if intent_name == "chat" and normalized in ("hello", "jarvis", "assistant", "hey jarvis", "hi", "hey"):
                     suggestion = self.habit_brain.get_routine_suggestion()
                     if suggestion:
                         confirm_prompt = suggestion["suggestion"]
@@ -173,7 +173,7 @@ class Orchestrator:
                                 "prompt": confirm_prompt,
                                 "summary": action_summary
                             },
-                            brain=BrainType.HABIT,
+                            brain=BrainType.SUBCONSCIOUS,
                             intent=IntentType.CHAT,
                             execution_time_ms=(time.perf_counter() - start) * 1000,
                             success=True,
@@ -185,7 +185,7 @@ class Orchestrator:
                         return result.to_dict()
 
                 # Check if it requires confirmation (either due to low confidence or dangerous action status)
-                needs_confirm, confirm_prompt, action_summary = verify_action(intent_name, params)
+                needs_confirm, confirm_prompt, action_summary = verify_action(action_type or intent_name, params)
                 
                 # Tier 3: Low confidence (< 0.70)
                 if confidence < 0.70:
@@ -202,8 +202,8 @@ class Orchestrator:
                     status_manager.set_stage(PipelineStage.COMPLETED, "Clarification requested due to low confidence")
                     return result.to_dict()
                 
-                # Tier 2: Medium confidence (0.70 <= confidence < 0.95) or dangerous action
-                elif confidence < 0.95 or needs_confirm:
+                # Tier 2: Medium confidence (0.70 <= confidence < 0.95) AND dangerous action
+                elif confidence < 0.95 and needs_confirm:
                     if not confirm_prompt:
                         confirm_prompt = f"Kya aap chahte hain ki main {intent_name} action execute karoon?"
                         action_summary = f"Execute {intent_name}"
@@ -230,7 +230,7 @@ class Orchestrator:
                     status_manager.set_stage(PipelineStage.COMPLETED, "Confirmation requested from user")
                     return result.to_dict()
 
-                # Tier 1: High confidence (>= 0.95) and not dangerous
+                # Tier 1: High confidence (>= 0.95) or not dangerous (non-confirmable)
                 # Step 3: Execute action
                 status_manager.set_stage(PipelineStage.EXECUTING, f"Executing: {intent_name}")
                 result = self._execute(intent_name, action_type, params, start)
