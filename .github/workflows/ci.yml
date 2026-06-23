@@ -75,9 +75,11 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
 
   deploy:
+    needs: test
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
     - uses: jakejarvis/s3-sync-action@master
       with:
         args: --acl public-read --follow-symlinks --delete
