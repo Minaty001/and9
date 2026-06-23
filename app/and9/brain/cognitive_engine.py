@@ -313,144 +313,7 @@ class HabitProcessor:
             }
 
 
-class SelfReflection:
-    """Brain 7: Self-reflection and improvement system.
-
-    After every action, evaluates:
-    - Did the action succeed?
-    - What could be improved?
-    - What was learned?
-    - What should be done differently next time?
-
-    Runs daily reviews and generates improvement suggestions.
-    """
-
-    def __init__(self):
-        self._reflection_log: list = []
-        self._lock = threading.Lock()
-
-    def reflect(self, ctx: CognitiveContext) -> Dict:
-        """Evaluate an action and generate reflection.
-
-        Returns reflection data without blocking the main flow.
-        """
-        reflection = {
-            "timestamp": time.time(),
-            "input": ctx.raw_input[:100],
-            "intent": ctx.detected_intent,
-            "action": ctx.detected_action,
-            "brain_used": ctx.processing_level.value,
-            "execution_time_ms": ctx.execution_time_ms,
-            "success": ctx.success,
-            "confidence": ctx.confidence,
-            "improvement_suggestion": "",
-            "learning_opportunity": "",
-        }
-
-        # Generate improvement suggestions
-        if not ctx.success:
-            reflection["improvement_suggestion"] = self._analyze_failure(ctx)
-        elif ctx.execution_time_ms > 2000 and ctx.processing_level == ProcessingLevel.REFLEX:
-            reflection["improvement_suggestion"] = (
-                "Reflex action took too long. Consider optimizing pattern matching."
-            )
-        elif ctx.processing_level == ProcessingLevel.REASONING:
-            reflection["learning_opportunity"] = (
-                "This could be converted to a reflex action if it repeats."
-            )
-
-        with self._lock:
-            self._reflection_log.append(reflection)
-            if len(self._reflection_log) > 1000:
-                self._reflection_log = self._reflection_log[-500:]
-
-        return reflection
-
-    def _analyze_failure(self, ctx: CognitiveContext) -> str:
-        """Generate targeted improvement suggestion for failures."""
-        if not ctx.detected_intent:
-            return "Intent not recognized. Consider adding keywords or patterns."
-        if ctx.execution_time_ms > 5000:
-            return "Slow response. Check LLM latency or network connectivity."
-        return "Generic failure. Consider adding fallback behavior."
-
-    def get_daily_reflection(self) -> Dict:
-        """Generate end-of-day reflection summary."""
-        from datetime import datetime
-        today = datetime.now().strftime("%Y-%m-%d")
-
-        with self._lock:
-            today_log = [
-                r for r in self._reflection_log
-                if datetime.fromtimestamp(r["timestamp"]).strftime("%Y-%m-%d") == today
-            ]
-
-        if not today_log:
-            return {"summary": "No activity recorded today.", "suggestions": []}
-
-        total = len(today_log)
-        successes = sum(1 for r in today_log if r["success"])
-        failures = total - successes
-        avg_time = sum(r["execution_time_ms"] for r in today_log) / total if total > 0 else 0
-        reflex_count = sum(1 for r in today_log if r["brain_used"] == "reflex")
-        reasoning_count = sum(1 for r in today_log if r["brain_used"] == "reasoning")
-
-        suggestions = [
-            r["improvement_suggestion"] for r in today_log
-            if r.get("improvement_suggestion")
-        ]
-
-        return {
-            "summary": (
-                f"Today: {total} actions ({successes} success, {failures} fail). "
-                f"Reflex: {reflex_count}, Reasoning: {reasoning_count}. "
-                f"Avg response: {avg_time:.0f}ms."
-            ),
-            "total_actions": total,
-            "success_rate": successes / total if total > 0 else 1.0,
-            "avg_response_time_ms": round(avg_time, 1),
-            "reflex_vs_reasoning": {"reflex": reflex_count, "reasoning": reasoning_count},
-            "suggestions": list(set(suggestions))[:5],
-            "improvements": self._generate_improvements(today_log),
-        }
-
-    def _generate_improvements(self, today_log: list) -> list:
-        """Generate actionable improvement suggestions."""
-        improvements = []
-
-        # Check for patterns that could be converted to reflexes
-        action_counts = {}
-        for r in today_log:
-            if r["brain_used"] == "reasoning":
-                action_counts[r["intent"]] = action_counts.get(r["intent"], 0) + 1
-
-        for intent, count in action_counts.items():
-            if count >= 3:
-                improvements.append(
-                    f"'{intent}' was handled by reasoning {count} times today. "
-                    "Consider adding as a reflex action."
-                )
-
-        # Check for repeated failures
-        failure_intents = {}
-        for r in today_log:
-            if not r["success"]:
-                failure_intents[r["intent"]] = failure_intents.get(r["intent"], 0) + 1
-
-        for intent, count in failure_intents.items():
-            if count >= 2:
-                improvements.append(
-                    f"'{intent}' failed {count} times. Check the handler implementation."
-                )
-
-        return improvements[:5]
-
-    def get_stats(self) -> dict:
-        with self._lock:
-            return {
-                "total_reflections": len(self._reflection_log),
-                "recent_reflections": len([r for r in self._reflection_log if r["timestamp"] > time.time() - 3600]),
-            }
+from app.and9.brain.self_reflection import SelfReflection
 
 
 class CognitiveEngine:
@@ -487,6 +350,7 @@ class CognitiveEngine:
         memory_system=None,
         learning_system=None,
         enable_learning: bool = True,
+        memory_consolidation=None,
     ):
         self.reflex = reflex_processor or ReflexProcessor()
         self.habit = habit_processor or HabitProcessor()
@@ -495,6 +359,7 @@ class CognitiveEngine:
         self.learning = learning_system    # Learning system
         self.reflection = SelfReflection()
         self.enable_learning = enable_learning
+        self.memory_consolidation = memory_consolidation
 
         # Stats
         self._stats = {
@@ -592,6 +457,16 @@ class CognitiveEngine:
                 # Record in memory
                 if self.memory:
                     self._record_to_memory(ctx)
+
+                # Record to working memory in memory consolidation
+                if self.memory_consolidation:
+                    self.memory_consolidation.add_to_working(
+                        content=ctx.raw_input[:500],
+                        importance=0.8 if ctx.processing_level.value == "reasoning" else 0.4,
+                        topics=[ctx.topic or ctx.detected_intent or "general"],
+                        entities=ctx.parameters or {},
+                        source="user" if ctx.processing_level.value != "reasoning" else "assistant"
+                    )
 
                 # Learn from outcome
                 if self.enable_learning and self.learning:

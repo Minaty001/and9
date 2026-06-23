@@ -28,6 +28,7 @@ import androidx.core.content.ContextCompat
 import com.jarvis.assistant.R
 import com.jarvis.assistant.services.JarvisAccessibilityService
 import com.jarvis.assistant.services.JarvisAssistantSession
+import com.jarvis.assistant.services.ContinuousListeningService
 import com.jarvis.assistant.voice.ContactLookupManager
 import com.jarvis.assistant.voice.DebugLogger
 import com.jarvis.assistant.voice.JarvisBackendClient
@@ -87,6 +88,8 @@ class OverlayViewController(
             "youtube_search", "youtube_play",
             // Contact lookup (server-initiated)
             "contacts_lookup",
+            // Confirmation system
+            "confirm_action",
         )
 
         // ── DANGEROUS ACTIONS — require explicit user confirmation ──
@@ -104,8 +107,121 @@ class OverlayViewController(
     private val micButton: ImageButton = rootView.findViewById(R.id.micButton)
     private val closeButton: ImageButton = rootView.findViewById(R.id.closeButton)
 
-    // ── Speech ──────────────────────────────────────────────────
-    private var recognizer: SpeechRecognizer? = null
+    // ── Status Bar UI refs ──────────────────────────────────────
+    private val statusOrb: StatusOrb = rootView.findViewById(R.id.statusOrb)
+    private val pipelineStageText: TextView = rootView.findViewById(R.id.pipelineStageText)
+    private val memoryStatusDot: View = rootView.findViewById(R.id.memoryStatusDot)
+    private val memoryStatusText: TextView = rootView.findViewById(R.id.memoryStatusText)
+    private val skillCountBadge: TextView = rootView.findViewById(R.id.skillCountBadge)
+    private val activeGoalTicker: TextView = rootView.findViewById(R.id.activeGoalTicker)
+
+    private var pipelineStatusCall: okhttp3.Call? = null
+
+    // Confirmation UI
+    private val confirmLayout: View = rootView.findViewById(R.id.confirmLayout)
+    private val btnConfirm: android.widget.Button = rootView.findViewById(R.id.btnConfirm)
+    private val btnCancel: android.widget.Button = rootView.findViewById(R.id.btnCancel)
+
+    // Confirmation State
+    private var isConfirmationPending = false
+    private var pendingActionMetadata: JSONObject? = null
+
+    // ── Speech Service ──────────────────────────────────────────
+    private var service: ContinuousListeningService? = null
+    private var isBound = false
+    private var shouldStartListeningOnBind = false
+
+    private val serviceConnection = object : android.content.ServiceConnection {
+        override fun onServiceConnected(name: android.content.ComponentName?, binder: android.os.IBinder?) {
+            val localBinder = binder as? ContinuousListeningService.LocalBinder
+            service = localBinder?.getService()
+            isBound = true
+            Log.d(TAG, "Connected to ContinuousListeningService")
+            service?.registerCallback(listeningCallback)
+            if (shouldStartListeningOnBind) {
+                shouldStartListeningOnBind = false
+                startListening()
+            }
+        }
+
+        override fun onServiceDisconnected(name: android.content.ComponentName?) {
+            service?.unregisterCallback()
+            service = null
+            isBound = false
+            Log.d(TAG, "Disconnected from ContinuousListeningService")
+        }
+    }
+
+    private val listeningCallback = object : ContinuousListeningService.Callback {
+        override fun onReadyForSpeech() {
+            mainHandler.post {
+                showStatus("Listening...")
+            }
+        }
+
+        override fun onBeginningOfSpeech() {
+            mainHandler.post {
+                waveformView.startAnimating()
+            }
+        }
+
+        override fun onRmsChanged(rmsdB: Float) {
+            mainHandler.post {
+                waveformView.updateAmplitude(rmsdB)
+            }
+        }
+
+        override fun onPartialResults(text: String) {
+            mainHandler.post {
+                showStatus("\"$text\"")
+            }
+        }
+
+        override fun onResults(text: String) {
+            mainHandler.post {
+                isListening = false
+                waveformView.stopAnimating()
+                micButton.setImageResource(R.drawable.ic_mic)
+                processTextInput(text)
+            }
+        }
+
+        override fun onError(errorCode: Int, errorMessage: String) {
+            mainHandler.post {
+                isListening = false
+                waveformView.stopAnimating()
+                micButton.setImageResource(R.drawable.ic_mic)
+
+                when (errorCode) {
+                    SpeechRecognizer.ERROR_NO_MATCH,
+                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> {
+                        showStatus("Didn't catch that. Tap mic to retry.")
+                        mainHandler.postDelayed({
+                            if (!isListening && !isDestroyedOrDismissed) startListening()
+                        }, 1500)
+                    }
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
+                        showStatus("Microphone permission denied.")
+                    }
+                    else -> {
+                        showStatus(errorMessage)
+                    }
+                }
+            }
+        }
+
+        override fun onStatusChanged(status: String) {
+            mainHandler.post {
+                showStatus(status)
+            }
+        }
+    }
+
+    private fun bindListeningService() {
+        if (isBound) return
+        val intent = Intent(context, ContinuousListeningService::class.java)
+        context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+    }
 
     // ── Backend + TTS ───────────────────────────────────────────
     private val backend = JarvisBackendClient(context)
@@ -121,11 +237,32 @@ class OverlayViewController(
     fun init() {
         setupButtons()
         syncInstalledApps()
+        startPipelineStatusSubscription()
         if (hasMicPermission()) {
-            buildRecognizer()
+            bindListeningService()
         } else {
             showStatus("🎙️ Microphone permission needed")
             showPermissionHint()
+        }
+        activeGoalTicker.isSelected = true
+    }
+
+    private fun startPipelineStatusSubscription() {
+        pipelineStatusCall = backend.listenToPipelineStatus { data ->
+            try {
+                val json = JSONObject(data)
+                val stage = json.optString("stage", "IDLE")
+                val details = json.optString("details", "")
+
+                mainHandler.post {
+                    if (isDestroyedOrDismissed) return@post
+                    statusOrb.setStage(stage)
+                    pipelineStageText.text = if (details.isNotEmpty()) "$stage: $details" else stage
+                    Log.d(TAG, "Pipeline stage: $stage ($details)")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing pipeline status SSE: ${e.message}")
+            }
         }
     }
 
@@ -134,6 +271,11 @@ class OverlayViewController(
         isDestroyedOrDismissed = true
         stopListening()
         tts.stop()
+        
+        // Cancel SSE connection
+        pipelineStatusCall?.cancel()
+        pipelineStatusCall = null
+
         onDismiss()
     }
 
@@ -143,6 +285,12 @@ class OverlayViewController(
         }
         closeButton.setOnClickListener {
             dismissOverlay()
+        }
+        btnConfirm.setOnClickListener {
+            executePendingAction()
+        }
+        btnCancel.setOnClickListener {
+            cancelPendingAction()
         }
     }
 
@@ -168,123 +316,93 @@ class OverlayViewController(
         }
     }
 
-    // ── SpeechRecognizer ─────────────────────────────────────────
-
-    private fun buildRecognizer() {
-        recognizer?.destroy()
-        recognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
-            setRecognitionListener(recognitionListener)
-        }
-    }
+    // ── Speech Control ───────────────────────────────────────────
 
     fun startListening() {
         if (isDestroyedOrDismissed) return
         if (!hasMicPermission()) return
-        if (recognizer == null) buildRecognizer()
+        
+        val s = service
+        if (s == null) {
+            shouldStartListeningOnBind = true
+            bindListeningService()
+            return
+        }
+
         if (isListening) return
         isListening = true
         waveformView.startAnimating()
         showStatus("Listening...")
         micButton.setImageResource(R.drawable.ic_mic_active)
 
-        try {
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "hi-IN")
-                putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, false)
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L)
-            }
-            recognizer?.startListening(intent)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start listening", e)
-            showStatus("Tap mic to speak")
-            isListening = false
-            waveformView.stopAnimating()
-            micButton.setImageResource(R.drawable.ic_mic)
-        }
+        s.setCommandMode(true)
+        s.forceRestartListening()
     }
 
     fun stopListening() {
         isListening = false
-        try {
-            recognizer?.stopListening()
-        } catch (_: Exception) {}
         waveformView.stopAnimating()
         micButton.setImageResource(R.drawable.ic_mic)
+        service?.setCommandMode(false)
     }
 
     /**
      * Process text input directly (e.g., from voice trigger or initial input).
      */
     fun processTextInput(text: String) {
+        val cleanText = text.trim().lowercase()
+        if (isConfirmationPending) {
+            val confirmKeywords = setOf("yes", "haan", "confirm", "karo", "sure", "ok", "okay", "yeah", "yep", "ha", "haji")
+            val cancelKeywords = setOf("no", "nahi", "cancel", "roko", "stop", "nope", "never", "nahin")
+            
+            val isConfirm = confirmKeywords.any { cleanText.contains(it) }
+            val isCancel = cancelKeywords.any { cleanText.contains(it) }
+            
+            if (isConfirm) {
+                executePendingAction()
+            } else if (isCancel) {
+                cancelPendingAction()
+            } else {
+                val prompt = "Kripya 'haan' ya 'nahi' boliye. Kya aap is action ko execute karna chahte hain?"
+                showStatus(prompt)
+                speakReply(prompt)
+                startListening()
+            }
+            return
+        }
+
         showStatus("Processing...")
         sendToBackend(text)
     }
 
-    private val recognitionListener = object : RecognitionListener {
-        override fun onReadyForSpeech(params: android.os.Bundle?) {
-            showStatus("Listening...")
-        }
+    private fun executePendingAction() {
+        val metadata = pendingActionMetadata ?: return
+        isConfirmationPending = false
+        confirmLayout.visibility = View.GONE
+        pendingActionMetadata = null
 
-        override fun onBeginningOfSpeech() {
-            waveformView.startAnimating()
-        }
+        val originalAction = metadata.optString("original_action")
+        val originalParams = metadata.optJSONObject("original_params") ?: JSONObject()
 
-        override fun onRmsChanged(rmsdB: Float) {
-            mainHandler.post { waveformView.updateAmplitude(rmsdB) }
-        }
+        Log.i(TAG, "Executing confirmed action: $originalAction with params $originalParams")
 
-        override fun onPartialResults(partialResults: android.os.Bundle?) {
-            val partial = partialResults
-                ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                ?.firstOrNull() ?: return
-            showStatus("\"$partial\"")
-        }
-
-        override fun onResults(results: android.os.Bundle?) {
-            isListening = false
-            waveformView.stopAnimating()
-            micButton.setImageResource(R.drawable.ic_mic)
-
-            val text = results
-                ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                ?.firstOrNull() ?: return
-
-            showStatus("Processing...")
-            sendToBackend(text)
-        }
-
-        override fun onError(error: Int) {
-            isListening = false
-            waveformView.stopAnimating()
-            micButton.setImageResource(R.drawable.ic_mic)
-
-            when (error) {
-                SpeechRecognizer.ERROR_NO_MATCH,
-                SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> {
-                    showStatus("Didn't catch that. Tap mic to retry.")
-                    // Auto-retry after short delay
-                    mainHandler.postDelayed({
-                        if (!isListening) startListening()
-                    }, 1500)
-                }
-                SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
-                    showStatus("Microphone permission denied.")
-                }
-                else -> {
-                    showStatus("Tap mic to speak")
-                }
+        val runMeta = JSONObject().apply {
+            put("action", originalAction)
+            put("bypass_confirm", true)
+            originalParams.keys().forEach { key ->
+                put(key, originalParams.get(key))
             }
         }
 
-        override fun onBufferReceived(buffer: ByteArray?) {}
-        override fun onEndOfSpeech() {
-            waveformView.stopAnimating()
-        }
-        override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
+        handleDeviceAction(runMeta)
+    }
+
+    private fun cancelPendingAction() {
+        isConfirmationPending = false
+        confirmLayout.visibility = View.GONE
+        pendingActionMetadata = null
+        showStatus("Action cancelled ❌")
+        speakReply("Action cancel kar diya.")
     }
 
     // ── Backend call ─────────────────────────────────────────────
@@ -393,11 +511,51 @@ class OverlayViewController(
             return
         }
 
+        val bypassConfirm = metadata.optBoolean("bypass_confirm", false)
+
         // ── DANGEROUS ACTION CONFIRMATION ───────────────────────────
-        if (action in DANGEROUS_ACTIONS) {
-            Log.w(TAG, "Blocked dangerous action requiring confirmation: $action")
-            showStatus("This action requires your confirmation.")
-            speakReply("This action needs your confirmation. Please use the app directly.")
+        if (action in DANGEROUS_ACTIONS && !bypassConfirm) {
+            Log.w(TAG, "Dangerous action requires confirmation: $action")
+            val prompt = when (action) {
+                "call", "make_call", "phone_call" -> {
+                    val appName = metadata.optString("app_name")
+                    val payload = metadata.optString("payload")
+                    if (appName.isNotEmpty()) "Kya aap $appName ko call karna chahte hain?" else "Kya aap call karna chahte hain?"
+                }
+                "create_file", "write_file", "make_file" -> "Kya aap file create karna chahte hain?"
+                else -> "Kya aap is action ko execute karna chahte hain?"
+            }
+            
+            mainHandler.post {
+                isConfirmationPending = true
+                pendingActionMetadata = JSONObject().apply {
+                    put("original_action", action)
+                    put("original_params", metadata)
+                }
+                confirmLayout.visibility = View.VISIBLE
+                showStatus(prompt)
+                speakReply(prompt)
+                // Start listening for user voice confirmation
+                startListening()
+            }
+            return
+        }
+
+        // ── CONFIRM_ACTION INTENT FROM BACKEND ───────────────────────
+        if (action == "confirm_action") {
+            val payload = metadata.optJSONObject("payload")
+            if (payload != null) {
+                val prompt = payload.optString("prompt", "Kya aap is action ko execute karna chahte hain?")
+                mainHandler.post {
+                    isConfirmationPending = true
+                    pendingActionMetadata = payload
+                    confirmLayout.visibility = View.VISIBLE
+                    showStatus(prompt)
+                    speakReply(prompt)
+                    // Start listening for user voice confirmation
+                    startListening()
+                }
+            }
             return
         }
 
@@ -517,6 +675,63 @@ class OverlayViewController(
             "screenshot" -> takeScreenshot()
             "notification", "notifications" -> openNotifications()
             "vibrate" -> triggerVibrate()
+            "clipboard_read" -> {
+                val clipText = JarvisAccessibilityService.readClipboard()
+                if (clipText.isNotEmpty()) {
+                    showStatus("Clipboard: $clipText")
+                    speakReply("Clipboard main likha hai: $clipText")
+                } else {
+                    showStatus("Clipboard is empty.")
+                    speakReply("Clipboard khali hai.")
+                }
+            }
+            "clipboard_write" -> {
+                val textToWrite = metadata.optString("text").ifEmpty { payload }
+                if (textToWrite.isNotEmpty()) {
+                    val success = JarvisAccessibilityService.writeClipboard(textToWrite)
+                    if (success) {
+                        showStatus("Copied to clipboard")
+                        speakReply("Clipboard par likh diya.")
+                    } else {
+                        showStatus("Failed to write to clipboard")
+                        speakReply("Clipboard par likhne main dikkat aayi.")
+                    }
+                } else {
+                    Log.w(TAG, "clipboard_write missing text payload")
+                }
+            }
+            "media_play_pause" -> {
+                JarvisAccessibilityService.performAction("media_play_pause")
+                showStatus("Media Play/Pause")
+                speakReply("Media play pause toggle kar diya.")
+            }
+            "media_next" -> {
+                JarvisAccessibilityService.performAction("media_next")
+                showStatus("Next Track")
+                speakReply("Agla track play kar diya.")
+            }
+            "media_prev" -> {
+                JarvisAccessibilityService.performAction("media_prev")
+                showStatus("Previous Track")
+                speakReply("Pichla track play kar diya.")
+            }
+            "screen_state" -> {
+                val isOn = JarvisAccessibilityService.isScreenOn()
+                val activeApp = JarvisAccessibilityService.currentPackageName
+                val statusMsg = "Screen: ${if (isOn) "ON" else "OFF"}, App: $activeApp"
+                showStatus(statusMsg)
+                speakReply("Screen ${if (isOn) "on" else "off"} hai. Aur abhi active app $activeApp hai.")
+            }
+            "read_notifications" -> {
+                val lastNotif = JarvisAccessibilityService.lastNotificationText
+                if (lastNotif.isNotEmpty()) {
+                    showStatus("Notification: $lastNotif")
+                    speakReply("Aapki notification aayi hai: $lastNotif")
+                } else {
+                    showStatus("No recent notifications.")
+                    speakReply("Mujhe koi aakhri notification nahi mili.")
+                }
+            }
         }
     }
 
@@ -976,7 +1191,19 @@ class OverlayViewController(
     fun destroy() {
         isDestroyedOrDismissed = true
         tts.shutdown()
-        recognizer?.destroy()
-        recognizer = null
+        
+        // Cancel SSE connection
+        pipelineStatusCall?.cancel()
+        pipelineStatusCall = null
+
+        if (isBound) {
+            service?.setCommandMode(false)
+            service?.unregisterCallback()
+            try {
+                context.unbindService(serviceConnection)
+            } catch (_: Exception) {}
+            isBound = false
+            service = null
+        }
     }
 }

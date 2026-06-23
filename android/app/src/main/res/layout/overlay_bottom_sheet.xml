@@ -33,6 +33,9 @@
             android:layout_gravity="center_horizontal"
             android:layout_marginBottom="16dp" />
 
+        <!-- Status Indicator Layout (StatusOrb, Memory, Goal ticker, etc.) -->
+        <include layout="@layout/overlay_status_indicator" />
+
         <!-- Status / transcript text -->
         <TextView
             android:id="@+id/statusText"
@@ -54,6 +57,35 @@
             android:layout_width="match_parent"
             android:layout_height="80dp"
             android:layout_marginBottom="20dp" />
+
+        <!-- Confirmation buttons row (hidden by default) -->
+        <LinearLayout
+            android:id="@+id/confirmLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp">
+
+            <Button
+                android:id="@+id/btnCancel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Cancel ❌"
+                android:textColor="#FFFF4444"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btnConfirm"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Confirm ✅"
+                android:textColor="#FF00FF88"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
 
         <!-- Buttons row -->
         <LinearLayout

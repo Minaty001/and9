@@ -219,6 +219,24 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
     return 'chat', ActionType.CHAT.value, {'query': q}
 
 
+def detect_intent_with_confidence(query: str) -> Tuple[Optional[str], Optional[str], dict, float]:
+    """Classify a normalized query into an intent with confidence scoring.
+
+    Args:
+        query: Normalized query string.
+
+    Returns:
+        Tuple of (intent_name, action_type, parameters_dict, confidence_score).
+    """
+    intent, action, params = detect_intent(query)
+    if intent is None:
+        return None, None, {}, 0.0
+    
+    from app.and9.router.confidence_scorer import score_intent
+    confidence = score_intent(intent, query, params)
+    return intent, action, params, confidence
+
+
 # ── Backwards compatibility shims ────────────────────────────────
 # These are kept so existing callers don't break during migration.
 # They delegate to the unified time parser.

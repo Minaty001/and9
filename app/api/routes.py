@@ -799,6 +799,33 @@ def personality_goals():
         return jsonify({"error": str(e)}), 500
 
 
+@api_bp.route("/personality/health", methods=["GET"])
+def personality_health():
+    """GET /api/personality/health — Get detailed health status of all cognitive architecture subsystems."""
+    try:
+        os = get_personality()
+        health_status = {
+            "status": "healthy" if os._initialized else "uninitialized",
+            "initialized": os._initialized,
+            "started": os._started,
+            "subsystems": {
+                "procedural_memory": os.procedural_memory is not None,
+                "memory_consolidation": os.memory_consolidation is not None,
+                "learning_system": os.learning_system is not None,
+                "memory_system": os.memory_system is not None,
+                "knowledge_graph": os.knowledge_graph is not None,
+                "reflection_engine": os.reflection_engine is not None,
+                "automation_system": os.automation_system is not None,
+                "cognitive_engine": os.cognitive_engine is not None,
+                "agent_loop": os.agent_loop is not None,
+            }
+        }
+        return jsonify(health_status)
+    except Exception as e:
+        logger.error(f"Error checking personality health: {e}", exc_info=True)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
 @api_bp.route("/personality/goals", methods=["POST"])
 def personality_add_goal():
     """POST /api/personality/goals — Add a new goal.
@@ -843,4 +870,38 @@ def personality_add_habit():
     if result.get("success"):
         return jsonify(result), 201
     return jsonify(result), 500
+
+
+@api_bp.route("/and9/pipeline-status", methods=["GET"])
+def pipeline_status():
+    """Server-Sent Events endpoint to stream real-time pipeline status updates."""
+    from app.and9.core.pipeline_status import status_manager
+    import json
+    import queue
+
+    def event_stream():
+        q = queue.Queue()
+        
+        def listener(status):
+            q.put(status)
+            
+        status_manager.register_listener(listener)
+        
+        try:
+            # Yield initial status
+            yield f"data: {json.dumps(status_manager.get_status())}\n\n"
+            
+            while True:
+                try:
+                    status = q.get(timeout=10.0)
+                    yield f"data: {json.dumps(status)}\n\n"
+                except queue.Empty:
+                    # Heartbeat ping to prevent client timeout
+                    yield ": ping\n\n"
+        except GeneratorExit:
+            pass
+        finally:
+            status_manager.unregister_listener(listener)
+
+    return Response(event_stream(), mimetype="text/event-stream")
 

@@ -3,6 +3,11 @@ package com.jarvis.assistant.services
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.content.Intent
+import android.content.Context
+import android.content.ClipboardManager
+import android.content.ClipData
+import android.media.AudioManager
+import android.os.PowerManager
 import android.graphics.Path
 import android.os.Build
 import android.os.Bundle
@@ -15,21 +20,15 @@ import android.view.accessibility.AccessibilityNodeInfo
  * JarvisAccessibilityService
  *
  * Provides system-level capabilities that require accessibility access:
- *
  *   - Go to Home screen
- *   - Close any app (by injecting back gesture then home)
+ *   - Close any app
  *   - Click on UI elements by text
  *   - Open Quick Settings
  *   - Navigate back
- *
- * This service must be enabled by the user in:
- *   Settings → Accessibility → Installed Apps → JARVIS
- *
- * Once enabled, the assistant can perform these actions via
- * [JarvisAccessibilityService.performAction].
- *
- * The service is BOUND (not started as foreground) and runs silently
- * in the background until called.
+ *   - Clipboard read/write
+ *   - System media playback control (Play/Pause, Next, Prev)
+ *   - Screen state checking
+ *   - Passive notification capture
  */
 class JarvisAccessibilityService : AccessibilityService() {
 
@@ -40,18 +39,17 @@ class JarvisAccessibilityService : AccessibilityService() {
         var instance: JarvisAccessibilityService? = null
             private set
 
+        @Volatile
+        var currentPackageName: String = "unknown"
+            private set
+
+        @Volatile
+        var lastNotificationText: String = ""
+            private set
+
         /**
          * Perform an accessibility action. Returns true if the action
          * was dispatched successfully.
-         *
-         * Supported actions:
-         *   "home"         — Go to home screen
-         *   "back"         — Navigate back
-         *   "recents"      - Open recent apps
-         *   "close_app"    - Close current app (back then home)
-         *   "quick_settings" - Open quick settings
-         *   "notifications" - Open notification shade
-         *   "screenshot"   - Take screenshot (Android 9+)
          */
         fun performAction(action: String): Boolean {
             val service = instance ?: run {
@@ -73,7 +71,6 @@ class JarvisAccessibilityService : AccessibilityService() {
                     true
                 }
                 "close_app" -> {
-                    // Close the current app by going back then home
                     service.performGlobalAction(GLOBAL_ACTION_BACK)
                     Thread.sleep(150)
                     service.performGlobalAction(GLOBAL_ACTION_HOME)
@@ -94,10 +91,81 @@ class JarvisAccessibilityService : AccessibilityService() {
                         false
                     }
                 }
+                "media_play_pause" -> {
+                    sendMediaKeyEvent(service, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+                    true
+                }
+                "media_next" -> {
+                    sendMediaKeyEvent(service, KeyEvent.KEYCODE_MEDIA_NEXT)
+                    true
+                }
+                "media_prev" -> {
+                    sendMediaKeyEvent(service, KeyEvent.KEYCODE_MEDIA_PREVIOUS)
+                    true
+                }
                 else -> {
                     Log.w(TAG, "Unknown accessibility action: $action")
                     false
                 }
+            }
+        }
+
+        private fun sendMediaKeyEvent(service: JarvisAccessibilityService, keyCode: Int) {
+            try {
+                val audioManager = service.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                val eventDown = KeyEvent(KeyEvent.ACTION_DOWN, keyCode)
+                val eventUp = KeyEvent(KeyEvent.ACTION_UP, keyCode)
+                audioManager.dispatchMediaKeyEvent(eventDown)
+                audioManager.dispatchMediaKeyEvent(eventUp)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send media key event: ${e.message}")
+            }
+        }
+
+        /**
+         * Read the contents of the system clipboard.
+         */
+        fun readClipboard(): String {
+            val service = instance ?: return ""
+            var text = ""
+            try {
+                val clipboard = service.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val primaryClip = clipboard.primaryClip
+                if (primaryClip != null && primaryClip.itemCount > 0) {
+                    text = primaryClip.getItemAt(0).text?.toString() ?: ""
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error reading clipboard: ${e.message}")
+            }
+            return text
+        }
+
+        /**
+         * Write a text string to the system clipboard.
+         */
+        fun writeClipboard(text: String): Boolean {
+            val service = instance ?: return false
+            try {
+                val clipboard = service.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("Jarvis", text)
+                clipboard.setPrimaryClip(clip)
+                return true
+            } catch (e: Exception) {
+                Log.e(TAG, "Error writing clipboard: ${e.message}")
+                return false
+            }
+        }
+
+        /**
+         * Check if the screen is currently interactive (on).
+         */
+        fun isScreenOn(): Boolean {
+            val service = instance ?: return false
+            return try {
+                val pm = service.getSystemService(Context.POWER_SERVICE) as PowerManager
+                pm.isInteractive
+            } catch (e: Exception) {
+                false
             }
         }
 
@@ -123,7 +191,6 @@ class JarvisAccessibilityService : AccessibilityService() {
                     return true
                 }
             }
-            // Check if parent is clickable
             var parent = node.parent
             while (parent != null) {
                 if (parent.isClickable && (parent.text?.toString()?.contains(text, ignoreCase = true) == true
@@ -136,7 +203,6 @@ class JarvisAccessibilityService : AccessibilityService() {
                 parent.recycle()
                 parent = p
             }
-            // Recurse into children
             for (i in 0 until node.childCount) {
                 val child = node.getChild(i)
                 if (child != null) {
@@ -158,7 +224,24 @@ class JarvisAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // We don't need to react to events — this is an action-only service
+        if (event == null) return
+
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val pkg = event.packageName?.toString()
+            if (!pkg.isNullOrEmpty()) {
+                currentPackageName = pkg
+            }
+        } else if (event.eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) {
+            val notificationText = StringBuilder()
+            event.text?.forEach {
+                notificationText.append(it).append(" ")
+            }
+            val pkg = event.packageName?.toString() ?: "unknown"
+            if (notificationText.isNotEmpty()) {
+                lastNotificationText = "[$pkg] ${notificationText.toString().trim()}"
+                Log.d(TAG, "Captured notification: $lastNotificationText")
+            }
+        }
     }
 
     override fun onInterrupt() {
@@ -171,9 +254,6 @@ class JarvisAccessibilityService : AccessibilityService() {
         Log.i(TAG, "Accessibility service destroyed")
     }
 
-    /**
-     * Handle key events (optional — for power button detection).
-     */
     override fun onKeyEvent(event: KeyEvent): Boolean {
         return super.onKeyEvent(event)
     }

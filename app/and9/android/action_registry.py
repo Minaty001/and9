@@ -45,6 +45,13 @@ _REQUIRED_ACTIONS = frozenset({
     "airplane_mode",
     "emergency",
     "search",
+    "clipboard_read",
+    "clipboard_write",
+    "media_play_pause",
+    "media_next",
+    "media_prev",
+    "screen_state",
+    "read_notifications",
 })
 
 
@@ -252,6 +259,55 @@ REGISTRY: Dict[str, Dict[str, Any]] = {
         "params": ["query"],
         "whitelisted": True,
         "chrome_allowed": True,
+    },
+    "clipboard_read": {
+        "handler": "actions.device_actions.handle_clipboard",
+        "android_intent": "JarvisAccessibilityService.readClipboard",
+        "description": "Read content from system clipboard",
+        "params": [],
+        "whitelisted": True,
+    },
+    "clipboard_write": {
+        "handler": "actions.device_actions.handle_clipboard",
+        "android_intent": "JarvisAccessibilityService.writeClipboard",
+        "description": "Write text content to system clipboard",
+        "params": ["text"],
+        "whitelisted": True,
+    },
+    "media_play_pause": {
+        "handler": "actions.device_actions.handle_media_control",
+        "android_intent": "AudioManager.dispatchMediaKeyEvent",
+        "description": "Toggle media play/pause",
+        "params": [],
+        "whitelisted": True,
+    },
+    "media_next": {
+        "handler": "actions.device_actions.handle_media_control",
+        "android_intent": "AudioManager.dispatchMediaKeyEvent",
+        "description": "Play next media track",
+        "params": [],
+        "whitelisted": True,
+    },
+    "media_prev": {
+        "handler": "actions.device_actions.handle_media_control",
+        "android_intent": "AudioManager.dispatchMediaKeyEvent",
+        "description": "Play previous media track",
+        "params": [],
+        "whitelisted": True,
+    },
+    "screen_state": {
+        "handler": "actions.device_actions.handle_screen_state",
+        "android_intent": "JarvisAccessibilityService.isScreenOn",
+        "description": "Get current screen state and foreground app",
+        "params": [],
+        "whitelisted": True,
+    },
+    "read_notifications": {
+        "handler": "actions.device_actions.handle_notification_read",
+        "android_intent": "JarvisAccessibilityService.lastNotificationText",
+        "description": "Read the last received system notification",
+        "params": [],
+        "whitelisted": True,
     },
 }
 

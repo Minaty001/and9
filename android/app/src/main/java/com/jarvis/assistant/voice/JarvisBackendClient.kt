@@ -106,6 +106,50 @@ class JarvisBackendClient(private val context: Context) {
         })
     }
 
+    /**
+     * Listen to the pipeline-status SSE endpoint.
+     * Invokes [onStatus] callback on the background thread whenever a new message arrives.
+     * Returns the Call object so it can be cancelled when the overlay is dismissed.
+     */
+    fun listenToPipelineStatus(onStatus: (String) -> Unit): Call {
+        val url = if (baseUrl.endsWith("/")) "${baseUrl}and9/pipeline-status" else "$baseUrl/and9/pipeline-status"
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", "text/event-stream")
+            .build()
+
+        val call = client.newCall(request)
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.w(TAG, "Pipeline status SSE stream failure: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "Pipeline status SSE status code: ${response.code}")
+                    response.close()
+                    return
+                }
+                try {
+                    val reader = response.body?.charStream()?.buffered() ?: return
+                    var line: String?
+                    while (reader.readLine().also { line = it } != null) {
+                        val currentLine = line ?: break
+                        if (currentLine.startsWith("data:")) {
+                            val data = currentLine.substring(5).trim()
+                            onStatus(data)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.d(TAG, "Pipeline status SSE stream closed/error: ${e.message}")
+                } finally {
+                    response.close()
+                }
+            }
+        })
+        return call
+    }
+
     // ── REMOVED (Constitution V3 Rule 5/6) ─────────────────────────
     // chatGroq() — removed. Android must never call LLM directly.
     // chatOpenAI() — removed. Android must never call LLM directly.

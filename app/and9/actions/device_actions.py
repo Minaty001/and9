@@ -134,7 +134,7 @@ def handle_search(query: str = "", q: str = "") -> dict:
 
     search_url = f"https://www.google.com/search?q={quote_plus(search_term)}"
     return {
-        "response": f"Web pe '{search_term}' search kar raha hoon 🔍",
+        "response": f"Web pe '{search_term}' search kar restoration kar raha hoon 🔍",
         "action": "SEARCH",
         "payload": {
             "action": "android.intent.action.VIEW",
@@ -143,3 +143,59 @@ def handle_search(query: str = "", q: str = "") -> dict:
             "data": search_url,
         },
     }
+
+
+def handle_clipboard(keyword: str = "", q: str = "", query: str = "") -> dict:
+    """Read from or write to clipboard.
+    
+    Args:
+        keyword: 'read' or 'write'.
+        q/query: Text to write if 'write' is chosen.
+    """
+    raw_query = (q or query).lower()
+    text_to_write = ""
+    
+    # Try to extract what needs to be copied/written
+    match = re.search(r'(?:copy|copy to clipboard|write|write to clipboard|clipboard main likho|copy karo)\s+(.*)', (q or query), re.IGNORECASE)
+    if match:
+        text_to_write = match.group(1).strip()
+    else:
+        # Check if keyword says copy
+        if "copy" in raw_query or "write" in raw_query or "likho" in raw_query:
+            text_to_write = (q or query).strip()
+
+    if text_to_write:
+        return {
+            "response": f"Clipboard main write kar raha hoon: '{text_to_write}' 📋",
+            "action": "CLIPBOARD_WRITE",
+            "payload": {"text": text_to_write}
+        }
+    else:
+        return {
+            "response": "Clipboard read kar raha hoon 📋",
+            "action": "CLIPBOARD_READ",
+            "payload": {}
+        }
+
+
+def handle_media_control(action_type: str = "", q: str = "", query: str = "") -> dict:
+    """Control media playback (play/pause, next, previous)."""
+    raw_query = (action_type or q or query).lower()
+    
+    if any(kw in raw_query for kw in ["next", "agla", "aage"]):
+        return {"response": "Next track play kar raha hoon ⏭️", "action": "MEDIA_NEXT", "payload": {}}
+    if any(kw in raw_query for kw in ["prev", "previous", "piche", "pichla"]):
+        return {"response": "Previous track play kar raha hoon ⏮️", "action": "MEDIA_PREV", "payload": {}}
+    
+    # Default is toggle play/pause
+    return {"response": "Media play/pause toggle kar raha hoon ⏯️", "action": "MEDIA_PLAY_PAUSE", "payload": {}}
+
+
+def handle_screen_state() -> dict:
+    """Query the device screen state."""
+    return {"response": "Screen state check kar raha hoon... 📱", "action": "SCREEN_STATE", "payload": {}}
+
+
+def handle_notification_read() -> dict:
+    """Read the last received notification."""
+    return {"response": "Aapki aakhri notification check kar raha hoon... 🔔", "action": "READ_NOTIFICATIONS", "payload": {}}

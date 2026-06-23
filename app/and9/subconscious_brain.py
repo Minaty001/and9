@@ -81,12 +81,67 @@ class SubconsciousBrain:
     def __init__(self, enable_learning: bool = True):
         self.history: List[PatternRecord] = []
         self.enable_learning = enable_learning
+        self._supabase_client = None
+        self._local_file = "/tmp/.jarvis_data/pattern_history.json"
+        
+        try:
+            from app.core.config import SUPABASE_KEY
+            if SUPABASE_KEY:
+                from app.core.memory import _get_client
+                self._supabase_client = _get_client()
+        except Exception as e:
+            logger.warning(f"SubconsciousBrain Supabase init skipped: {e}")
+            
+        self._load_patterns()
+
+    def _load_patterns(self):
+        # 1. Try Supabase
+        if self._supabase_client:
+            try:
+                res = self._supabase_client.table("pattern_history").select("*").order("timestamp", desc=True).limit(_MAX_HISTORY_SIZE).execute()
+                if res.data:
+                    self.history = []
+                    for row in reversed(res.data):
+                        self.history.append(PatternRecord(
+                            action=row.get("action"),
+                            intent=row.get("intent", "unknown"),
+                            query=row.get("query", ""),
+                            timestamp=row.get("timestamp"),
+                            hour=row.get("hour"),
+                            day_of_week=row.get("day_of_week"),
+                            app_name=row.get("app_name")
+                        ))
+                    logger.info(f"Loaded {len(self.history)} patterns from Supabase.")
+                    return
+            except Exception as e:
+                logger.warning(f"Supabase pattern load failed, falling back to local file: {e}")
+                
+        # 2. Try Local File
+        import json
+        import os
+        if os.path.exists(self._local_file):
+            try:
+                with open(self._local_file, "r") as f:
+                    data = json.load(f)
+                    self.history = []
+                    for row in data:
+                        self.history.append(PatternRecord(
+                            action=row.get("action"),
+                            intent=row.get("intent", "unknown"),
+                            query=row.get("query", ""),
+                            timestamp=row.get("timestamp"),
+                            hour=row.get("hour"),
+                            day_of_week=row.get("day_of_week"),
+                            app_name=row.get("app_name")
+                        ))
+                logger.info(f"Loaded {len(self.history)} patterns from local file.")
+            except Exception as e:
+                logger.warning(f"Local pattern load failed: {e}")
 
     def record_action(self, result: BrainResult, query: str) -> None:
         """Record a user action for pattern learning.
 
-        Stores the action in the in-memory history. Drops the oldest
-        entry when history exceeds _MAX_HISTORY_SIZE.
+        Stores the action in the history with dual-persistence.
 
         Args:
             result: The BrainResult from executing the action.
@@ -115,7 +170,74 @@ class SubconsciousBrain:
         if len(self.history) > _MAX_HISTORY_SIZE:
             self.history = self.history[-_MAX_HISTORY_SIZE:]
 
+        # 1. Try save to Supabase
+        if self._supabase_client:
+            try:
+                self._supabase_client.table("pattern_history").insert({
+                    "action": record.action,
+                    "intent": record.intent,
+                    "query": record.query,
+                    "timestamp": record.timestamp,
+                    "hour": record.hour,
+                    "day_of_week": record.day_of_week,
+                    "app_name": record.app_name
+                }).execute()
+            except Exception as e:
+                logger.warning(f"Failed to save pattern to Supabase: {e}")
+
+        # 2. Always save to Local File (backup/cache)
+        import json
+        import os
+        try:
+            os.makedirs(os.path.dirname(self._local_file), exist_ok=True)
+            with open(self._local_file, "w") as f:
+                json.dump([
+                    {
+                        "action": r.action,
+                        "intent": r.intent,
+                        "query": r.query,
+                        "timestamp": r.timestamp,
+                        "hour": r.hour,
+                        "day_of_week": r.day_of_week,
+                        "app_name": r.app_name
+                    } for r in self.history
+                ], f)
+        except Exception as e:
+            logger.warning(f"Failed to save patterns locally: {e}")
+
         logger.debug("Recorded action: %s at hour %d", result.action, now.hour)
+
+    def predict_next_action(self, last_action: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Predict the next action based on time, weekday, and sequential patterns.
+
+        Args:
+            last_action: Optional last executed action string.
+
+        Returns:
+            Dict containing predicted action/intent, confidence, and type of prediction.
+        """
+        # 1. Try sequential pattern first (more specific)
+        if last_action:
+            seq = self.get_sequential_pattern(last_action)
+            if seq:
+                return {
+                    "action": seq["next_action"],
+                    "confidence": 0.85,
+                    "source": "sequential_pattern",
+                    "suggestion": seq["suggestion"]
+                }
+        
+        # 2. Try time-based frequency pattern next
+        time_pat = self.get_pattern()
+        if time_pat:
+            return {
+                "action": time_pat["action"],
+                "confidence": 0.75,
+                "source": "time_pattern",
+                "suggestion": time_pat["suggestion"]
+            }
+            
+        return None
 
     def get_pattern(self, hour: Optional[int] = None,
                     day: Optional[str] = None) -> Optional[Dict[str, Any]]:

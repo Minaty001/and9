@@ -9,6 +9,9 @@
     <!-- VoiceInteractionService binding (required for any assistant) -->
     <uses-permission android:name="android.permission.BIND_VOICE_INTERACTION" />
 
+    <!-- Auto-start service on boot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- Microphone for speech recognition -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
@@ -106,6 +109,24 @@
             android:name=".services.JarvisSessionService"
             android:permission="android.permission.BIND_VOICE_INTERACTION"
             android:exported="true" />
+
+        <!-- Continuous background listening foreground service -->
+        <service
+            android:name=".services.ContinuousListeningService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <!-- Receiver to start continuous listening on boot -->
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
 
         <!-- ═════════════════════════════════════════════════════════
              3. AccessibilityService

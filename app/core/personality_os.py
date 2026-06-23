@@ -186,6 +186,7 @@ class PersonalOS:
                 memory_system=self.memory_system,
                 learning_system=self.learning_system,
                 enable_learning=True,
+                memory_consolidation=self.memory_consolidation,
             )
             logger.info("✓ Cognitive Engine initialized (Reflex + Habit + Reasoning)")
 

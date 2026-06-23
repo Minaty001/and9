@@ -19,6 +19,7 @@ from flask import Flask, g, request, jsonify, render_template
 from app.api.routes import api_bp
 from app.api.web_routes import web_bp
 from app.api.admin_routes import admin_bp
+from app.api.memory_api import memory_bp
 
 
 # ── Rate Limiter (in-memory, per-IP sliding window) ───────────
@@ -198,6 +199,7 @@ def create_app() -> Flask:
     app.register_blueprint(web_bp)
     app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    app.register_blueprint(memory_bp, url_prefix="/api/memory")
 
     # ── Health check ────────────────────────────────────────────
     @app.route("/health")

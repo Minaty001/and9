@@ -29,12 +29,13 @@ from urllib.parse import quote_plus
 
 from app.and9.brain_types import BrainResult, BrainType, IntentType
 from app.and9.router.normalizer import QueryNormalizer
-from app.and9.router.intent_router import detect_intent
+from app.and9.router.intent_router import detect_intent_with_confidence
 from app.and9.router.intent_validator import validate_intent
 from app.and9.android.android_executor import execute as execute_action
 from app.and9.core.logger import get_logger, is_debug_enabled
 from app.and9.core.intent_trace import TraceContext, log_trace
 from app.and9.subconscious_brain import SubconsciousBrain
+from app.and9.core.pipeline_status import status_manager, PipelineStage
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +55,27 @@ class Orchestrator:
     def __init__(self, events_sys=None, enable_patterns: bool = True):
         self.normalizer = QueryNormalizer()
         self.subconscious = SubconsciousBrain(enable_learning=enable_patterns)
+        from app.and9.habit_brain import HabitBrain
+        self.habit_brain = HabitBrain(self.subconscious)
         self.events_sys = events_sys
         self.query_logger = get_logger()
+        self.enable_patterns = enable_patterns
+        
+        try:
+            from app.core.learning_system import LearningSystem
+            self.learning_system = LearningSystem(enable_all=True)
+        except Exception as e:
+            logger.warning(f"AND9 Orchestrator LearningSystem init skipped: {e}")
+            self.learning_system = None
+
+        try:
+            from app.core.memory_consolidation import MemoryConsolidation
+            self.memory_consolidation = MemoryConsolidation()
+            self.memory_consolidation.start()
+        except Exception as e:
+            logger.warning(f"AND9 Orchestrator MemoryConsolidation init skipped: {e}")
+            self.memory_consolidation = None
+            
         logger.info("AND9 Orchestrator initialized (patterns=%s, debug=%s)",
                      enable_patterns, is_debug_enabled())
 
@@ -78,6 +98,8 @@ class Orchestrator:
         """
         start = time.perf_counter()
         logger.info("AND9 processing: '%s'", query)
+        
+        status_manager.reset()
 
         if not query or not query.strip():
             result = BrainResult(
@@ -85,6 +107,7 @@ class Orchestrator:
                 brain=BrainType.REFLEX,
             )
             self._log_result(query, "", "", {}, result)
+            status_manager.set_stage(PipelineStage.COMPLETED, "Empty query handled")
             return result.to_dict()
 
         with TraceContext(query) as trace:
@@ -95,8 +118,9 @@ class Orchestrator:
                 logger.debug("Normalized: '%s' → '%s' (modified=%s)",
                              query, normalized, was_modified)
 
-                # Step 2: Detect intent
-                intent_name, action_type, params = detect_intent(normalized)
+                # Step 2: Detect intent with confidence
+                status_manager.set_stage(PipelineStage.UNDERSTANDING, "Classifying intent & extracting entities")
+                intent_name, action_type, params, confidence = detect_intent_with_confidence(normalized)
                 trace.set_intent(intent_name or "", params)
                 trace.set_action(action_type or "")
 
@@ -108,6 +132,7 @@ class Orchestrator:
                     )
                     self._log_result(query, normalized, "", params, result)
                     trace.set_result("failure", "no_intent_detected")
+                    status_manager.set_stage(PipelineStage.COMPLETED, "No intent classified")
                     return result.to_dict()
 
                 # Priority 7: Validate Intent Parameters
@@ -121,20 +146,136 @@ class Orchestrator:
                     )
                     self._log_result(query, normalized, intent_name, params, result)
                     trace.set_result("failure", "validation_failed")
+                    status_manager.set_stage(PipelineStage.COMPLETED, "Validation failed")
                     return result.to_dict()
 
-                logger.debug("Intent: %s | Action: %s | Params: %s",
-                             intent_name, action_type, params)
+                logger.debug("Intent: %s | Action: %s | Params: %s | Confidence: %.2f",
+                             intent_name, action_type, params, confidence)
 
+                # Tiered execution / Action Verification
+                status_manager.set_stage(PipelineStage.PLANNING, "Evaluating confidence & verification rules")
+                from app.and9.actions.action_verifier import verify_action
+                
+                # Check if it is a simple greeting and we can suggest a habit
+                if intent_name in ("chat", "emergency") and normalized in ("hello", "jarvis", "assistant", "hey jarvis", "hi", "hey"):
+                    suggestion = self.habit_brain.get_routine_suggestion()
+                    if suggestion:
+                        confirm_prompt = suggestion["suggestion"]
+                        action_summary = f"Suggest {suggestion['predicted_action']}"
+                        
+                        result = BrainResult(
+                            response=confirm_prompt,
+                            action="CONFIRM_ACTION",
+                            payload={
+                                "original_action": suggestion["predicted_action"],
+                                "original_intent": suggestion["predicted_action"],
+                                "original_params": {"app_name": suggestion["predicted_action"]} if "app" in suggestion["predicted_action"] else {},
+                                "prompt": confirm_prompt,
+                                "summary": action_summary
+                            },
+                            brain=BrainType.HABIT,
+                            intent=IntentType.CHAT,
+                            execution_time_ms=(time.perf_counter() - start) * 1000,
+                            success=True,
+                            metadata={"confidence": suggestion["confidence"], "is_habit_suggestion": True}
+                        )
+                        self._log_result(query, normalized, intent_name, params, result)
+                        trace.set_result("success", "habit_suggested")
+                        status_manager.set_stage(PipelineStage.COMPLETED, "Habit routine suggestion sent")
+                        return result.to_dict()
+
+                # Check if it requires confirmation (either due to low confidence or dangerous action status)
+                needs_confirm, confirm_prompt, action_summary = verify_action(intent_name, params)
+                
+                # Tier 3: Low confidence (< 0.70)
+                if confidence < 0.70:
+                    result = BrainResult(
+                        response="Mujhe samajh nahi aaya. Kya aap phir se bol sakte hain? 🤔",
+                        action="CLARIFICATION_REQUIRED",
+                        brain=BrainType.REFLEX,
+                        execution_time_ms=(time.perf_counter() - start) * 1000,
+                        success=False,
+                        metadata={"confidence": confidence}
+                    )
+                    self._log_result(query, normalized, intent_name, params, result)
+                    trace.set_result("failure", "low_confidence")
+                    status_manager.set_stage(PipelineStage.COMPLETED, "Clarification requested due to low confidence")
+                    return result.to_dict()
+                
+                # Tier 2: Medium confidence (0.70 <= confidence < 0.95) or dangerous action
+                elif confidence < 0.95 or needs_confirm:
+                    if not confirm_prompt:
+                        confirm_prompt = f"Kya aap chahte hain ki main {intent_name} action execute karoon?"
+                        action_summary = f"Execute {intent_name}"
+                        
+                    result = BrainResult(
+                        response=confirm_prompt,
+                        action="CONFIRM_ACTION",
+                        payload={
+                            "original_action": action_type,
+                            "original_intent": intent_name,
+                            "original_params": params,
+                            "prompt": confirm_prompt,
+                            "summary": action_summary
+                        },
+                        brain=BrainType.REFLEX,
+                        intent=self._intent_from_name(intent_name),
+                        parameters=params,
+                        execution_time_ms=(time.perf_counter() - start) * 1000,
+                        success=True,
+                        metadata={"confidence": confidence, "needs_confirmation": True}
+                    )
+                    self._log_result(query, normalized, intent_name, params, result)
+                    trace.set_result("success", "confirmation_required")
+                    status_manager.set_stage(PipelineStage.COMPLETED, "Confirmation requested from user")
+                    return result.to_dict()
+
+                # Tier 1: High confidence (>= 0.95) and not dangerous
                 # Step 3: Execute action
+                status_manager.set_stage(PipelineStage.EXECUTING, f"Executing: {intent_name}")
                 result = self._execute(intent_name, action_type, params, start)
 
                 # Step 4: Record in subconscious
                 if result.success:
                     self.subconscious.record_action(result, query)
+                    
+                    if self.enable_patterns:
+                        def run_bg_hooks():
+                            try:
+                                if self.learning_system:
+                                    from app.and9.brain.cognitive_engine import CognitiveContext
+                                    ctx = CognitiveContext(
+                                        raw_input=query,
+                                        detected_intent=intent_name,
+                                        detected_action=action_type or "",
+                                        parameters=params,
+                                        success=result.success,
+                                        execution_time_ms=result.execution_time_ms
+                                    )
+                                    self.learning_system.observe(ctx)
+                                
+                                if self.memory_consolidation:
+                                    self.memory_consolidation.add_to_working(
+                                        content=query,
+                                        importance=0.4,
+                                        topics=[intent_name],
+                                        entities=params,
+                                        source="user"
+                                    )
+                            except Exception as ex:
+                                logger.debug(f"AND9 background hooks skipped: {ex}")
+                                
+                        import threading
+                        threading.Thread(target=run_bg_hooks, daemon=True).start()
 
                 self._log_result(query, normalized, intent_name, params, result)
                 trace.set_result("success" if result.success else "failure")
+                
+                if result.success:
+                    status_manager.set_stage(PipelineStage.COMPLETED, "Execution complete")
+                else:
+                    status_manager.set_stage(PipelineStage.DEGRADED, f"Execution failed: {result.response}")
+                    
                 return result.to_dict()
 
             except Exception as e:
@@ -142,9 +283,10 @@ class Orchestrator:
                 logger.error("AND9 pipeline error: %s", e, exc_info=True)
                 trace.set_result("failure", str(e))
                 
+                status_manager.set_stage(PipelineStage.ERROR_RECOVERY, "Executing diagnostics")
+                
                 # Priority 9: Run Self-Healing Diagnostics
                 from app.and9.core.diagnostics import run_diagnostics
-                # Best effort to grab intent variables, fallback to empty string if unbound
                 i_name = locals().get("intent_name", "")
                 a_type = locals().get("action_type", "")
                 p_dict = locals().get("params", {})
@@ -158,6 +300,7 @@ class Orchestrator:
                     success=False,
                     metadata={"diagnostics": diag_report}
                 )
+                status_manager.set_stage(PipelineStage.DEGRADED, "Pipeline recovered in degraded state")
                 return result.to_dict()
 
     def _execute(self, intent_name: str, action_type: Optional[str],
