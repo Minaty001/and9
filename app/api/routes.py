@@ -701,6 +701,34 @@ def cancel_timer(timer_id):
     return jsonify({"cancelled": ok})
 
 
+@api_bp.route("/timer/<int:timer_id>/pause", methods=["POST"])
+def pause_timer(timer_id):
+    """POST /api/timer/<id>/pause — pause a running timer."""
+    from app.core.timer import get_timer_service
+    result = get_timer_service().pause(timer_id)
+    if result is None:
+        return jsonify({"error": "timer not found or not active"}), 404
+    return jsonify(result)
+
+
+@api_bp.route("/timer/<int:timer_id>/resume", methods=["POST"])
+def resume_timer(timer_id):
+    """POST /api/timer/<id>/resume — resume a paused timer."""
+    from app.core.timer import get_timer_service
+    result = get_timer_service().resume(timer_id)
+    if result is None:
+        return jsonify({"error": "timer not found or not paused"}), 404
+    return jsonify(result)
+
+
+@api_bp.route("/timers", methods=["GET"])
+def list_timers():
+    """GET /api/timers — list all active (non-terminal) timers."""
+    from app.core.timer import get_timer_service
+    timers = get_timer_service().get_all_active()
+    return jsonify({"timers": timers, "count": len(timers)})
+
+
 # ═══════════════════════════════════════════════════════════════
 # AND9 API — Multi-brain AI Operating System
 # ═══════════════════════════════════════════════════════════════
