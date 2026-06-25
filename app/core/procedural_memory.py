@@ -55,6 +55,7 @@ class ProceduralMemory:
     """
 
     def __init__(self):
+        """Initialise procedural memory with thread-safe storage for skills, triggers, and handlers."""
         self._lock = threading.RLock()
         self._skills: Dict[str, Skill] = {}          # skill_id → Skill
         self._trigger_index: Dict[str, str] = {}      # keyword → skill_id (for fast lookup)
@@ -280,6 +281,12 @@ class ProceduralMemory:
             return False
 
     def get_stats(self) -> dict:
+        """Return aggregate statistics about stored skills.
+
+        Returns:
+            Dict with total_skills, categories breakdown, avg_confidence,
+            total_successes, total_failures, and skills_with_handlers count.
+        """
         with self._lock:
             total_skills = len(self._skills)
             if total_skills == 0:

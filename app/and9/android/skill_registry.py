@@ -18,9 +18,27 @@ def register_skill(action_type: str, module_path: str, func_name: str, arg_mappe
     _SKILL_REGISTRY[action_type] = (module_path, func_name, arg_mapper)
 
 def _default_mapper(params: dict, events_sys: Any) -> dict:
+    """Default argument mapper: passes parameters through unchanged.
+
+    Args:
+        params: Input parameters dict.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        The params dict unchanged.
+    """
     return params
 
 def _alarm_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for set_alarm skill.
+
+    Args:
+        params: Parameters dict with optional keys hour, minute, label.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with hour, minute, and label keys for alarm execution.
+    """
     return {
         "hour": params.get("hour", 7),
         "minute": params.get("minute", 0),
@@ -28,12 +46,30 @@ def _alarm_mapper(params: dict, events_sys: Any) -> dict:
     }
 
 def _timer_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for set_timer skill.
+
+    Args:
+        params: Parameters dict with optional keys duration_seconds, label.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with duration_seconds and label keys for timer execution.
+    """
     return {
         "duration_seconds": params.get("duration_seconds", 60),
         "label": params.get("label", "AND9 Timer"),
     }
 
 def _reminder_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for set_reminder skill, forwarding the events system.
+
+    Args:
+        params: Parameters dict with optional keys trigger_at, label.
+        events_sys: EventSystem reference passed through for reminder scheduling.
+
+    Returns:
+        Dict with trigger_at, label, and events_sys keys.
+    """
     return {
         "trigger_at": params.get("trigger_at", {}),
         "label": params.get("label", "AND9 Reminder"),
@@ -41,6 +77,15 @@ def _reminder_mapper(params: dict, events_sys: Any) -> dict:
     }
 
 def _call_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for call skill.
+
+    Args:
+        params: Parameters dict with optional keys contact_name, number, action_type.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with contact_name, number, and action_type keys for call execution.
+    """
     return {
         "contact_name": params.get("contact_name"),
         "number": params.get("number"),
@@ -48,6 +93,15 @@ def _call_mapper(params: dict, events_sys: Any) -> dict:
     }
 
 def _sms_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for send_sms skill.
+
+    Args:
+        params: Parameters dict with optional keys contact_name, number, message.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with contact_name, number, and message keys for SMS execution.
+    """
     return {
         "contact_name": params.get("contact_name"),
         "number": params.get("number"),
@@ -55,14 +109,43 @@ def _sms_mapper(params: dict, events_sys: Any) -> dict:
     }
 
 def _app_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for open_app skill.
+
+    Args:
+        params: Parameters dict with optional key app_name.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with app_name key for app launch execution.
+    """
     return {
         "app_name": params.get("app_name", "")
     }
 
 def _youtube_search_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for youtube_search / youtube_play skills.
+
+    Args:
+        params: Parameters dict with optional key query.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with query key for YouTube search execution.
+    """
     return {"query": params.get("query", "")}
 
 def _device_toggle_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for device toggle actions (wifi/bluetooth/airplane_mode).
+
+    Converts boolean state to 'on'/'off' string, or empty string if state is None.
+
+    Args:
+        params: Parameters dict with optional key state (bool or None).
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with a 'q' key containing the toggle command string.
+    """
     state = params.get("state")
     return {"q": "on" if state is True else "off" if state is False else ""}
 
@@ -117,4 +200,9 @@ def execute_skill(action_type: str, params: dict, events_sys: Any = None) -> dic
     return handler(**kwargs)
 
 def get_registered_skills():
+    """Return a list of all registered action type keys.
+
+    Returns:
+        List of action type strings registered in the skill registry.
+    """
     return list(_SKILL_REGISTRY.keys())

@@ -62,6 +62,15 @@ class PatternLearner:
     """
 
     def __init__(self, min_observations: int = 3):
+        """Initialize the PatternLearner with observation thresholds.
+
+        Sets up counters for hourly, daily, sequence, and frequency
+        patterns, along with thread-safe locking.
+
+        Args:
+            min_observations: Minimum observations required before a
+                pattern is considered valid (default: 3).
+        """
         self.min_observations = min_observations
         self._lock = threading.Lock()
 
@@ -218,6 +227,16 @@ class PatternLearner:
         ]
 
     def get_stats(self) -> dict:
+        """Return summary statistics for the pattern learner.
+
+        Returns:
+            dict with keys:
+                - total_observations: number of raw observations recorded
+                - patterns_discovered: number of learned patterns
+                - unique_actions: number of distinct actions observed
+                - top_actions: list of (action, count) tuples for the 5 most
+                  frequent actions.
+        """
         return {
             "total_observations": self._total_observations,
             "patterns_discovered": len(self._patterns),
@@ -259,6 +278,16 @@ class SkillLearner:
     """
 
     def __init__(self, min_repetitions: int = 3):
+        """Initialize the SkillLearner with repetition threshold.
+
+        Sets up task history storage, a skills registry, and
+        thread-safe locking.  Procedural memory attachment is
+        deferred for external wiring.
+
+        Args:
+            min_repetitions: Minimum successful repetitions before a
+                workflow is promoted to a skill (default: 3).
+        """
         self.min_repetitions = min_repetitions
         self._lock = threading.Lock()
         self._task_history: Dict[str, List[Dict]] = defaultdict(list)  # task_key → [executions]
@@ -383,6 +412,15 @@ class SkillLearner:
         return sorted(skills, key=lambda s: s["confidence"], reverse=True)
 
     def get_stats(self) -> dict:
+        """Return summary statistics for the skill learner.
+
+        Returns:
+            dict with keys:
+                - skills_learned: number of skills created
+                - tasks_tracked: number of distinct task keys observed
+                - total_executions: total number of task execution
+                  records across all task keys.
+        """
         return {
             "skills_learned": len(self._skills),
             "tasks_tracked": len(self._task_history),
@@ -417,6 +455,11 @@ class PreferenceLearner:
     """
 
     def __init__(self):
+        """Initialize the PreferenceLearner with empty stores.
+
+        Sets up thread-safe storage for learned preferences and raw
+        observation counters used to compute confidence scores.
+        """
         self._lock = threading.Lock()
         self._preferences: Dict[str, UserPreference] = {}
         self._observations: Dict[str, Counter] = defaultdict(Counter)  # key → {value: count}
@@ -530,6 +573,16 @@ class PreferenceLearner:
         return pref.value if pref else default
 
     def get_stats(self) -> dict:
+        """Return summary statistics for the preference learner.
+
+        Returns:
+            dict with keys:
+                - preferences_learned: number of distinct preferences
+                - total_observations: aggregate count across all
+                  preference observation counters
+                - categories: list of unique preference categories
+                  (e.g. 'app', 'media', 'schedule').
+        """
         return {
             "preferences_learned": len(self._preferences),
             "total_observations": sum(sum(c.values()) for c in self._observations.values()),
@@ -549,6 +602,17 @@ class LearningSystem:
     """
 
     def __init__(self, enable_all: bool = True):
+        """Initialize the unified LearningSystem.
+
+        Creates the three sub-learners (pattern, skill, preference)
+        only when ``enable_all`` is True, allowing callers to
+        selectively disable learning subsystems.
+
+        Args:
+            enable_all: If True, all three learners are instantiated.
+                If False, all are set to None and learning is
+                effectively disabled.
+        """
         self.pattern_learner = PatternLearner() if enable_all else None
         self.skill_learner = SkillLearner() if enable_all else None
         self.preference_learner = PreferenceLearner() if enable_all else None
@@ -614,6 +678,16 @@ class LearningSystem:
         return learnings
 
     def get_stats(self) -> dict:
+        """Return aggregate statistics from all learning subsystems.
+
+        Merges the top-level event counter with per-learner stats
+        from the pattern, skill, and preference learners (if they
+        are enabled).
+
+        Returns:
+            dict containing 'total_learning_events' and optionally
+            'patterns', 'skills', and 'preferences' sub-dicts.
+        """
         stats = {**self._stats}
         if self.pattern_learner:
             stats["patterns"] = self.pattern_learner.get_stats()

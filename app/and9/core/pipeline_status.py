@@ -22,6 +22,7 @@ class PipelineStatusManager:
     """Manages the current stage of the assistant pipeline and notifies listeners."""
     
     def __init__(self):
+        """Initialise the pipeline status manager in the LISTENING stage."""
         self._current_stage = PipelineStage.LISTENING
         self._stage_history = []
         self._listeners: List[Callable[[Dict[str, Any]], None]] = []
@@ -29,6 +30,13 @@ class PipelineStatusManager:
         self._stage_start_time = time.time()
         
     def register_listener(self, callback: Callable[[Dict[str, Any]], None]):
+        """Register a callback to be notified on pipeline stage transitions.
+
+        The callback is immediately invoked with the current status.
+
+        Args:
+            callback: A callable accepting a status dict.
+        """
         self._listeners.append(callback)
         # Send current status immediately
         try:
@@ -37,6 +45,11 @@ class PipelineStatusManager:
             logger.warning(f"Error calling status listener on register: {e}")
         
     def unregister_listener(self, callback: Callable[[Dict[str, Any]], None]):
+        """Remove a previously registered listener callback.
+
+        Args:
+            callback: The callable to remove from the listener list.
+        """
         if callback in self._listeners:
             self._listeners.remove(callback)
 
@@ -71,7 +84,7 @@ class PipelineStatusManager:
                 logger.warning(f"Error calling status listener: {e}")
 
     def reset(self):
-        """Reset the pipeline timing."""
+        """Reset the pipeline timer and transition back to LISTENING stage."""
         self._start_time = time.time()
         self._stage_start_time = time.time()
         self.set_stage(PipelineStage.LISTENING, "Started fresh request")

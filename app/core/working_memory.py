@@ -21,6 +21,11 @@ class WorkingMemory:
     """
 
     def __init__(self, memory):
+        """Initialise working memory with a reference to the parent memory system.
+
+        Args:
+            memory: The parent Memory instance providing Supabase access via _sb.
+        """
         self.memory = memory
         self._local: dict = {}          # in-memory cache: session_id → state
 
@@ -79,11 +84,29 @@ class WorkingMemory:
     # ── Internal ──────────────────────────────────────────────────
 
     def _set_local(self, session_id: int, key: str, value):
+        """Store a value in the in-memory cache for the given session.
+
+        Args:
+            session_id: The session identifier.
+            key: Attribute name to store.
+            value: Value to store.
+        """
         if session_id not in self._local:
             self._local[session_id] = {}
         self._local[session_id][key] = value
 
     def _get_state(self, session_id: int) -> dict:
+        """Retrieve the full state dict for a session (in-memory or DB).
+
+        Falls back to the database on first access and caches locally.
+        Returns a default state if no stored state exists.
+
+        Args:
+            session_id: The session identifier.
+
+        Returns:
+            Dictionary with keys: focus, current_task, state, metadata.
+        """
         # Fast in-memory path
         if session_id in self._local:
             return self._local[session_id]
@@ -101,6 +124,15 @@ class WorkingMemory:
         return default
 
     def _upsert(self, session_id: int, data: dict) -> bool:
+        """Insert or update the working memory row in Supabase for a session.
+
+        Args:
+            session_id: The session identifier.
+            data: Key-value pairs to persist.
+
+        Returns:
+            True on success or if Supabase is unavailable (no-op fallback).
+        """
         sb = self.memory._sb
         if not sb:
             return True                     # no-op in fallback mode
@@ -129,6 +161,15 @@ class WorkingMemory:
             return False
 
     def _db_get(self, session_id: int) -> Optional[dict]:
+        """Fetch the most recent working memory row from Supabase for a session.
+
+        Args:
+            session_id: The session identifier.
+
+        Returns:
+            Dict with focus, current_task, state, metadata, or None if not found
+            or when Supabase is unavailable.
+        """
         sb = self.memory._sb
         if not sb:
             return None

@@ -178,6 +178,16 @@ class ActionRegistry:
 
     @classmethod
     def get(cls, action: ActionType) -> dict:
+        """Look up metadata for a registered action type.
+
+        Args:
+            action: The ActionType enum member to look up.
+
+        Returns:
+            Dict with keys ``description``, ``requires``, and
+            ``response_template``. If the action is not registered,
+            returns a default unknown-action entry.
+        """
         return cls._registry.get(action, {
             "description": "Unknown action",
             "requires": [],
@@ -186,6 +196,13 @@ class ActionRegistry:
 
     @classmethod
     def list_actions(cls) -> list[dict]:
+        """Enumerate all registered actions with their metadata.
+
+        Returns:
+            list[dict]: Each entry contains the action string value
+            plus the metadata fields (description, requires,
+            response_template) from the registry.
+        """
         return [
             {"action": a.value, **meta}
             for a, meta in cls._registry.items()
@@ -193,6 +210,15 @@ class ActionRegistry:
 
     @classmethod
     def validate_action(cls, action: str) -> bool:
+        """Check whether a string is a valid registered action type.
+
+        Args:
+            action: The action string to validate (e.g. ``"call"``).
+
+        Returns:
+            True if the string matches any ActionType member, False
+            otherwise.
+        """
         try:
             ActionType(action)
             return True

@@ -26,6 +26,7 @@ class EntitySpan:
     end: int
 
     def __str__(self) -> str:
+        """Return a human-readable string like 'Delhi [GPE]'."""
         return f"{self.text} [{self.label}]"
 
 
@@ -41,6 +42,7 @@ class IntentScore:
     confidence: float
 
     def __repr__(self) -> str:
+        """Return a developer-friendly representation including intent and confidence."""
         return f"IntentScore({self.intent!r}, {self.confidence:.3f})"
 
 

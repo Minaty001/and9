@@ -34,11 +34,29 @@ class GoalTracker:
         self._mem = memory
 
     def _q(self, table):
+        """Get a Supabase table query builder if the connection is available.
+
+        Args:
+            table: The name of the Supabase table to query.
+
+        Returns:
+            A Supabase table query builder, or None if the database
+            connection is not ready.
+        """
         if not self._mem._ok:
             return None
         return self._mem._sb.table(table)
 
     def _safe(self, fn, default=None):
+        """Execute a callable with exception safety and logging.
+
+        Args:
+            fn: The callable to execute.
+            default: Value to return if the callable raises an exception.
+
+        Returns:
+            The result of fn() on success, or the default value on failure.
+        """
         try:
             return fn()
         except Exception as e:
@@ -98,6 +116,15 @@ class GoalTracker:
         return bool(res and res.data)
 
     def update_goal_status(self, goal_id: int, status: str) -> bool:
+        """Update the status of an existing goal.
+
+        Args:
+            goal_id: The unique identifier of the goal to update.
+            status: The new status value (active, done, paused, or cancelled).
+
+        Returns:
+            True if the goal was found and updated, False otherwise.
+        """
         q = self._q("goals")
         if q is None:
             for g in self._mem._mem.get("goals", []):
@@ -110,6 +137,11 @@ class GoalTracker:
         return bool(res and res.data)
 
     def get_all_goals(self) -> list:
+        """Retrieve all goals ordered by creation time (newest first).
+
+        Returns:
+            A list of all goal records, or an empty list if none exist.
+        """
         q = self._q("goals")
         if q is None:
             return self._mem._mem.get("goals", [])
@@ -118,6 +150,14 @@ class GoalTracker:
         return res.data if res and res.data else []
 
     def delete_goal(self, goal_id: int) -> bool:
+        """Delete a goal by its ID from the database or in-memory store.
+
+        Args:
+            goal_id: The unique identifier of the goal to delete.
+
+        Returns:
+            True if the goal was found and deleted, False otherwise.
+        """
         q = self._q("goals")
         if q is None:
             goals = self._mem._mem.get("goals", [])
@@ -133,6 +173,16 @@ class GoalTracker:
 
     def add_project(self, name: str, description: str = "",
                     status: str = "active") -> Optional[dict]:
+        """Create a new project and return the created record.
+
+        Args:
+            name: The project name.
+            description: Optional project description.
+            status: Initial project status (default: "active").
+
+        Returns:
+            The created project as a dict, or None if creation failed.
+        """
         q = self._q("projects")
         if q is None:
             p = {"id": len(self._mem._mem.get("projects", [])) + 1,
@@ -146,6 +196,11 @@ class GoalTracker:
         return res.data[0] if res and res.data else None
 
     def get_active_projects(self) -> list:
+        """Retrieve all projects with status set to "active", ordered newest first.
+
+        Returns:
+            A list of active project records, or an empty list if none exist.
+        """
         q = self._q("projects")
         if q is None:
             return [p for p in self._mem._mem.get("projects", [])

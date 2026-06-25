@@ -53,6 +53,11 @@ class ProactiveEngine:
     """Generates smart, time-aware suggestions and recommendations."""
 
     def __init__(self, memory=None):
+        """Initialise the proactive engine with an optional memory reference.
+
+        Args:
+            memory: Optional Memory instance for context-aware suggestions.
+        """
         self.memory = memory
         self._last_suggestion_ts: float = 0
         self._suggestion_cooldown = 1800  # 30 min between auto suggestions

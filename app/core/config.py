@@ -9,6 +9,15 @@ from functools import lru_cache
 
 @lru_cache()
 def _str_env(key: str, default: str = "") -> str:
+    """Read a string environment variable with an optional default (cached).
+
+    Args:
+        key: Environment variable name.
+        default: Fallback value if the variable is not set (default '').
+
+    Returns:
+        The environment variable value or the default.
+    """
     return os.environ.get(key, default)
 
 
@@ -50,6 +59,7 @@ STATE_FILE = "/tmp/.jarvis_data/jarvis_state.json"
 # Lazy init: only create the directory when first needed
 _notes_dir_created = False
 def _ensure_notes_dir():
+    """Create the NOTES_DIR directory on first access (lazy initialisation)."""
     global _notes_dir_created
     if not _notes_dir_created:
         os.makedirs(NOTES_DIR, exist_ok=True)

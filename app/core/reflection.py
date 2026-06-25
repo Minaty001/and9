@@ -25,6 +25,11 @@ class ReflectionEngine:
     """Generates session summaries and daily reviews using LLM + memory."""
 
     def __init__(self, memory):
+        """Initialise the reflection engine with a reference to the memory system.
+
+        Args:
+            memory: The parent Memory instance used to fetch session history.
+        """
         self._mem = memory
 
     def reflect_on_session(self, session_id: int, ask_llm_fn) -> str:

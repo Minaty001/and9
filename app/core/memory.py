@@ -29,6 +29,15 @@ _sb_client = None
 
 
 def _get_client():
+    """Get or create the singleton Supabase client.
+
+    Returns:
+        The Supabase client instance.
+
+    Raises:
+        RuntimeError: If SUPABASE_URL or SUPABASE_KEY environment variables
+            are not set.
+    """
     global _sb_client
     if _sb_client is not None:
         return _sb_client
@@ -76,6 +85,14 @@ class Memory:
     """
 
     def __init__(self, db_path=None):  # db_path accepted but ignored
+        """Initialize Memory with Supabase or in-memory fallback.
+
+        Attempts to connect to Supabase; if SUPABASE_KEY is not configured
+        (e.g. in tests), falls back to an in-memory dict store.
+
+        Args:
+            db_path: Ignored — kept for backward-compat with tests.
+        """
         self._sb = None
         self._ok = False
         self._mem: dict = {          # in-memory fallback store
@@ -96,6 +113,11 @@ class Memory:
             logger.warning(f"Supabase init skipped: {e}")
 
     def _next(self) -> int:
+        """Generate and return the next sequential ID for in-memory storage.
+
+        Returns:
+            The current _next_id value before incrementing.
+        """
         n = self._mem["_next_id"]
         self._mem["_next_id"] += 1
         return n
@@ -103,9 +125,29 @@ class Memory:
     # ── helpers ──────────────────────────────────────────────────
 
     def _q(self, table: str):
+        """Return a Supabase table reference for the given table name.
+
+        Args:
+            table: The name of the Supabase table to query.
+
+        Returns:
+            A Supabase table resource object.
+        """
         return self._sb.table(table)
 
     def _safe(self, fn, default=None):
+        """Execute a Supabase call safely, returning a default on failure.
+
+        Wraps a callable in a try/except so that transient Supabase errors
+        do not crash the application.
+
+        Args:
+            fn: A callable wrapping the Supabase operation.
+            default: Value to return if the operation raises (default: None).
+
+        Returns:
+            The result of fn(), or default on exception.
+        """
         try:
             return fn()
         except Exception as e:
@@ -142,6 +184,14 @@ class Memory:
             })
 
     def get_recent_chat(self, limit: int = 20) -> list:
+        """Retrieve the most recent chat messages.
+
+        Args:
+            limit: Maximum number of messages to return (default: 20).
+
+        Returns:
+            List of dicts with 'role' and 'content' keys, in chronological order.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("chat_history")
                              .select("role, content")
@@ -156,6 +206,11 @@ class Memory:
             return self._mem["chat"][-limit:]
 
     def get_chat_count(self) -> int:
+        """Return the total number of chat messages stored.
+
+        Returns:
+            The count of all chat history entries.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("chat_history")
                              .select("id", count="exact").execute(), None)
@@ -163,6 +218,10 @@ class Memory:
         return len(self._mem["chat"])
 
     def clear_chat_history(self):
+        """Delete all chat history entries.
+
+        Removes every message from the chat store (Supabase or in-memory).
+        """
         if self._ok:
             self._safe(lambda: self._q("chat_history").delete().neq("id", 0).execute())
         else:
@@ -232,6 +291,14 @@ class Memory:
                     if v["confidence"] >= min_confidence}
 
     def delete_fact(self, key: str) -> bool:
+        """Delete a user fact by its key.
+
+        Args:
+            key: The fact key to remove.
+
+        Returns:
+            True if a fact was deleted, False otherwise.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("user_facts")
                              .delete().eq("fact_key", key).execute(), None)
@@ -242,6 +309,14 @@ class Memory:
             return existed
 
     def search_facts(self, keyword: str) -> dict:
+        """Search user facts by keyword (case-insensitive match on value).
+
+        Args:
+            keyword: Search term to match against fact values.
+
+        Returns:
+            Dict of matching fact_key -> fact_value entries.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("user_facts")
                              .select("fact_key, fact_value")
@@ -260,6 +335,17 @@ class Memory:
     # ════════════════════════════════════════════════════════════
 
     def get_or_create_session(self, timeout_minutes: int = 30) -> int:
+        """Get the current open session or create a new one.
+
+        Reuses an open session if it exists and is within the inactivity
+        timeout. Otherwise closes the stale session and creates a fresh one.
+
+        Args:
+            timeout_minutes: Inactivity timeout in minutes (default: 30).
+
+        Returns:
+            The session ID (integer).
+        """
         if not self._ok:
             # Find open session in memory
             open_s = next((s for s in self._mem["sessions"] if s["ended_at"] is None), None)
@@ -314,6 +400,14 @@ class Memory:
         return 1
 
     def end_session(self, session_id: int, summary: Optional[str] = None):
+        """Mark a session as ended with an optional summary.
+
+        Updates the ended_at timestamp and optionally stores a session summary.
+
+        Args:
+            session_id: The ID of the session to close.
+            summary: Optional summary text for the session.
+        """
         if not self._ok:
             for s in self._mem["sessions"]:
                 if s["id"] == session_id:
@@ -324,6 +418,15 @@ class Memory:
                    .eq("id", session_id).execute())
 
     def get_session_history(self, session_id: int) -> list:
+        """Retrieve all episodes for a given session.
+
+        Args:
+            session_id: The ID of the session to query.
+
+        Returns:
+            List of episode dicts containing id, role, content, topic,
+            emotion, importance, and timestamp.
+        """
         if not self._ok:
             return [e for e in self._mem["episodes"] if e.get("session_id") == session_id]
         res = self._safe(lambda: self._q("episodic_memory")
@@ -382,6 +485,14 @@ class Memory:
             return ep["id"]
 
     def get_recent_episodes(self, limit: int = 10) -> list:
+        """Retrieve the most recent episodic memory entries.
+
+        Args:
+            limit: Maximum number of episodes to return (default: 10).
+
+        Returns:
+            List of episode dicts in chronological order.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("episodic_memory")
                              .select("id, session_id, role, content, topic, emotion, importance, created_at")
@@ -398,6 +509,15 @@ class Memory:
             return list(reversed(self._mem["episodes"]))[:limit]
 
     def get_relevant_episodes(self, topic: str, limit: int = 5) -> list:
+        """Retrieve episodic memory entries matching a topic (case-insensitive).
+
+        Args:
+            topic: Topic keyword to filter by.
+            limit: Maximum number of matching episodes to return (default: 5).
+
+        Returns:
+            List of episode dicts whose topic contains the keyword.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("episodic_memory")
                              .select("id, session_id, role, content, topic, emotion, importance, created_at")
@@ -416,6 +536,11 @@ class Memory:
             return [e for e in reversed(self._mem["episodes"]) if kw in e.get("topic", "").lower()][:limit]
 
     def get_episode_count(self) -> int:
+        """Return the total number of episodic memory entries stored.
+
+        Returns:
+            The count of all episodes.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("episodic_memory")
                              .select("id", count="exact").execute(), None)
@@ -458,6 +583,11 @@ class Memory:
             }
 
     def get_user_profile(self) -> dict:
+        """Retrieve all semantic memory facts grouped by category.
+
+        Returns:
+            Dict structured as {category: {fact_key: fact_value, ...}, ...}.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("semantic_memory")
                              .select("category, fact_key, fact_value")
@@ -499,6 +629,14 @@ class Memory:
             return profile
 
     def get_facts_by_category(self, category: str) -> dict:
+        """Retrieve all semantic facts within a specific category.
+
+        Args:
+            category: The fact category to query (e.g. identity, location).
+
+        Returns:
+            Dict of fact_key -> fact_value for the given category.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("semantic_memory")
                              .select("fact_key, fact_value")
@@ -522,6 +660,15 @@ class Memory:
                 self._mem["semantic"][(category, key)]["verified"] = True
 
     def forget_fact(self, category: str, key: str) -> bool:
+        """Delete a semantic fact by category and key.
+
+        Args:
+            category: The fact category.
+            key: The fact key to remove.
+
+        Returns:
+            True if a fact was deleted, False otherwise.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("semantic_memory")
                              .delete().eq("category", category).eq("fact_key", key)
@@ -564,6 +711,14 @@ class Memory:
                 "timestamp": datetime.now(timezone.utc).isoformat()})
 
     def get_emotional_history(self, topic: str) -> list:
+        """Retrieve emotional memory entries for a specific topic.
+
+        Args:
+            topic: The topic to filter emotional records by.
+
+        Returns:
+            List of emotional record dicts, most recent first.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("emotional_memory")
                              .select("id, emotion, intensity, created_at, episode_id, context")
@@ -579,6 +734,14 @@ class Memory:
             return [e for e in reversed(self._mem["emotional"]) if e["topic"] == topic]
 
     def get_emotional_context(self) -> dict:
+        """Build a summary of the most recent emotional state per topic.
+
+        Returns up to 20 unique topics with their latest emotion, intensity,
+        and last_seen timestamp.
+
+        Returns:
+            Dict of {topic: {emotion, intensity, last_seen}, ...}.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("emotional_memory")
                              .select("topic, emotion, intensity, created_at")
@@ -606,6 +769,14 @@ class Memory:
             return result
 
     def get_dominant_emotion_for_topic(self, topic: str) -> str:
+        """Determine the most frequently occurring emotion for a topic.
+
+        Args:
+            topic: The topic to analyze.
+
+        Returns:
+            The dominant emotion label, or 'neutral' if no records exist.
+        """
         if self._ok:
             res = self._safe(lambda: self._q("emotional_memory")
                              .select("emotion").eq("topic", topic).execute(), None)

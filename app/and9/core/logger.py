@@ -25,6 +25,22 @@ class QueryLog:
                  action: str = "", payload: dict = None,
                  brain: str = "", execution_time_ms: float = 0.0,
                  success: bool = True, error: str = ""):
+        """Initialize a query log entry with full pipeline context.
+
+        Automatically generates an ISO-format timestamp at creation time.
+
+        Args:
+            raw_query: Original user input.
+            normalized_query: Query after normalization pass.
+            intent: Detected intent name.
+            parameters: Structured parameters extracted from the query.
+            action: Action type dispatched.
+            payload: Additional payload data for the action.
+            brain: Name of the brain module that processed the query.
+            execution_time_ms: Execution duration in milliseconds.
+            success: Whether the query was processed successfully.
+            error: Error message if processing failed.
+        """
         self.timestamp = datetime.now().isoformat()
         self.raw_query = raw_query
         self.normalized_query = normalized_query
@@ -38,6 +54,12 @@ class QueryLog:
         self.error = error
 
     def to_dict(self) -> dict:
+        """Serialize the log entry to a dictionary.
+
+        Returns:
+            dict: All log fields keyed by name, ready for JSON
+            serialisation or analysis.
+        """
         return {
             "timestamp": self.timestamp,
             "raw_query": self.raw_query,
@@ -60,6 +82,12 @@ class QueryLogger:
     provides debug-format printing when enabled.
     """
     def __init__(self, max_entries: int = 1000):
+        """Initialize an in-memory query logger.
+
+        Args:
+            max_entries: Maximum number of log entries to retain.
+                Older entries are discarded when this limit is exceeded.
+        """
         self.logs: list[QueryLog] = []
         self.max_entries = max_entries
 
@@ -68,6 +96,27 @@ class QueryLogger:
             action: str = "", payload: dict = None,
             brain: str = "", execution_time_ms: float = 0.0,
             success: bool = True, error: str = ""):
+        """Record a new query with full pipeline context.
+
+        Wraps the provided data in a :class:`QueryLog`, appends it to
+        the in-memory ring buffer, and prints a formatted debug panel
+        when debug mode is enabled via ``AND9_DEBUG=1``.
+
+        Args:
+            raw_query: Original user input.
+            normalized_query: Query after normalisation.
+            intent: Detected intent name.
+            parameters: Structured parameters extracted from the query.
+            action: Action type dispatched.
+            payload: Additional payload data for the action.
+            brain: Name of the brain module that handled the query.
+            execution_time_ms: Execution duration in milliseconds.
+            success: Whether processing succeeded.
+            error: Error message on failure.
+
+        Returns:
+            QueryLog: The newly created log entry.
+        """
         entry = QueryLog(
             raw_query=raw_query,
             normalized_query=normalized_query,
@@ -90,9 +139,25 @@ class QueryLogger:
         return entry
 
     def get_recent(self, limit: int = 50) -> list[dict]:
+        """Return the most recent log entries as dictionaries.
+
+        Args:
+            limit: Maximum number of entries to return (default 50).
+
+        Returns:
+            list[dict]: The last *limit* log entries, each serialised
+            via :meth:`QueryLog.to_dict`.
+        """
         return [log.to_dict() for log in self.logs[-limit:]]
 
     def get_stats(self) -> dict:
+        """Compute aggregate statistics over all stored log entries.
+
+        Returns:
+            dict: Contains ``total_queries``, ``failed_queries``,
+            ``success_rate`` (formatted percentage string or ``"N/A"``),
+            and ``recent`` (the last 10 log entries as dicts).
+        """
         total = len(self.logs)
         failed = sum(1 for log in self.logs if not log.success)
         return {
@@ -103,6 +168,7 @@ class QueryLogger:
         }
 
     def clear(self):
+        """Remove all stored log entries from memory."""
         self.logs.clear()
 
 
@@ -130,6 +196,14 @@ _logger_instance: Optional[QueryLogger] = None
 
 
 def get_logger() -> QueryLogger:
+    """Return the singleton QueryLogger instance.
+
+    Creates the instance on first call and reuses it thereafter for
+    app-wide access to query logs.
+
+    Returns:
+        QueryLogger: The single shared logger instance.
+    """
     global _logger_instance
     if _logger_instance is None:
         _logger_instance = QueryLogger()
@@ -137,4 +211,13 @@ def get_logger() -> QueryLogger:
 
 
 def is_debug_enabled() -> bool:
+    """Check whether debug mode is enabled.
+
+    Reads the ``AND9_DEBUG`` environment variable at import time.
+    When enabled, :meth:`QueryLogger.log` prints a formatted debug
+    panel for every query.
+
+    Returns:
+        bool: True if ``AND9_DEBUG`` is set to ``"1"``.
+    """
     return _DEBUG_ENABLED

@@ -25,6 +25,14 @@ _reflector    = None
 
 
 def get_orch():
+    """Get or create the singleton Orchestrator instance.
+
+    Lazy-initializes the orchestrator on first call and caches it
+    in the module-level ``_orchestrator`` variable.
+
+    Returns:
+        Orchestrator: The global orchestrator instance.
+    """
     global _orchestrator
     if _orchestrator is None:
         _orchestrator = Orchestrator()
@@ -32,6 +40,14 @@ def get_orch():
 
 
 def get_mem():
+    """Get or create the singleton Memory instance.
+
+    Lazy-initializes the memory subsystem on first call and caches it
+    in the module-level ``_memory`` variable.
+
+    Returns:
+        Memory: The global memory instance.
+    """
     global _memory
     if _memory is None:
         _memory = Memory()
@@ -39,6 +55,14 @@ def get_mem():
 
 
 def get_goals():
+    """Get or create the singleton GoalTracker instance.
+
+    Lazy-initializes the goal tracker backed by the memory subsystem
+    and caches it in the module-level ``_goals`` variable.
+
+    Returns:
+        GoalTracker: The global goal tracker instance.
+    """
     global _goals
     if _goals is None:
         _goals = GoalTracker(get_mem())
@@ -46,6 +70,14 @@ def get_goals():
 
 
 def get_events():
+    """Get or create the singleton EventSystem instance.
+
+    Lazy-initializes the event system backed by the memory subsystem
+    and caches it in the module-level ``_events`` variable.
+
+    Returns:
+        EventSystem: The global event system instance.
+    """
     global _events
     if _events is None:
         _events = EventSystem(get_mem())
@@ -53,6 +85,14 @@ def get_events():
 
 
 def get_reflector():
+    """Get or create the singleton ReflectionEngine instance.
+
+    Lazy-initializes the reflection engine backed by the memory subsystem
+    and caches it in the module-level ``_reflector`` variable.
+
+    Returns:
+        ReflectionEngine: The global reflection engine instance.
+    """
     global _reflector
     if _reflector is None:
         _reflector = ReflectionEngine(get_mem())
@@ -62,6 +102,17 @@ def get_reflector():
 
 @api_bp.route("/chat", methods=["POST"])
 def chat():
+    """POST /api/chat — Process a user message through the orchestrator.
+
+    Accepts a JSON body with a ``message`` field, routes it through the
+    orchestrator pipeline, and returns the AI response along with any
+    device intents, media URLs, sources, and brain metadata.
+
+    Returns:
+        JSON response with keys: reply, agent, time_ms, image_url,
+        youtube_url, sources, status, brain, metadata, intent.
+        500 on server error.
+    """
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
     if not message:
@@ -95,21 +146,44 @@ def chat():
 
 @api_bp.route("/agents", methods=["GET"])
 def list_agents():
+    """GET /api/agents — List all available agent names from the orchestrator.
+
+    Returns:
+        JSON list of agent name strings.
+    """
     return jsonify(get_orch().list_agents())
 
 
 @api_bp.route("/history", methods=["GET"])
 def get_history():
+    """GET /api/history — Return the 20 most recent chat turns from memory.
+
+    Returns:
+        JSON list of recent chat history entries.
+    """
     return jsonify(get_mem().get_recent_chat(20))
 
 
 @api_bp.route("/memory/facts", methods=["GET"])
 def get_facts():
+    """GET /api/memory/facts — Retrieve all stored facts from semantic memory.
+
+    Returns:
+        JSON list of fact objects.
+    """
     return jsonify(get_mem().get_facts())
 
 
 @api_bp.route("/memory/learn", methods=["POST"])
 def learn_fact():
+    """POST /api/memory/learn — Store a new fact into semantic memory.
+
+    Accepts JSON body with ``key``, ``value``, and optional ``fact_type``.
+
+    Returns:
+        JSON ``{"status": "learned", "key": key}`` on success.
+        400 if key or value is missing.
+    """
     data = request.get_json(silent=True) or {}
     key = data.get("key", "").strip()
     value = data.get("value", "").strip()
@@ -121,6 +195,14 @@ def learn_fact():
 
 @api_bp.route("/memory/fact", methods=["DELETE"])
 def delete_fact():
+    """DELETE /api/memory/fact — Remove a fact from semantic memory by key.
+
+    Accepts JSON body with ``key`` specifying which fact to delete.
+
+    Returns:
+        JSON ``{"status": "deleted", "key": key}`` on success.
+        400 if key is missing; 404 if the fact is not found.
+    """
     data = request.get_json(silent=True) or {}
     key = data.get("key", "").strip()
     if not key:
@@ -133,6 +215,14 @@ def delete_fact():
 
 @api_bp.route("/memory/search", methods=["GET"])
 def search_facts():
+    """GET /api/memory/search — Search facts by keyword.
+
+    Accepts a query parameter ``q`` and returns matching facts from semantic memory.
+
+    Returns:
+        JSON list of matching fact objects.
+        400 if ``q`` parameter is missing.
+    """
     keyword = request.args.get("q", "").strip()
     if not keyword:
         return jsonify({"error": "query parameter 'q' is required"}), 400
@@ -329,6 +419,11 @@ def reflect():
 
 @api_bp.route("/health", methods=["GET"])
 def health():
+    """GET /api/health — Simple health check endpoint.
+
+    Returns:
+        JSON ``{"status": "ok"}`` indicating the service is alive.
+    """
     return jsonify({"status": "ok"})
 
 
@@ -339,6 +434,14 @@ def health():
 _proactive = None
 
 def get_proactive():
+    """Get or create the singleton ProactiveEngine instance.
+
+    Lazy-initializes the proactive engine backed by the memory subsystem
+    and caches it in the module-level ``_proactive`` variable.
+
+    Returns:
+        ProactiveEngine: The global proactive engine instance.
+    """
     global _proactive
     if _proactive is None:
         _proactive = ProactiveEngine(get_mem())
@@ -417,6 +520,16 @@ _VOICE_HI_IN = "hi-IN-SwaraNeural"
 
 
 def _has_devanagari(text: str) -> bool:
+    """Check whether the given text contains any Devanagari Unicode characters.
+
+    Uses the Devanagari Unicode block U+0900–U+097F to detect Hindi text.
+
+    Args:
+        text: The input string to inspect.
+
+    Returns:
+        True if at least one Devanagari character is found, False otherwise.
+    """
     return any("\u0900" <= ch <= "\u097F" for ch in text)
 
 
@@ -506,6 +619,12 @@ def tts_voices():
         import edge_tts
 
         async def _get_voices():
+            """Fetch available edge-tts voices filtered for Indian languages.
+
+            Returns:
+                list[dict]: Voice info dicts with name, short, gender, and lang keys
+                for Indian language locales (en-IN, hi-IN, ta-IN, te-IN, mr-IN).
+            """
             voices = await edge_tts.list_voices()
             indian = [
                 {"name": v["Name"], "short": v["ShortName"],
@@ -590,6 +709,14 @@ _and9_instance = None
 
 
 def get_and9():
+    """Get or create the singleton AND9 multi-brain instance.
+
+    Lazy-initializes the AND9 system wired to the event system and
+    caches it in the module-level ``_and9_instance`` variable.
+
+    Returns:
+        AND9: The global AND9 multi-brain operating system instance.
+    """
     global _and9_instance
     if _and9_instance is None:
         from app.and9 import AND9
@@ -880,9 +1007,24 @@ def pipeline_status():
     import queue
 
     def event_stream():
+        """Generator yielding SSE events for real-time pipeline status updates.
+
+        Registers a callback on the status manager, yields the current
+        pipeline status immediately, then streams subsequent updates as
+        they arrive. Sends heartbeat pings every 10 seconds to prevent
+        client-side timeout.
+
+        Yields:
+            str: Server-Sent Event formatted data lines (status or ping).
+        """
         q = queue.Queue()
         
         def listener(status):
+            """Callback that enqueues a status update into the SSE event queue.
+
+            Args:
+                status: Status dict received from the pipeline status manager.
+            """
             q.put(status)
             
         status_manager.register_listener(listener)

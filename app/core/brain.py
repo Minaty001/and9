@@ -79,6 +79,15 @@ def _groq_call(
 # ═══════════════════════════════════════════════════════════════
 
 def _get_opencode_models() -> list:
+    """Fetch available model identifiers from the Opencode Zen API.
+
+    Caches the result in the module-level `_opencode_models` list so that
+    subsequent calls avoid an HTTP request. Returns an empty list if the
+    API key is unset or the request fails.
+
+    Returns:
+        A list of model ID strings available via the Opencode provider.
+    """
     global _opencode_models
     if _opencode_models:
         return _opencode_models

@@ -20,6 +20,11 @@ class KnowledgeGraph:
     """
 
     def __init__(self, memory):
+        """Initialise the knowledge graph with a reference to the parent memory system.
+
+        Args:
+            memory: The parent Memory instance providing Supabase access via _sb.
+        """
         self.memory = memory
 
     # ── CRUD ──────────────────────────────────────────────────────
@@ -45,6 +50,16 @@ class KnowledgeGraph:
         return self._insert_triple(source, relationship, target, weight, source_type, target_type, metadata)
 
     def _find_triple(self, source: str, relationship: str, target: str) -> Optional[int]:
+        """Look up the database ID of an existing triple.
+
+        Args:
+            source: Source entity name.
+            relationship: Relationship type.
+            target: Target entity name.
+
+        Returns:
+            The triple row ID, or None if not found or when Supabase is unavailable.
+        """
         sb = self.memory._sb
         if not sb:
             return None
@@ -63,6 +78,15 @@ class KnowledgeGraph:
         return None
 
     def _bump_triple(self, triple_id: int, additional_weight: float = 1.0) -> bool:
+        """Increment the weight and access count of an existing triple.
+
+        Args:
+            triple_id: The database row ID of the triple.
+            additional_weight: Amount to add to the current weight (default 1.0).
+
+        Returns:
+            True if updated successfully, False on failure or when Supabase is unavailable.
+        """
         sb = self.memory._sb
         if not sb:
             return False
@@ -95,6 +119,20 @@ class KnowledgeGraph:
     def _insert_triple(self, source: str, relationship: str, target: str,
                        weight: float, source_type: str, target_type: str,
                        metadata: Optional[dict]) -> bool:
+        """Insert a new triple row into the Supabase knowledge_graph table.
+
+        Args:
+            source: Source entity name.
+            relationship: Relationship type.
+            target: Target entity name.
+            weight: Edge weight for ranking.
+            source_type: Entity type of the source (e.g. 'user', 'concept').
+            target_type: Entity type of the target.
+            metadata: Optional dict of extra data to store.
+
+        Returns:
+            True if inserted successfully, False on failure.
+        """
         sb = self.memory._sb
         if not sb:
             return False

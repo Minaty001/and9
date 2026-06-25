@@ -55,6 +55,11 @@ CREATE INDEX IF NOT EXISTS idx_rem_trigger
 
 @contextmanager
 def _conn():
+    """Context manager providing a SQLite connection (file or in-memory fallback).
+
+    The connection uses ``sqlite3.Row`` as the row factory.
+    Automatically closes the connection when the context exits.
+    """
     db_path = ":memory:" if _USE_MEMORY_FALLBACK else _DB_PATH
     con = sqlite3.connect(db_path, check_same_thread=False)
     con.row_factory = sqlite3.Row

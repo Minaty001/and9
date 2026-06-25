@@ -20,6 +20,11 @@ _id_lock = threading.Lock()
 
 
 def _next_id() -> int:
+    """Thread-safe monotonically increasing timer identifier generator.
+
+    Returns:
+        The next available timer ID.
+    """
     global _timer_id_counter
     with _id_lock:
         _timer_id_counter += 1
@@ -28,6 +33,7 @@ def _next_id() -> int:
 
 @dataclass
 class Timer:
+    """An active countdown timer with alert and expiry tracking."""
     id: int
     label: str
     end_time: float
@@ -45,6 +51,12 @@ class TimerService:
     """
 
     def __init__(self, cleanup_age: int = 3600):
+        """Initialise the timer service and start the background worker thread.
+
+        Args:
+            cleanup_age: Seconds after which expired timers are pruned
+                         (default 3600 = 1 hour).
+        """
         self._timers: dict[int, Timer] = {}
         self._lock = threading.Lock()
         self._cleanup_age = cleanup_age

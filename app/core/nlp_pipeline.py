@@ -165,6 +165,7 @@ class _TFIDFVectorizer:
     """
 
     def __init__(self) -> None:
+        """Initialise the TF-IDF vectorizer with an empty vocabulary and IDF array."""
         self._vocab: dict[str, int] = {}
         self._idf: np.ndarray = np.array([])
 
@@ -240,6 +241,11 @@ class NLPPipeline:
     """
 
     def __init__(self, spacy_model: str = "en_core_web_sm") -> None:
+        """Initialise the NLP pipeline with lazy spaCy loading and pre-computed intent vectors.
+
+        Args:
+            spacy_model: Name of the spaCy model to load (default 'en_core_web_sm').
+        """
         self._model_name = spacy_model
         self._nlp: Optional["Language"] = None  # lazy-loaded
         self._vectorizer = _TFIDFVectorizer()

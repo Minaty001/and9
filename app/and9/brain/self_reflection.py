@@ -10,6 +10,7 @@ import time
 import os
 import json
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 
@@ -21,8 +22,10 @@ class SelfReflection:
     """Post-task reflection engine with dual-persistence (Supabase + local fallback)."""
 
     def __init__(self):
+        """Initialise the self-reflection engine with dual-persistence (Supabase + local file)."""
         self._reflection_log: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
+        self._bg_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="reflection")
         self._supabase_client = None
         self._local_file = "/tmp/.jarvis_data/reflection_log.json"
 
@@ -108,12 +111,16 @@ class SelfReflection:
                 self._reflection_log = self._reflection_log[-int(_MAX_LOG_SIZE/2):]
             
             # Save reflections asynchronously to not block execution
-            threading.Thread(target=self._save_reflection, args=(reflection,), daemon=True).start()
+            self._bg_pool.submit(self._save_reflection, reflection)
 
         return reflection
 
     def _save_reflection(self, reflection: Dict[str, Any]):
-        """Persists the reflection record to database and local fallback file."""
+        """Persist a reflection record to Supabase and a local JSON backup file.
+
+        Args:
+            reflection: The reflection dict to save.
+        """
         # 1. Try Supabase write
         if self._supabase_client:
             try:
@@ -145,7 +152,16 @@ class SelfReflection:
             logger.warning(f"Failed to backup reflection locally: {e}")
 
     def _analyze_failure(self, ctx) -> str:
-        """Generate targeted improvement suggestion for failures."""
+        """Generate a targeted improvement suggestion for a failed execution.
+
+        Analyzes the context to determine the likely cause of failure.
+
+        Args:
+            ctx: The context object with detected_intent and execution_time_ms attributes.
+
+        Returns:
+            A human-readable improvement suggestion string.
+        """
         detected_intent = getattr(ctx, "detected_intent", "")
         execution_time_ms = getattr(ctx, "execution_time_ms", 0.0)
         
@@ -195,7 +211,17 @@ class SelfReflection:
         }
 
     def _generate_improvements(self, today_log: list) -> list:
-        """Generate actionable improvement suggestions."""
+        """Generate actionable improvement suggestions from today's reflection log.
+
+        Identifies reasoning actions that could be converted to reflexes and
+        repeated failures that need attention.
+
+        Args:
+            today_log: List of reflection dicts from today.
+
+        Returns:
+            Up to 5 improvement suggestion strings.
+        """
         improvements = []
 
         # Check for patterns that could be converted to reflexes
@@ -228,6 +254,11 @@ class SelfReflection:
         return improvements[:5]
 
     def get_stats(self) -> Dict[str, Any]:
+        """Return summary statistics about stored reflections.
+
+        Returns:
+            Dict with total_reflections count and recent_reflections (last hour).
+        """
         with self._lock:
             return {
                 "total_reflections": len(self._reflection_log),

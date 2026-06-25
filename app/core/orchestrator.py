@@ -52,6 +52,19 @@ class IntentRouter:
     }
 
     def route(self, query: str) -> str:
+        """Classify a user query into an intent category using keyword matching.
+
+        Iterates through predefined patterns for image, reflection, device, goal,
+        reminder, music, search, coding, and research intents. Falls back to "chat"
+        when no keywords match. Prioritises higher-specificity patterns first.
+
+        Args:
+            query: The raw user input string.
+
+        Returns:
+            A string key identifying the intent category (e.g. "search", "music",
+            "goal", "chat").
+        """
         q = query.lower().strip()
         if not q:
             return "chat"
@@ -84,6 +97,16 @@ class Orchestrator:
     """Routes user queries through the cognitive pipeline."""
 
     def __init__(self, memory=None):
+        """Initialise the Orchestrator with all cognitive pipeline components.
+
+        Sets up the intent router, understanding engine, context builder, goal
+        tracker, event system, reflection engine, agent cache, a TTL result
+        cache (60s), and a thread pool for concurrent background tasks.
+
+        Args:
+            memory: Optional Memory instance. If None, uses the shared
+                    singleton retrieved via get_memory().
+        """
         self.memory     = memory or get_memory()
         self.router     = IntentRouter()
         self.understanding = UnderstandingEngine()
@@ -120,10 +143,27 @@ class Orchestrator:
         return val
 
     def _invalidate_cache(self, *keys):
+        """Evict one or more entries from the TTL result cache.
+
+        Removes the specified keys from the internal _cache dict so that the
+        next access triggers a fresh computation via _cached(). No effect
+        for keys that do not exist in the cache.
+
+        Args:
+            *keys: One or more cache key strings to invalidate.
+        """
         for k in keys:
             self._cache.pop(k, None)
 
     def list_agents(self):
+        """Return the catalogue of all available agent types with descriptions.
+
+        Each entry contains a name key (the agent identifier used by the intent
+        router) and a human-readable description of the agent's capability.
+
+        Returns:
+            A list of dicts, each with "name" and "description" strings.
+        """
         return [
             {"name": "chat",       "description": "General conversation and tasks"},
             {"name": "coding",     "description": "Write, debug, and explain code"},

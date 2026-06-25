@@ -60,6 +60,7 @@ class QueryNormalizer:
     }
 
     def __init__(self):
+        """Initialise the normalizer and build the single-pass regex pattern from REPLACEMENTS."""
         # Build single-pass regex: longest phrases first
         phrases = sorted(self.REPLACEMENTS.keys(), key=len, reverse=True)
         escaped = [re.escape(p) for p in phrases]
@@ -94,7 +95,16 @@ class QueryNormalizer:
         return q, was_modified
 
     def extract_app_name(self, query: str) -> str:
-        """Extract app name from open/launch commands."""
+        """Extract the app name from open/launch commands.
+
+        Supports patterns: 'open <app>', 'launch <app>', '<app> open'.
+
+        Args:
+            query: The normalized query string.
+
+        Returns:
+            Extracted app name, or empty string if no pattern matched.
+        """
         q = query.lower().strip()
 
         # "open <app>"
@@ -115,7 +125,16 @@ class QueryNormalizer:
         return ""
 
     def extract_search_terms(self, query: str) -> str:
-        """Extract search terms from search/youtube queries."""
+        """Extract the search terms from search or youtube search queries.
+
+        Supports patterns: 'search <terms>', 'youtube search <terms>'.
+
+        Args:
+            query: The normalized query string.
+
+        Returns:
+            Extracted search terms, or the full query if no pattern matched.
+        """
         q = query.lower().strip()
 
         # "search <terms>"
@@ -131,7 +150,16 @@ class QueryNormalizer:
         return q
 
     def extract_time_expression(self, query: str) -> str:
-        """Extract the time-related portion of a query."""
+        """Extract the time-related portion of a query.
+
+        Matches patterns like 'after 5', 'in 10 minutes', 'at 7pm', '7:30'.
+
+        Args:
+            query: The query string to search in.
+
+        Returns:
+            The matched time expression, or empty string if none found.
+        """
         time_patterns = [
             r'(?:after|in|baad|me|ke\s*baad|for|at|ko)\s+\d[\d\s:ampm]*',
             r'\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM|baje)?',

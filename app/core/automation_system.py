@@ -98,6 +98,17 @@ class AutomationSystem:
         check_interval: float = 60.0,  # Check every 60 seconds
         daily_reset_hour: int = 0,      # Reset at midnight
     ):
+        """Initialize the automation system.
+
+        Sets up goal, habit, and scheduled action stores, daily tracking
+        counters, and statistics. Also populates default scheduled actions.
+
+        Args:
+            check_interval: Seconds between automation loop checks.
+                Defaults to 60.0.
+            daily_reset_hour: Hour of day (0-23) for the daily reset.
+                Defaults to 0 (midnight).
+        """
         self.check_interval = check_interval
         self.daily_reset_hour = daily_reset_hour
 
@@ -148,7 +159,24 @@ class AutomationSystem:
     def add_goal(self, title: str, category: str = "personal",
                  priority: str = "medium", deadline: Optional[float] = None,
                  description: str = "") -> Goal:
-        """Add a new goal."""
+        """Create and register a new tracked goal.
+
+        Generates a unique goal ID, constructs a Goal dataclass with the
+        provided parameters, stores it in the internal goals dictionary,
+        and logs the creation.
+
+        Args:
+            title: The goal's display name.
+            category: Category — 'personal', 'work', 'fitness',
+                'learning', or 'health'. Defaults to 'personal'.
+            priority: Priority level — 'high', 'medium', or 'low'.
+                Defaults to 'medium'.
+            deadline: Optional Unix timestamp for the deadline.
+            description: Optional longer description of the goal.
+
+        Returns:
+            The newly created Goal object.
+        """
         import uuid
         goal = Goal(
             goal_id=f"goal_{uuid.uuid4().hex[:8]}",
@@ -202,6 +230,15 @@ class AutomationSystem:
             ]
 
     def get_goals_by_category(self, category: str) -> List[Goal]:
+        """Retrieve all goals belonging to a specific category.
+
+        Args:
+            category: The category to filter by (e.g., 'personal',
+                'work', 'fitness', 'learning', 'health').
+
+        Returns:
+            List of Goal objects matching the given category.
+        """
         with self._lock:
             return [g for g in self._goals.values() if g.category == category]
 
@@ -559,6 +596,16 @@ class AutomationSystem:
     # ═══════════════════════════════════════════════════════════════
 
     def get_stats(self) -> dict:
+        """Return system statistics for monitoring and display.
+
+        Provides a snapshot of the automation system's state including
+        whether it is running, number of checks and actions triggered,
+        goal counts (total, active, completed, overdue), habit counts
+        (total, enabled), and scheduled action count.
+
+        Returns:
+            Dictionary containing automation system runtime stats.
+        """
         with self._lock:
             return {
                 "running": self._running,

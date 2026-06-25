@@ -32,6 +32,14 @@ _REMINDER_KEYWORDS = [
 
 
 def is_event_request(text: str) -> bool:
+    """Check if user text contains reminder or event-related keywords.
+
+    Args:
+        text: The user's input string to check.
+
+    Returns:
+        True if any reminder/event keyword is found in the text, False otherwise.
+    """
     t = text.lower()
     return any(kw in t for kw in _REMINDER_KEYWORDS)
 
@@ -40,14 +48,38 @@ class EventSystem:
     """Manages reminders and scheduled events."""
 
     def __init__(self, memory):
+        """Initialize the EventSystem with a shared Memory instance.
+
+        Args:
+            memory: The Memory instance providing Supabase client access
+                    and in-memory fallback storage.
+        """
         self._mem = memory
 
     def _q(self, table):
+        """Get a Supabase table query builder if the connection is available.
+
+        Args:
+            table: The name of the Supabase table to query.
+
+        Returns:
+            A Supabase table query builder, or None if the database
+            connection is not ready.
+        """
         if not self._mem._ok:
             return None
         return self._mem._sb.table(table)
 
     def _safe(self, fn, default=None):
+        """Execute a callable with exception safety and logging.
+
+        Args:
+            fn: The callable to execute.
+            default: Value to return if the callable raises an exception.
+
+        Returns:
+            The result of fn() on success, or the default value on failure.
+        """
         try:
             return fn()
         except Exception as e:
@@ -119,6 +151,14 @@ class EventSystem:
         return res.data if res and res.data else []
 
     def mark_done(self, event_id: int) -> bool:
+        """Mark an event as completed by its ID.
+
+        Args:
+            event_id: The unique identifier of the event to mark as done.
+
+        Returns:
+            True if the event was found and marked done, False otherwise.
+        """
         q = self._q("events")
         if q is None:
             for e in self._mem._mem.get("events", []):
@@ -131,6 +171,11 @@ class EventSystem:
         return bool(res and res.data)
 
     def get_all_events(self) -> list:
+        """Retrieve all events ordered by event time (ascending).
+
+        Returns:
+            A list of all event records, or an empty list if none exist.
+        """
         q = self._q("events")
         if q is None:
             return self._mem._mem.get("events", [])

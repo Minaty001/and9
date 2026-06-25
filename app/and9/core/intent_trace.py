@@ -79,6 +79,14 @@ CREATE INDEX IF NOT EXISTS idx_traces_intent
 
 @contextmanager
 def _conn():
+    """Context manager yielding a SQLite connection to the traces database.
+
+    Sets row_factory to sqlite3.Row for dict-like column access.
+    The connection is automatically closed when the context exits.
+
+    Yields:
+        sqlite3.Connection: A connection to the intent traces database.
+    """
     con = sqlite3.connect(_DB_PATH, check_same_thread=False)
     con.row_factory = sqlite3.Row
     try:
@@ -262,6 +270,14 @@ class TraceContext:
     """
 
     def __init__(self, raw_query: str):
+        """Initialize a trace context with the raw user query.
+
+        All trace fields are pre-set to empty/pending defaults. Use the
+        set_*  methods to populate them before the context exits.
+
+        Args:
+            raw_query: Original user input to be traced.
+        """
         self.raw_query = raw_query
         self.normalized_query = ""
         self.detected_intent = ""
@@ -272,10 +288,36 @@ class TraceContext:
         self._start: float = 0.0
 
     def __enter__(self):
+        """Start timing and return the trace context instance.
+
+        Records the current wall-clock time as the start of the
+        operation being traced.
+
+        Returns:
+            TraceContext: self, for use in ``with`` block.
+        """
         self._start = time.time()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Finalise and persist the trace on context exit.
+
+        Calculates the elapsed wall-clock time since __enter__. If an
+        exception occurred inside the ``with`` block, the execution
+        result is automatically set to ``"failure"``. Delegates to
+        :func:`log_trace` for storage.
+
+        Args:
+            exc_type: Exception type if an exception was raised, else
+                None.
+            exc_val: Exception instance if an exception was raised,
+                else None.
+            exc_tb: Traceback object if an exception was raised, else
+                None.
+
+        Returns:
+            False to not suppress any propagated exception.
+        """
         elapsed_ms = (time.time() - self._start) * 1000
         if exc_type is not None:
             self.execution_result = "failure"
@@ -293,16 +335,43 @@ class TraceContext:
         return False  # Don't suppress exceptions
 
     def set_normalized(self, normalized: str):
+        """Store the normalised version of the user's query.
+
+        Args:
+            normalized: Query string after passing through the
+                normalizer pipeline.
+        """
         self.normalized_query = normalized
 
     def set_intent(self, intent: str, entities: dict = None):
+        """Record the detected intent and its extracted entities.
+
+        Args:
+            intent: The detected intent name (e.g. ``"call"``).
+            entities: Optional dict of entities extracted during NLP
+                processing (e.g. ``{"contact_name": "mummy"}``).
+        """
         self.detected_intent = intent
         self.extracted_entities = entities or {}
 
     def set_action(self, action: str):
+        """Record the action type dispatched for this trace.
+
+        Args:
+            action: The action string value (e.g. ``"call"``,
+                ``"set_alarm"``).
+        """
         self.action = action
 
     def set_result(self, result: str, failure_reason: str = None):
+        """Record the execution result and optional failure reason.
+
+        Args:
+            result: Execution outcome (e.g. ``"success"``,
+                ``"failure"``, ``"pending"``).
+            failure_reason: Human-readable error description if the
+                action failed, else None.
+        """
         self.execution_result = result
         self.failure_reason = failure_reason
 

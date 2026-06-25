@@ -24,6 +24,7 @@ Design rules:
 """
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Optional
 from urllib.parse import quote_plus
 
@@ -61,6 +62,10 @@ class Orchestrator:
         self.events_sys = events_sys
         self.query_logger = get_logger()
         self.enable_patterns = enable_patterns
+        # Cached ConsciousBrain — avoids re-initializing LLM orchestrator on every chat
+        self._conscious_brain = None
+        # Shared thread pool for background hooks — reuses threads, avoids threading.Thread overhead
+        self._bg_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="and9_bg")
         
         try:
             from app.core.learning_system import LearningSystem
@@ -265,9 +270,8 @@ class Orchestrator:
                                     )
                             except Exception as ex:
                                 logger.debug(f"AND9 background hooks skipped: {ex}")
-                                
-                        import threading
-                        threading.Thread(target=run_bg_hooks, daemon=True).start()
+
+                        self._bg_pool.submit(run_bg_hooks)
 
                 self._log_result(query, normalized, intent_name, params, result)
                 trace.set_result("success" if result.success else "failure")
@@ -387,10 +391,11 @@ class Orchestrator:
 
     def _handle_chat(self, params: dict, start: float) -> BrainResult:
         """Route to Conscious Brain for LLM processing."""
-        from app.and9.conscious_brain import ConsciousBrain
-        conscious = ConsciousBrain()
+        if self._conscious_brain is None:
+            from app.and9.conscious_brain import ConsciousBrain
+            self._conscious_brain = ConsciousBrain()
         query = params.get("query", "")
-        result = conscious.execute(query)
+        result = self._conscious_brain.execute(query)
         result.execution_time_ms = (time.perf_counter() - start) * 1000
         return result
 

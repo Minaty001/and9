@@ -64,6 +64,15 @@ class MemoryConsolidation:
         max_working_memory: int = 100,
         max_episodic_memory: int = 1000,
     ):
+        """Initialise the memory consolidation engine with configurable thresholds.
+
+        Args:
+            consolidate_interval: Seconds between consolidation cycles (default 300).
+            importance_threshold: Minimum importance to promote working→episodic (default 0.3).
+            forget_threshold_days: Days after which low-importance memories are forgotten (default 30).
+            max_working_memory: Maximum number of working memory entries (default 100).
+            max_episodic_memory: Maximum number of episodic memory entries (default 1000).
+        """
         self.consolidate_interval = consolidate_interval
         self.importance_threshold = importance_threshold
         self.forget_threshold_days = forget_threshold_days
@@ -386,6 +395,15 @@ class MemoryConsolidation:
         return f"{prefix}_{uuid.uuid4().hex[:8]}"
 
     def _to_dict(self, mem: ConsolidatedMemory) -> Dict:
+        """Convert a ConsolidatedMemory instance to a serialisable dictionary.
+
+        Args:
+            mem: The ConsolidatedMemory object to convert.
+
+        Returns:
+            Dict with keys: id, content, type, importance, access_count,
+            topics, entities, timestamp, consolidated, source.
+        """
         return {
             "id": mem.memory_id,
             "content": mem.content[:200],
@@ -414,6 +432,12 @@ class MemoryConsolidation:
     # ── Stats ───────────────────────────────────────────────────
 
     def get_stats(self) -> dict:
+        """Return aggregate statistics about the consolidation engine state.
+
+        Returns:
+            Dict with cycles_run, working_memory_count, episodic_memory_count,
+            semantic_memory_count, total_promoted, total_forgotten, running.
+        """
         with self._lock:
             return {
                 "cycles_run": self._cycles_run,

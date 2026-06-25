@@ -19,7 +19,8 @@ Architecture mirrors the human brain's layered cognitive processing.
 import logging
 import time
 import threading
-from typing import Any, Dict, Optional, Callable
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, Optional, Callable, Tuple
 from enum import Enum
 from dataclasses import dataclass, field
 
@@ -86,6 +87,7 @@ class ReflexProcessor:
     def __init__(self):
         self._handlers: Dict[str, Callable] = {}
         self._intent_map: Dict[str, str] = {}  # keyword → intent
+        self._match_cache: Dict[str, Tuple[Optional[str], float]] = {}  # query → (intent, score)
         self._load_defaults()
 
     def _load_defaults(self):
@@ -198,14 +200,22 @@ class ReflexProcessor:
                 return True
 
         # Substring matching (slightly slower but catches variations)
-        best_match = None
-        best_score = 0.0
-        for phrase, intent in self._intent_map.items():
-            if phrase in q:
-                score = len(phrase) / len(q) if len(q) > 0 else 0
-                if score > best_score:
-                    best_score = score
-                    best_match = intent
+        # Check cache first — avoids O(n) scan for repeated queries
+        cached = self._match_cache.get(q)
+        if cached is not None:
+            best_match, best_score = cached
+        else:
+            best_match = None
+            best_score = 0.0
+            for phrase, intent in self._intent_map.items():
+                if phrase in q:
+                    score = len(phrase) / len(q) if len(q) > 0 else 0
+                    if score > best_score:
+                        best_score = score
+                        best_match = intent
+            # Cache result (cache is bounded by number of unique queries seen)
+            if len(self._match_cache) < 256:
+                self._match_cache[q] = (best_match, best_score)
 
         if best_match and best_score > 0.3:
             handler = self._handlers.get(best_match)
@@ -235,10 +245,11 @@ class HabitProcessor:
         self._patterns: Dict[str, Dict] = {}  # pattern_key → pattern_data
         self._lock = threading.Lock()
 
-    def record_action(self, ctx: CognitiveContext):
+    def record_action(self, ctx: CognitiveContext, now=None):
         """Record an action for habit learning."""
         from datetime import datetime
-        now = datetime.now()
+        if now is None:
+            now = datetime.now()
         key = f"{now.hour}:{now.weekday()}"
         action_key = ctx.detected_intent or ctx.detected_action or "unknown"
 
@@ -254,13 +265,14 @@ class HabitProcessor:
             pattern["actions"][action_key] = pattern["actions"].get(action_key, 0) + 1
             pattern["total"] += 1
 
-    def predict(self, ctx: CognitiveContext) -> Optional[Dict]:
+    def predict(self, ctx: CognitiveContext, now=None) -> Optional[Dict]:
         """Predict likely action based on current time context.
 
         Returns None if no confident prediction exists.
         """
         from datetime import datetime
-        now = datetime.now()
+        if now is None:
+            now = datetime.now()
         key = f"{now.hour}:{now.weekday()}"
 
         with self._lock:
@@ -361,6 +373,9 @@ class CognitiveEngine:
         self.enable_learning = enable_learning
         self.memory_consolidation = memory_consolidation
 
+        # Shared thread pool for background tasks (reuses threads, avoids threading.Thread overhead)
+        self._bg_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="cog_bg")
+
         # Stats
         self._stats = {
             "total_processed": 0,
@@ -449,8 +464,10 @@ class CognitiveEngine:
         """Async post-processing: memory, learning, reflection."""
         def _background():
             try:
+                from datetime import datetime
+                now = datetime.now()  # Single call, shared across background tasks
                 # Record in habit brain
-                self.habit.record_action(ctx)
+                self.habit.record_action(ctx, now=now)
 
                 # Record in memory
                 if self.memory:
@@ -476,7 +493,7 @@ class CognitiveEngine:
             except Exception as e:
                 logger.warning(f"CognitiveEngine: Post-process error: {e}")
 
-        threading.Thread(target=_background, daemon=True).start()
+        self._bg_pool.submit(_background)
 
     def _record_to_memory(self, ctx: CognitiveContext):
         """Record the action in memory systems."""

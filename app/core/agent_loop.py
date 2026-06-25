@@ -171,7 +171,13 @@ class AgentLoop:
     # ═══════════════════════════════════════════════════════════════
 
     def _run(self):
-        """The main agent loop."""
+        """Execute the continuous agent loop lifecycle.
+
+        Runs the Observe–Think–Act–Reflect–Learn cycle in a loop,
+        interleaving proactive checks, self-reflection, and daily
+        summary generation at their configured intervals.  Backs off
+        on error by doubling the sleep interval.
+        """
         while self._running:
             try:
                 self._cycle()
@@ -198,7 +204,15 @@ class AgentLoop:
                 time.sleep(self.check_interval * 2)  # Back off on error
 
     def _cycle(self):
-        """One complete Observe → Think → Act → Reflect → Learn cycle."""
+        """Run one complete Observe → Think → Act → Reflect → Learn cycle.
+
+        Fetches pending observations, processes them in descending
+        importance order, decides whether each observation requires
+        action, and — if so — delegates to the cognitive engine,
+        reflects on the result, and feeds learnings into the learning
+        system.  Failed observations are marked processed to avoid
+        retries.
+        """
         # ── 1. OBSERVE ──────────────────────────────────────────
         observations = self._get_pending_observations()
         if not observations:
@@ -243,7 +257,15 @@ class AgentLoop:
                 obs.processed = True  # Don't retry failed observations
 
     def _get_pending_observations(self) -> List[Observation]:
-        """Get all unprocessed observations."""
+        """Return all observations that have not yet been processed.
+
+        Acquires the reentrant lock to safely snapshot the deque of
+        pending observations.
+
+        Returns:
+            List of Observation objects whose ``processed`` flag is
+            False.
+        """
         with self._lock:
             pending = [o for o in self._observations if not o.processed]
             return list(pending)
@@ -274,7 +296,18 @@ class AgentLoop:
         return False
 
     def _reflect_on_action(self, obs: Observation, result):
-        """Reflect on an action outcome."""
+        """Analyse an action outcome and generate insights.
+
+        Checks whether the action succeeded or failed and how long
+        it took.  Appends an ``improvement`` insight on failure and
+        a ``suggestion`` insight for actions that exceeded 2 seconds.
+
+        Args:
+            obs: The original Observation that triggered the action.
+            result: The result dict (or object with ``success`` and
+                ``execution_time_ms`` attributes) from the cognitive
+                engine.
+        """
         if not result:
             return
 
@@ -353,7 +386,17 @@ class AgentLoop:
     # ═══════════════════════════════════════════════════════════════
 
     def _self_reflection(self):
-        """Periodic self-reflection to evaluate performance."""
+        """Run periodic self-reflection to evaluate system performance.
+
+        Delegates to the cognitive engine's reflection module to
+        produce a daily reflection.  Logs the summary and returns
+        the full reflection dict for potential downstream use.
+
+        Returns:
+            Optional[dict]: The reflection result from the cognitive
+            engine, or None if the engine is unavailable or an error
+            occurs.
+        """
         if not self.cognitive_engine:
             return
 
@@ -366,7 +409,14 @@ class AgentLoop:
             return None
 
     def _check_daily_summary(self):
-        """Generate daily summary at end of day."""
+        """Generate a DailySummary at the end of the current day.
+
+        Only produces a summary when the current hour is >= 22 (10
+        PM) and no summary has been generated for today yet.  The
+        summary records total processed observations, actions taken,
+        recent insights, and improvement suggestions from the
+        cognitive engine's daily reflection.
+        """
         today = datetime.now().strftime("%Y-%m-%d")
         if today == self._last_daily_summary:
             return
@@ -410,6 +460,15 @@ class AgentLoop:
             return sum(1 for o in self._observations if not o.processed)
 
     def get_stats(self) -> dict:
+        """Return runtime statistics for the agent loop.
+
+        Returns:
+            dict with keys: running, cycle_count,
+            observations_processed, actions_taken,
+            pending_observations, insights_generated,
+            daily_summaries, and uptime_seconds (estimated from
+            cycle_count * check_interval).
+        """
         return {
             "running": self._running,
             "cycle_count": self._cycle_count,
