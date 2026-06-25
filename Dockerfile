@@ -38,6 +38,7 @@ EXPOSE 8000
 ENV FLASK_ENV=production
 ENV RENDER=true
 ENV AND9_REMINDERS_DB=/app/.jarvis_data/reminders.db
+ENV AND9_REMINDERS_STORAGE_DB=/app/.jarvis_data/reminders_engine.db
 ENV AND9_TRACES_DB=/app/.jarvis_data/intent_traces.db
 ENV AND9_INSTALLED_APPS_PATH=/app/.jarvis_data/installed_apps.json
 
