@@ -278,8 +278,12 @@ class AgentLoop:
         if not result:
             return
 
-        success = getattr(result, 'success', True) if hasattr(result, 'success') else True
-        time_ms = getattr(result, 'execution_time_ms', 0)
+        if isinstance(result, dict):
+            success = result.get('success', True)
+            time_ms = result.get('execution_time_ms', 0)
+        else:
+            success = getattr(result, 'success', True) if hasattr(result, 'success') else True
+            time_ms = getattr(result, 'execution_time_ms', 0)
 
         # Generate insights from failures
         if not success:

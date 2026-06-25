@@ -296,7 +296,7 @@ class Orchestrator:
     def _handle_music(self, query: str, analysis: MessageAnalysis,
                       memory_ctx: dict, context: str, start: float) -> dict:
         """Handle music/song requests via YouTube search."""
-        from app.skills.youtube import handle_music_request, is_music_request
+        from app.skills.youtube import handle_music_request
 
         # Check memory for favorite song preference
         profile = memory_ctx.get("user_profile", {})
@@ -408,7 +408,7 @@ class Orchestrator:
                 reply = "\n".join(lines)
         else:
             parsed = self.events_sys.parse_event_from_text(query)
-            self.events_sys.add_event(title=parsed["title"], event_time=parsed.get("event_time"))
+            self.events_sys.add_event(title=parsed.get("title", "Reminder"), event_time=parsed.get("event_time"))
             if parsed.get("event_time"):
                 t = parsed["event_time"][:16].replace("T", " ")
                 reply = f"🔔 Reminder set! **{parsed['title']}** — {t} pe yaad dilaungi boss! ✅"

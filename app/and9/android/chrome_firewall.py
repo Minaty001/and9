@@ -32,7 +32,6 @@ CHROME_ALLOWED_ACTIONS = frozenset({
     "search",
     "news",
     "web_lookup",
-    "open_app",
 })
 
 # Chrome package identifiers to detect in payloads

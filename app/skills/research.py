@@ -71,8 +71,8 @@ def summarize_source(content: str, query: str, source_num: int = 1) -> str:
         )
         if summary and not summary.startswith("["):
             return summary
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Research summarize_source failed: %s", e)
     return content[:400]
 
 

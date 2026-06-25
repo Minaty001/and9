@@ -407,6 +407,7 @@ class MemoryBrain:
         results = []
         with self._get_conn() as conn:
             for table in ["episodic_memory", "semantic_memory", "working_memory"]:
+                self._validate_table(table)
                 try:
                     if table == "semantic_memory":
                         rows = conn.execute(
@@ -467,8 +468,20 @@ class MemoryBrain:
             )
             conn.commit()
 
+    MEMORY_TABLES = frozenset({
+        "working_memory", "episodic_memory", "semantic_memory",
+        "user_preferences", "skills", "habits", "goals", "activities",
+    })
+
+    def _validate_table(self, table: str) -> str:
+        """Validate a table name against the allowed whitelist."""
+        if table not in self.MEMORY_TABLES:
+            raise ValueError(f"Invalid table name: {table}")
+        return table
+
     def _trim_table(self, table: str, max_size: int):
         """Trim a table to max_size rows, keeping highest importance."""
+        self._validate_table(table)
         with self._get_conn() as conn:
             count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
             if count > max_size:
@@ -483,6 +496,7 @@ class MemoryBrain:
 
     def _update_access_count(self, conn, table: str, ids: List[int]):
         """Update access count for memories."""
+        self._validate_table(table)
         if not ids:
             return
         placeholders = ",".join("?" for _ in ids)
@@ -498,6 +512,7 @@ class MemoryBrain:
         with self._get_conn() as conn:
             total = 0
             for table in ["working_memory", "episodic_memory", "semantic_memory"]:
+                self._validate_table(table)
                 count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
                 total += count
             return total

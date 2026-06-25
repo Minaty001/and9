@@ -51,6 +51,7 @@ class Trainer:
                    val_split: float = 0.2,
                    test_split: float = 0.1) -> tuple:
         """Split dataset into train/val/test."""
+        random.seed(42)
         random.shuffle(examples)
         n = len(examples)
         n_test = int(n * test_split)

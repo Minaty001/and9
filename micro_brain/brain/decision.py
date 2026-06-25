@@ -17,6 +17,7 @@ Architecture:
     → Action Plan Output
 """
 
+import re
 import time
 from typing import Optional, Dict, List, Tuple, Any
 from dataclasses import dataclass, field
@@ -366,8 +367,7 @@ class DecisionBrain:
                             break
 
         # Number/quantity extraction
-        if any(intent == s for s in ["VOLUME_UP", "VOLUME_DOWN", "TIMER"]):
-            import re
+        if any(intent == s for s in ["VOLUME_UP", "VOLUME_DOWN"]):
             numbers = re.findall(r'\d+', query)
             if numbers:
                 entities["value"] = numbers[0]

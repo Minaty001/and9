@@ -626,20 +626,28 @@ class IntentDatasetGenerator:
         intent_map = {name: idx for idx, name in enumerate(INTENTS)}
         intent_names = list(intent_map.keys())
 
+        # Explicit mapping: generator method → intent name
+        # Avoids fragile substring matching that can produce mislabeled samples
+        gen_to_intent = {}
+        for gen in all_generators:
+            name_upper = gen.__name__.upper()
+            matched = None
+            for intent_name in intent_map:
+                # Match by extracting intent name from generator suffix
+                # e.g. _gen_open_app → OPEN_APP
+                suffix = name_upper.removeprefix("_GEN_")
+                if suffix == intent_name:
+                    matched = intent_name
+                    break
+            gen_to_intent[gen] = matched
+
         examples = []
         for _ in range(count):
             gen = random.choice(all_generators)
-            intent_name = None
-            # Find intent name for this generator
-            for name, idx in intent_map.items():
-                if name in str(gen.__name__).upper():
-                    intent_name = name
-                    break
+            intent_name = gen_to_intent.get(gen)
             if intent_name is None:
                 intent_name = random.choice(intent_names)
-                intent_idx = intent_map[intent_name]
-            else:
-                intent_idx = intent_map[intent_name]
+            intent_idx = intent_map[intent_name]
 
             text = gen(1)[0]
             examples.append({"text": text, "intent": intent_name, "label": intent_idx})

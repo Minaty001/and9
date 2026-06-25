@@ -13,7 +13,7 @@ def _str_env(key: str, default: str = "") -> str:
 
 
 # ── Supabase (primary database) ────────────────────────────────
-SUPABASE_URL = _str_env("SUPABASE_URL", "https://ipvdftzjyxwjhahfkwbq.supabase.co")
+SUPABASE_URL = _str_env("SUPABASE_URL")   # set to your Supabase project URL
 SUPABASE_KEY = _str_env("SUPABASE_KEY")   # anon or service_role key from Supabase dashboard
 
 # ── Groq (Primary LLM — fast, free tier) ───────────────────────

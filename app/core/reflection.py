@@ -72,8 +72,8 @@ Kuch bhi invent mat karo. Agar kuch nahi hai toh mat likho."""
         # Store summary in session
         try:
             self._mem.end_session(session_id, summary=summary[:500])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to end session: %s", e)
 
         return summary
 

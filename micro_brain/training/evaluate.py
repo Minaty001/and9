@@ -42,6 +42,7 @@ class Evaluator:
 
         examples = data["examples"]
         # Use 15% for test
+        random.seed(42)
         random.shuffle(examples)
         n_test = max(100, int(len(examples) * 0.15))
         test_set = examples[:n_test]

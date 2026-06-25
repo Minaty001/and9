@@ -132,8 +132,8 @@ class SelfReflection:
                 try:
                     with open(self._local_file, "r") as f:
                         local_list = json.load(f)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to read local reflections file: %s", e)
             
             local_list.append(reflection)
             if len(local_list) > _MAX_LOG_SIZE:

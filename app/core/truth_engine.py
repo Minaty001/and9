@@ -123,12 +123,12 @@ def has_relevant_memory(memory_ctx: dict, query: str = "") -> bool:
 
     # Check recent episodes for user content
     for ep in memory_ctx.get("recent_episodes", []) or []:
-        if ep.get("role") == "user" and ep.get("content", "").strip():
+        if ep.get("role") == "user" and (ep.get("content") or "").strip():
             return True
 
     # Check relevant past episodes
     for ep in memory_ctx.get("relevant_past", []) or []:
-        if ep.get("role") == "user" and ep.get("content", "").strip():
+        if ep.get("role") == "user" and (ep.get("content") or "").strip():
             return True
 
     return False

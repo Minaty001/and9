@@ -226,8 +226,7 @@ class MicroNeuralBrain:
         )
 
         # Check for habit prediction
-        from datetime import datetime as dt
-        now = dt.now()
+        now = datetime.now()
         habit_prediction = self.learning.predict_next_intent()
         if habit_prediction:
             if self.verbose:
@@ -393,7 +392,7 @@ def run_console(brain: MicroNeuralBrain):
             continue
         elif text.lower() == "gui":
             print("\nLaunching GUI...")
-            brain.metrics = get_metrics()
+            # metrics is a singleton — no reassignment needed
             launch_gui(brain)
             continue
 

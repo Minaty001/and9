@@ -695,7 +695,7 @@ def get_personality():
             if _personality is not None:
                 return _personality
     except Exception:
-        pass
+        logger.debug("No PersonalityOS found in current_app, creating on-demand")
 
     # Create on-demand (cold start)
     from app.core.personality_os import PersonalOS

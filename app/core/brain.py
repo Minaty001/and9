@@ -218,8 +218,8 @@ def ask_llm_json(
         match = re.search(r"\{.*\}", raw, re.DOTALL)
         if match:
             return json.loads(match.group())
-    except (json.JSONDecodeError, AttributeError):
-        pass
+    except (json.JSONDecodeError, AttributeError) as e:
+        logger.debug("ask_llm_json parse failed: %s", e)
     return {}
 
 

@@ -110,4 +110,4 @@ class CodingAgent:
                 try:
                     os.unlink(tmp)
                 except Exception:
-                    pass
+                    logger.debug("Failed to clean up temp file: %s", tmp)

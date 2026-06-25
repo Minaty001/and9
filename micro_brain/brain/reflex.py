@@ -248,6 +248,7 @@ class ReflexBrain:
                 "volume up karo", "louder", "tez karo",
                 "volume plus", "aawaz tez karo",
             ],
+            requires_termux=True,
         ))
         self.register_action(Action(
             name="volume_down",
@@ -259,6 +260,7 @@ class ReflexBrain:
                 "quieter", "halka karo", "volume minus",
                 "aawaz halki karo", "dheere karo",
             ],
+            requires_termux=True,
         ))
 
         # ── NAVIGATION ────────────────────────────────────
@@ -271,6 +273,7 @@ class ReflexBrain:
                 "home pe jao", "home screen dikhao",
                 "main screen", "desktop dikhao",
             ],
+            requires_termux=True,
         ))
         self.register_action(Action(
             name="go_back",
@@ -281,6 +284,7 @@ class ReflexBrain:
                 "wapis jao", "back button", "pichhle page",
                 "pichhe jao",
             ],
+            requires_termux=True,
         ))
 
         # ── SETTINGS ──────────────────────────────────────
@@ -474,25 +478,24 @@ class ReflexBrain:
                     return {"success": False, "message": result.stderr.strip()}
 
             action_map = {
-                "flashlight_on": "torch on",
-                "flashlight_off": "torch off",
+                "flashlight_on": "termux-torch on",
+                "flashlight_off": "termux-torch off",
                 "go_home": "input keyevent 3",
                 "go_back": "input keyevent 4",
                 "volume_up": "input keyevent 24",
                 "volume_down": "input keyevent 25",
+                "close_app": "input keyevent 3",
             }
 
             if action.name in action_map:
                 cmd = action_map[action.name]
-                if cmd.startswith("input"):
-                    result = subprocess.run(
-                        cmd.split(), capture_output=True, text=True, timeout=3
-                    )
+                result = subprocess.run(
+                    cmd.split(), capture_output=True, text=True, timeout=3
+                )
+                if result.returncode == 0:
+                    return {"success": True, "message": f"Executed {action.name}"}
                 else:
-                    result = subprocess.run(
-                        ["termux-torch"], capture_output=True, text=True, timeout=3
-                    )
-                return {"success": True, "message": f"Executed {action.name}"}
+                    return {"success": False, "message": result.stderr.strip()}
 
             return {"success": True, "message": f"Action {action.name} noted (Termux)"}
 

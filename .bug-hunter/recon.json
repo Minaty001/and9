@@ -1,0 +1,76 @@
+{
+  "architectureSummary": "Micro Neural Brain — a lightweight cognitive system for Android Termux. Standalone Python app with 5 brains (Reflex/Neural/Memory/Decision/Learning) orchestrated by main.py. No web framework; local-only stdin/CLI input. NumPy-based tiny NN (128→64→32→20) for intent recognition. SQLite for persistence (WAL mode). ~17 source files, ~4500 total LOC.",
+  "generatedAt": "2026-06-25T01:53:00.000Z",
+  "target": "/root/and9/micro_brain",
+  "totalScannableFiles": 17,
+  "riskMap": {
+    "CRITICAL": [
+      {"path": "main.py", "reason": "Entry point, orchestrates all brains, handles user input from console/CLI"},
+      {"path": "brain/reflex.py", "reason": "Subprocess execution via Termux, Android command execution (am start, input keyevent, termux-torch)"},
+      {"path": "brain/memory.py", "reason": "SQLite database operations, all CRUD on persistent data, thread-local connections"}
+    ],
+    "HIGH": [
+      {"path": "brain/neural.py", "reason": "Model save/load (.npz), vocab persistence, NumPy operations on user input"},
+      {"path": "brain/decision.py", "reason": "Action planning based on intent, entity extraction from user query"},
+      {"path": "brain/learning.py", "reason": "Statistical pattern learning from user behavior history"},
+      {"path": "config.py", "reason": "All app configuration, path construction, API key placeholder"}
+    ],
+    "MEDIUM": [
+      {"path": "utils/metrics.py", "reason": "Metrics persistence to disk, RAM/CPU monitoring via psutil"},
+      {"path": "utils/logger.py", "reason": "Rotating file handler logging"},
+      {"path": "training/train.py", "reason": "Model training pipeline, dataset loading"},
+      {"path": "training/evaluate.py", "reason": "Model evaluation, interactive test mode"},
+      {"path": "datasets/generate_dataset.py", "reason": "Training data generation (multilingual, 5000+ examples)"},
+      {"path": "datasets/__init__.py", "reason": "Package init"},
+      {"path": "models/__init__.py", "reason": "Package init"},
+      {"path": "database/__init__.py", "reason": "Package init"},
+      {"path": "gui/dashboard.py", "reason": "GUI dashboard (optional, customtkinter)"},
+      {"path": "utils/__init__.py", "reason": "Package init"}
+    ]
+  },
+  "FILE_BUDGET": 54,
+  "strategy": "direct",
+  "techStack": {
+    "language": "Python 3.14",
+    "framework": "None (standalone)",
+    "auth": "None (local-only)",
+    "database": "SQLite via stdlib, WAL mode, thread-local connections",
+    "ml": "NumPy-based tiny neural network (no PyTorch/TF)",
+    "ui": "Console stdin + optional customtkinter GUI",
+    "os": "Android Termux + Linux desktop",
+    "keyDependencies": ["numpy", "psutil"]
+  },
+  "trustBoundaries": [
+    {"entry": "main.py:run_console() → input()", "type": "stdin", "risk": "MEDIUM"},
+    {"entry": "main.py:main() → --cli arg", "type": "CLI argument", "risk": "LOW"},
+    {"entry": "evaluate.py:interactive_test() → input()", "type": "stdin", "risk": "LOW"},
+    {"entry": "brain/reflex.py:match_intent()", "type": "internal function", "risk": "LOW"},
+    {"entry": "brain/decision.py:_extract_entities()", "type": "internal function", "risk": "LOW"},
+    {"entry": "brain/memory.py:recall_episodic_memory() → LIKE %query%", "type": "SQL LIKE", "risk": "LOW"},
+    {"entry": "utils/metrics.py:_load() → json.loads() from disk", "type": "file read", "risk": "LOW"},
+    {"entry": "training/train.py:load_dataset() → json.load() from disk", "type": "file read", "risk": "LOW"}
+  ],
+  "securityPatterns": {
+    "sqlParameterized": true,
+    "tableWhitelistValidation": true,
+    "subprocessNoUserInput": true,
+    "noEvalExec": true,
+    "hardcodedSecrets": "LLM_CONFIG.api_key is empty string (not populated — safe)",
+    "noNetworkExposure": true
+  },
+  "scanOrder": [
+    "main.py",
+    "brain/reflex.py",
+    "brain/memory.py",
+    "brain/neural.py",
+    "brain/decision.py",
+    "brain/learning.py",
+    "config.py",
+    "utils/metrics.py",
+    "utils/logger.py",
+    "training/train.py",
+    "training/evaluate.py",
+    "datasets/generate_dataset.py",
+    "gui/dashboard.py"
+  ]
+}

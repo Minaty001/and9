@@ -160,7 +160,7 @@ class ProactiveEngine:
                     dt = datetime.fromisoformat(str(ts)[:10])
                     dates.add(dt.date())
                 except Exception:
-                    pass
+                    logger.debug("Failed to parse timestamp: %s", ts)
 
         streak = len(dates)
         msg = (
