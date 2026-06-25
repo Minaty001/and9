@@ -293,6 +293,52 @@ REMINDER_PATTERNS: List[Pattern] = [
     _c(r'\breminder\s+lagao\s+(.+)$'),
 ]
 
+# ── Reminder Management Triggers (Phase G) ─────────────────────────
+
+# List reminders
+LIST_REMINDERS_TRIGGER: Pattern = _c(
+    r'\b(?:reminder\s+dikha|reminder\s+list|reminder\s+show|show\s+reminders?'
+    r'|reminder\s+dikhau|reminder\s+bata|kaunse\s+reminders?\s+hain'
+    r'|list\s+reminders?|active\s+reminders?|saare\s+reminders?)\b'
+)
+
+# Delete reminder
+DELETE_REMINDER_TRIGGER: Pattern = _c(
+    r'\b(?:cancel\s+reminder|delete\s+reminder|remove\s+reminder|hatana?|hata\s+do|delete\s+kar|cancel\s+kar)'
+    r'(?:\s+.*?)?\b(?:reminder\s+)?#?(\d+)\b'
+)
+
+# Pause reminder
+PAUSE_REMINDER_TRIGGER: Pattern = _c(
+    r'\b(?:pause\s+reminder|reminder\s+pause|rok\s+do|thoda\s+rok|pause\s+kar)'
+    r'(?:\s+.*?)?\b#?(\d+)\b'
+)
+
+# Resume reminder
+RESUME_REMINDER_TRIGGER: Pattern = _c(
+    r'\b(?:resume\s+reminder|reminder\s+resume|phir\s+se\s+shuru|jari\s+rakh|resume\s+kar)'
+    r'(?:\s+.*?)?\b#?(\d+)\b'
+)
+
+# Snooze reminder
+SNOOZE_REMINDER_TRIGGER: Pattern = _c(
+    r'\b(?:snooze|thodi\s+der\s+baad|baad\s+me|thoda\s+baad)'
+    r'(?:\s+.*?)?\b(?:reminder\s+)?#?(\d+)?\b'
+    r'.*?(\d+)\s*(?:minute|min|m|minute\s+ke\s+liye)?'
+)
+
+# Clear all reminders
+CLEAR_ALL_REMINDERS_TRIGGER: Pattern = _c(
+    r'\b(?:clear\s+all\s+reminders?|saare\s+reminders?\s+hata|sab\s+reminders?\s+delete'
+    r'|sab\s+hata\s+do|clear\s+kar\s+do|remove\s+all|delete\s+all\s+reminders?)\b'
+)
+
+# Show completed reminders
+SHOW_COMPLETED_REMINDERS_TRIGGER: Pattern = _c(
+    r'\b(?:completed\s+reminders?|fired\s+reminders?|purane\s+reminders?'
+    r'|completed\s+dikha|kya\s+yaad\s+dilaya|reminders?\s+jo\s+baj\s+chuke)\b'
+)
+
 
 # ══════════════════════════════════════════════════════════════════
 # PRIORITY 14 — TIMER

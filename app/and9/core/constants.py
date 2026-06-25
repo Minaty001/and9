@@ -49,6 +49,16 @@ class ActionType(str, Enum):
     SET_REMINDER = "set_reminder"
     GET_TIME = "get_time"
 
+    # ── Reminder Management (Phase G) ──────────────────────────
+    LIST_REMINDERS = "list_reminders"
+    DELETE_REMINDER = "delete_reminder"
+    PAUSE_REMINDER = "pause_reminder"
+    RESUME_REMINDER = "resume_reminder"
+    SNOOZE_REMINDER = "snooze_reminder"
+    CLEAR_ALL_REMINDERS = "clear_all_reminders"
+    SHOW_COMPLETED_REMINDERS = "show_completed_reminders"
+    EDIT_REMINDER = "edit_reminder"
+
     # ── City Time ──────────────────────────────────────────────
     CITY_TIME = "city_time"
 
@@ -154,6 +164,46 @@ class ActionRegistry:
             "description": "Set a reminder with label",
             "requires": ["trigger_at", "label"],
             "response_template": "Reminder set kar diya! '{label}' ke liye ⏰",
+        },
+        ActionType.LIST_REMINDERS: {
+            "description": "List all active reminders",
+            "requires": [],
+            "response_template": "Yeh rahe aapke active reminders:",
+        },
+        ActionType.DELETE_REMINDER: {
+            "description": "Cancel/delete a specific reminder",
+            "requires": ["reminder_id"],
+            "response_template": "Reminder #{reminder_id} delete kar diya! 🗑️",
+        },
+        ActionType.PAUSE_REMINDER: {
+            "description": "Pause a reminder temporarily",
+            "requires": ["reminder_id"],
+            "response_template": "Reminder #{reminder_id} pause kar diya! ⏸️",
+        },
+        ActionType.RESUME_REMINDER: {
+            "description": "Resume a paused reminder",
+            "requires": ["reminder_id"],
+            "response_template": "Reminder #{reminder_id} resume kar diya! ▶️",
+        },
+        ActionType.SNOOZE_REMINDER: {
+            "description": "Snooze a reminder for N minutes",
+            "requires": ["reminder_id", "minutes"],
+            "response_template": "Reminder #{reminder_id} ko {minutes} minute ke liye snooze kar diya! 😴",
+        },
+        ActionType.CLEAR_ALL_REMINDERS: {
+            "description": "Cancel all pending reminders",
+            "requires": [],
+            "response_template": "Saare reminders clear kar diye! 🧹",
+        },
+        ActionType.SHOW_COMPLETED_REMINDERS: {
+            "description": "Show recently fired reminders",
+            "requires": [],
+            "response_template": "Yeh rahe recently completed reminders:",
+        },
+        ActionType.EDIT_REMINDER: {
+            "description": "Edit a reminder's time or title",
+            "requires": ["reminder_id"],
+            "response_template": "Reminder #{reminder_id} update kar diya! ✏️",
         },
         ActionType.EMERGENCY: {
             "description": "Emergency SOS action",

@@ -35,6 +35,15 @@ from app.and9.router.command_dictionary import (
     MUSIC_TRIGGER,
     ALARM_TRIGGER,
     REMINDER_TRIGGER,
+    REMINDER_PATTERNS,
+    # Phase G — Reminder Management
+    LIST_REMINDERS_TRIGGER,
+    DELETE_REMINDER_TRIGGER,
+    PAUSE_REMINDER_TRIGGER,
+    RESUME_REMINDER_TRIGGER,
+    SNOOZE_REMINDER_TRIGGER,
+    CLEAR_ALL_REMINDERS_TRIGGER,
+    SHOW_COMPLETED_REMINDERS_TRIGGER,
     TIMER_TRIGGER,
     TIME_TRIGGER,
     GOAL_TRIGGER,
@@ -199,7 +208,32 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
     if ALARM_TRIGGER.search(q):
         return 'alarm', ActionType.SET_ALARM.value, extract_entities('alarm', q)
 
-    # ── Priority 13: REMINDER ────────────────────────────────────
+    # ── Priority 13: REMINDER (management before creation) ──────────
+    # Check management intents first (more specific)
+    if LIST_REMINDERS_TRIGGER.search(q):
+        return 'reminder', ActionType.LIST_REMINDERS.value, {}
+    if SHOW_COMPLETED_REMINDERS_TRIGGER.search(q):
+        return 'reminder', ActionType.SHOW_COMPLETED_REMINDERS.value, {}
+    if CLEAR_ALL_REMINDERS_TRIGGER.search(q):
+        return 'reminder', ActionType.CLEAR_ALL_REMINDERS.value, {}
+    if DELETE_REMINDER_TRIGGER.search(q):
+        m = DELETE_REMINDER_TRIGGER.search(q)
+        rid = m.group(1) if m and m.lastindex >= 1 else None
+        return 'reminder', ActionType.DELETE_REMINDER.value, {"reminder_id": rid}
+    if PAUSE_REMINDER_TRIGGER.search(q):
+        m = PAUSE_REMINDER_TRIGGER.search(q)
+        rid = m.group(1) if m and m.lastindex >= 1 else None
+        return 'reminder', ActionType.PAUSE_REMINDER.value, {"reminder_id": rid}
+    if RESUME_REMINDER_TRIGGER.search(q):
+        m = RESUME_REMINDER_TRIGGER.search(q)
+        rid = m.group(1) if m and m.lastindex >= 1 else None
+        return 'reminder', ActionType.RESUME_REMINDER.value, {"reminder_id": rid}
+    if SNOOZE_REMINDER_TRIGGER.search(q):
+        m = SNOOZE_REMINDER_TRIGGER.search(q)
+        rid = m.group(1) if m and m.lastindex >= 1 else None
+        minutes = m.group(2) if m and m.lastindex >= 2 else "5"
+        return 'reminder', ActionType.SNOOZE_REMINDER.value, {"reminder_id": rid, "minutes": minutes}
+    # Fallback: create reminder
     if REMINDER_TRIGGER.search(q):
         return 'reminder', ActionType.SET_REMINDER.value, extract_entities('reminder', q)
 
