@@ -57,6 +57,16 @@ _INTENT_ONLY_ACTIONS = frozenset({
     "airplane_mode",    # Settings intent
     "news",             # web intent
     "web_lookup",       # web intent
+    # Phase 10: handled by Python intent pipeline (not Android overlay)
+    "get_time",
+    "list_reminders",
+    "delete_reminder",
+    "pause_reminder",
+    "resume_reminder",
+    "snooze_reminder",
+    "clear_all_reminders",
+    "show_completed_reminders",
+    "edit_reminder",
 })
 
 # Python actions that map to the same Kotlin handler
