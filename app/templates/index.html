@@ -197,15 +197,29 @@
   <div id="timerOverlay" class="timer-overlay" style="display:none;">
     <div class="timer-card">
       <div class="timer-label" id="timerLabel">Timer</div>
-      <div class="timer-display" id="timerDisplay">00:00</div>
+      <div class="timer-display" id="timerDisplay">
+        <span class="timer-digit" id="timerDigitMinTens">0</span>
+        <span class="timer-digit" id="timerDigitMinOnes">0</span>
+        <span class="timer-sep">:</span>
+        <span class="timer-digit" id="timerDigitSecTens">0</span>
+        <span class="timer-digit" id="timerDigitSecOnes">0</span>
+      </div>
       <div class="timer-progress" id="timerProgress">
         <div class="timer-progress-bar" id="timerProgressBar"></div>
       </div>
+      <div class="timer-actions">
+        <button id="cancelTimerBtn" class="timer-cancel-btn" onclick="TimerManager.cancelTimer()">
+          Cancel
+        </button>
+        <button id="pauseTimerBtn" class="timer-pause-btn" onclick="TimerManager.pauseTimer()">
+          ⏸ Pause
+        </button>
+        <button id="resumeTimerBtn" class="timer-resume-btn" style="display:none;" onclick="TimerManager.resumeTimer()">
+          ▶ Resume
+        </button>
+      </div>
       <button id="dismissTimerBtn" class="timer-dismiss-btn" style="display:none;" onclick="TimerManager.dismissAlert()">
         ✕ Dismiss
-      </button>
-      <button id="cancelTimerBtn" class="timer-cancel-btn" onclick="TimerManager.cancelTimer()">
-        Cancel
       </button>
     </div>
   </div>
