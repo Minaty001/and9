@@ -9,7 +9,18 @@ import logging
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
-DB_PATH = "/root/and9/activities.db"
+# Dynamic DB path resolution for local dev vs Render deploy
+if os.environ.get("RENDER") or os.path.exists("/app/.jarvis_data"):
+    _default_db = "/app/.jarvis_data/activities.db"
+else:
+    _default_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "activities.db"))
+
+DB_PATH = os.environ.get("AND9_ACTIVITIES_DB", _default_db)
+
+try:
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+except Exception as _mkdir_err:
+    logger.warning("Could not create activities DB directory '%s': %s", os.path.dirname(DB_PATH), _mkdir_err)
 
 def init_activity_db():
     """Initialize activities.db schema."""
