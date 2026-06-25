@@ -1,38 +1,38 @@
 [
   {
     "bugId": "BUG-1",
-    "response": "ACCEPT",
-    "analysisSummary": "Confirmed by reading reflex.py:485-495. The action_map branch executes subprocess.run() but never inspects result.returncode before returning {'success': True}. The `am start` path at line 471 correctly checks returncode. This inconsistency proves the omission is unintentional. On Termux without Termux:API installed, termux-torch would fail non-zero but be reported as success. Expected value check: EV=+4.75 (95% confidence, 5pt medium) — safe to accept."
+    "response": "DISPROVE",
+    "analysisSummary": "The finding claims timezone-naive datetime.now() in time_parser.py produces wrong IST timestamps. However, time_parser.py runs on the Android phone (via Termux or the AND9 Flask app), where datetime.now() returns the device's local timezone. For Indian users, this is IST (Asia/Kolkata). The system timezone is expected to match the user's timezone — this is a universal assumption in local-device assistants (Siri, Google Assistant, Alexa all use device local time). The trigger.replace() and comparisons all operate in the same local timezone, so wall-clock correctness is maintained. The deployment also supports TZ env var (common in Docker) for server-side use. The cross-referenced alarm_actions.py and reminder_actions.py similarly run on the same device with the same local timezone. No behavioral bug exists under the intended deployment.",
+    "counterEvidence": "app/and9/utils/time_parser.py:184 datetime.now() returns device local time (IST for Indian users). No server-side code path uses time_parser for production scheduling — app/core/timer.py uses time.time() (UTC epoch) and app/reminders/storage.py stores ISO strings from its own datetime.now() calls, which are also device-local. The primary deployment target is an Android phone in IST. Cloud deployments set TZ=Asia/Kolkata."
   },
   {
     "bugId": "BUG-2",
     "response": "ACCEPT",
-    "analysisSummary": "Confirmed by reflex.py:241-284. go_home, go_back, volume_up, volume_down actions are registered without requires_termux=True (defaults to False). reflex.py:439-442 routes non-Termux actions to _execute_fallback which only simulates. reflex.py:476-483 proves developer intended Termux execution (action_map entries defined) but the flag is missing. All 4 actions silently return desktop simulation on Android. EV=+4.9 (98% confidence, 5pt) — safe to accept."
+    "analysisSummary": "Real behavioral bug. micro_brain/brain/reflex.py _execute_fallback() calls detect_city_time_query() which correctly identifies ANY supported Indian city, then checks against a hardcoded subset tuple that only contains 11 metro cities. The 16+ additional cities defined in timezone_utils.SUPPORTED_CITIES (ahmedabad, pune, jaipur, lucknow, chandigarh, bhopal, indore, kochi, nagpur, patna, surat, bhubaneswar, guwahati, amritsar, varanasi, agra) are silently ignored. Users asking for time in these cities get the generic system time instead of IST. Fix: remove the hardcoded tuple check and directly pass the city to format_city_time_response() which handles the lookup internally.",
+    "counterEvidence": "micro_brain/brain/reflex.py:514-524 shows the hardcoded tuple. micro_brain/utils/timezone_utils.py:17-34 shows all supported cities including the 16+ excluded ones."
   },
   {
     "bugId": "BUG-3",
     "response": "ACCEPT",
-    "analysisSummary": "Confirmed by tracing close_app execution path: reflex.py:121-127 registers close_app with requires_termux=True but no android_action. _execute_termux at line 464 finds pkg=None (skip), line 485 finds 'close_app' not in action_map (skip), line 497 returns success with no-op message. The close_app functionality is completely unimplemented. EV=+4.75 (95% confidence, 5pt) — safe to accept."
+    "analysisSummary": "Real potential crash bug. os.makedirs('/app/.jarvis_data', exist_ok=True) runs at module import time on line 37 of app/and9/reminders/db.py. On Android/Termux (the primary deployment target), the Termux sandbox cannot write to /app/ — this raises PermissionError which crashes the module import. The try-except wrapping on lines 205-208 only covers init_db(), not the makedirs call. The env var AND9_REMINDERS_DB can override the path, but the default path is broken for the primary deployment target. Fix: either move the makedirs inside init_db(), use a Termux-compatible default path ($HOME/...), or wrap it in try-except.",
+    "counterEvidence": "app/and9/reminders/db.py:31-37. The os.makedirs call is at module level, outside any try-except block. init_db() at line 66-75 is wrapped at line 205-208, but os.makedirs on line 37 is not."
   },
   {
     "bugId": "BUG-4",
     "response": "ACCEPT",
-    "analysisSummary": "Confirmed: decision.py:370 references 'TIMER' intent, but config.py:53-74 does not include TIMER in INTENTS. The _extract_entities branch for number extraction on TIMER is unreachable dead code. This is a cross-file inconsistency between decision.py and config.py. Not a runtime crash but a logic inconsistency. EV=+0.98 (100% confidence, 1pt) — safe to accept."
+    "analysisSummary": "Same pattern as BUG-3. app/reminders/storage.py:32 runs os.makedirs('/app/.jarvis_data', exist_ok=True) at module import time. Crashes on Android/Termux where /app/ is not writable. Fix: move into init_storage() or use a writable default path.",
+    "counterEvidence": "app/reminders/storage.py:27-32. Identical pattern — os.makedirs at module level, outside any try-except."
   },
   {
     "bugId": "BUG-5",
-    "response": "ACCEPT",
-    "analysisSummary": "Confirmed: evaluate.py:45 calls random.shuffle(examples) with no prior random.seed() call. Each evaluation run selects a different 15% test subset, producing different accuracy metrics for the same model on the same dataset. This makes regression testing and model comparison unreliable. EV=+0.8 (90% confidence, 1pt) — safe to accept."
+    "response": "DISPROVE",
+    "analysisSummary": "The finding claims TimerService has no clean shutdown mechanism. However, TimerService is designed as a singleton created via get_timer_service() — there is no scenario requiring multiple instances or lifecycle management. The worker thread is a daemon (auto-killed at exit), which is the standard Python pattern for background housekeeping threads. The singleton pattern + daemon thread is used throughout the project (e.g., ReminderWorker in app/reminders/worker.py uses the same daemon pattern). This is an intentional design decision, not a bug. Testing can mock TimerService rather than creating real instances.",
+    "counterEvidence": "app/core/timer.py:51-52 daemon=True, 141-154 lazy singleton pattern. app/reminders/worker.py:103-106 daemon=True, same pattern."
   },
   {
     "bugId": "BUG-6",
-    "response": "ACCEPT",
-    "analysisSummary": "Confirmed: train.py:54 calls random.shuffle(examples) without seed. Training is not reproducible — same code and data produce different models across runs. While the neural network itself also uses random initialization (np.random.randn), adding a seed to split_data would partially improve reproducibility. EV=+0.8 (90% confidence, 1pt) — safe to accept."
-  },
-  {
-    "bugId": "BUG-7",
     "response": "DISPROVE",
-    "analysisSummary": "DISPROVE (Hard exclusion: unused code — out of scope per Hunter rules). reflex.py:487-494 both branches execute identical code (cmd.split()). This is dead/unused code logic. The Hunter SKILL.md explicitly states: 'OUT OF SCOPE: Style, formatting, naming, comments, unused code, TypeScript types, suggestions, refactoring, impossible-precondition theories, missing tests, dependency versions, TODO comments.' Dead conditionals are unused code per this rule. EV=+1.0 (100% confidence, 1pt * 1 - 0 * 2 * 1 = +1). Safe to disprove.",
-    "counterEvidence": "reflex.py:487-494 confirms both branches are identical. Hunter scope rule explicitly excludes dead code. No behavioral impact — the split() function handles 'input keyevent N' and 'termux-torch on' identically. Not a runtime bug."
+    "analysisSummary": "The finding claims a dead/no-op conditional on timer.js:78. Both branches call renderTimers() identically. This is dead code (the 'changed' variable is computed but unused), but there is zero behavioral impact — renderTimers() is always called every 250ms tick, which is correct behavior. The timer display updates correctly regardless of which branch executes. A dead conditional is a code quality issue, not a behavioral bug. The finding acknowledges this: 'No behavioral impact but indicates incomplete implementation.' This matches the OUT OF SCOPE criteria (style, unused code, suggestions are explicitly excluded).",
+    "counterEvidence": "app/static/timer.js:68-79. The timer display always renders correctly. No wrong value, no crash, no missing functionality."
   }
 ]

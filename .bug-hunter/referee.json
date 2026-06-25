@@ -1,71 +1,59 @@
 [
   {
     "bugId": "BUG-1",
-    "verdict": "REAL_BUG",
-    "trueSeverity": "Medium",
-    "confidenceScore": 95,
+    "verdict": "NOT_A_BUG",
+    "trueSeverity": "Low",
+    "confidenceScore": 88,
     "confidenceLabel": "high",
     "verificationMode": "INDEPENDENTLY_VERIFIED",
-    "analysisSummary": "Independent code read confirms: reflex.py:485-495 in _execute_termux runs subprocess.run() for action_map commands (flashlight, navigation, volume) but unconditionally returns {'success': True} regardless of result.returncode or result.stderr. The `am start` path at line 471 correctly checks returncode, proving the omission is unintentional. On Termux without Termux:API, `termux-torch on/off` returns non-zero exit but is reported as success. The try/except at line 499 only catches exceptions (e.g., FileNotFoundError), not non-zero exit codes.",
-    "suggestedFix": "Check result.returncode after subprocess.run() in the action_map branch, matching the pattern used in the pkg/am start block. If returncode != 0, return {'success': False, 'message': result.stderr.strip()}."
+    "analysisSummary": "time_parser.py uses datetime.now() on the Android phone where device local time IS IST (the user's expected timezone). All operations (replace, comparison, timestamp) use the same local timezone, so wall-clock correctness is maintained. The primary deployment target is a Termux Android phone set to IST. Cloud deployments standardly set TZ=Asia/Kolkata. No behavioral bug exists under intended deployment. Skeptic's evidence is specific and correct."
   },
   {
     "bugId": "BUG-2",
     "verdict": "REAL_BUG",
     "trueSeverity": "Medium",
-    "confidenceScore": 98,
+    "confidenceScore": 95,
     "confidenceLabel": "high",
     "verificationMode": "INDEPENDENTLY_VERIFIED",
-    "analysisSummary": "Independent code read confirms: reflex.py:241-284 registers volume_up, volume_down, go_home, go_back without requires_termux=True (defaults to False). reflex.py:439-442 dispatches based on `self._is_android and action.requires_termux` — since requires_termux is False, _execute_fallback runs instead of _execute_termux. The action_map dict at lines 476-483 defines Termux commands for all 4 actions, proving the developer intended Termux execution. The discrepancy between action_map (wired for Termux) and the missing flag is a clear oversight. On Android, users get desktop simulation messages instead of actual keyevent/torch commands.",
-    "suggestedFix": "Add requires_termux=True to the Action() constructor calls for volume_up, volume_down, go_home, go_back in _setup_default_actions()."
+    "analysisSummary": "micro_brain/brain/reflex.py _execute_fallback() line 514 calls detect_city_time_query() which correctly returns ANY supported Indian city (20+ cities). Lines 515-518 then check against a hardcoded tuple of only 11 metro cities. Cities like pune, jaipur, lucknow pass the detection but fail the hardcoded filter, falling through to generic datetime.now() instead of IST. This produces wrong wall-clock time for users asking about those cities. Fix: replace the hardcoded tuple with a direct call to format_city_time_response(city).",
+    "suggestedFix": "In micro_brain/brain/reflex.py _execute_fallback(), replace lines 513-524: remove the hardcoded city tuple and the 'if city and city in (...)' block. Instead call 'if city: info = get_time_in_city(city); if info: return {\"success\": True, \"message\": format_city_time_response(city)}'. This delegates the city validation to timezone_utils which already handles all supported cities."
   },
   {
     "bugId": "BUG-3",
     "verdict": "REAL_BUG",
-    "trueSeverity": "Low",
-    "confidenceScore": 95,
+    "trueSeverity": "Medium",
+    "confidenceScore": 97,
     "confidenceLabel": "high",
     "verificationMode": "INDEPENDENTLY_VERIFIED",
-    "analysisSummary": "Independent code read confirms: close_app has requires_termux=True but no android_action (package) and no action_map entry. In _execute_termux: pkg=None→skip, 'close_app' not in action_map→skip, falls to line 497 catch-all returning success with no-op message. No actual command is executed. Downgraded to Low because closing arbitrary third-party apps on Android without root is technically infeasible via standard APIs (no 'force-stop' equivalent). The real behavioral issue is false success reporting, not the missing close implementation.",
-    "suggestedFix": "Either (a) add a Termux implementation: `am force-stop <package>` for known apps, or (b) remove requires_termux=True so it uses desktop fallback, or (c) if closing is intentionally unsupported, remove the action or return success=False with 'not supported on Android'."
+    "analysisSummary": "app/and9/reminders/db.py line 37 runs os.makedirs('/app/.jarvis_data', exist_ok=True) at MODULE LEVEL — NOT inside any try-except block. On Android/Termux (the primary deployment target), /app/ is not writable, raising PermissionError that crashes the module import. The try-except at lines 205-208 only wraps init_db(), not the makedirs call. The env var AND9_REMINDERS_DB can override the default path, but the default is broken for the primary deployment target.",
+    "suggestedFix": "Option A: Wrap os.makedirs in try-except. Option B: Move it inside init_db() (already wrapped by try-except). Option C: Use a Termux-safe default path like os.environ.get('HOME', '/tmp') + '/.jarvis_data/reminders.db'."
   },
   {
     "bugId": "BUG-4",
     "verdict": "REAL_BUG",
-    "trueSeverity": "Low",
-    "confidenceScore": 100,
+    "trueSeverity": "Medium",
+    "confidenceScore": 97,
     "confidenceLabel": "high",
     "verificationMode": "INDEPENDENTLY_VERIFIED",
-    "analysisSummary": "Independent code read confirms: decision.py:370 references 'TIMER' in the _extract_entities number extraction block. config.py:53-74 INTENTS list does not include TIMER. The condition `intent == 'TIMER'` can never be True because no brain component ever produces TIMER as an intent. This is dead/inconsistent code. Low severity — no runtime crash, but a cross-file inconsistency that could cause confusion during maintenance.",
-    "suggestedFix": "Remove 'TIMER' from the condition at decision.py:370, or add TIMER to the INTENTS list in config.py if timer functionality is planned."
+    "analysisSummary": "app/reminders/storage.py line 32 — identical pattern to BUG-3. os.makedirs('/app/.jarvis_data', exist_ok=True) at module level crashes on Android/Termux where /app/ is not writable. Same fix applies.",
+    "suggestedFix": "Same as BUG-3: wrap os.makedirs in try-except, move it inside init_storage(), or use a Termux-safe default path."
   },
   {
     "bugId": "BUG-5",
-    "verdict": "REAL_BUG",
+    "verdict": "NOT_A_BUG",
     "trueSeverity": "Low",
     "confidenceScore": 90,
     "confidenceLabel": "high",
     "verificationMode": "INDEPENDENTLY_VERIFIED",
-    "analysisSummary": "Independent code read confirms: evaluate.py:45 calls random.shuffle(examples) without a prior random.seed() call. Each evaluation selects a different 15% test subset, producing non-deterministic accuracy metrics. The same model evaluated twice on the same dataset yields different results. This undermines regression testing and model comparison. Low severity because the evaluate script is for ad-hoc assessment, but the data integrity impact is real.",
-    "suggestedFix": "Add `random.seed(42)` (or another fixed constant) before the shuffle in load_test_set(), and/or fix the test set split so the same indices are always used for the same dataset."
+    "analysisSummary": "TimerService is intentionally designed as a singleton with a daemon background thread. The daemon thread is auto-killed at process exit — this is the standard Python pattern for background housekeeping (same as ReminderWorker in app/reminders/worker.py:103-106). The lazy singleton pattern via get_timer_service() ensures only one instance exists. There is no requirement for clean timer service lifecycle management in a personal assistant application. This is an appropriate design decision, not a bug."
   },
   {
     "bugId": "BUG-6",
-    "verdict": "REAL_BUG",
-    "trueSeverity": "Low",
-    "confidenceScore": 90,
-    "confidenceLabel": "high",
-    "verificationMode": "INDEPENDENTLY_VERIFIED",
-    "analysisSummary": "Independent code read confirms: train.py:54 calls random.shuffle(examples) without a prior random.seed() call. Each training run produces different train/val/test splits, making training non-reproducible. The same training command on the same data yields different model weights and metrics. Note: even with a seed for split_data, full reproducibility also requires seeding np.random (used in weight init at neural.py:211) and controlling mini-batch order. This bug specifically addresses the data split component.",
-    "suggestedFix": "Add `random.seed(42)` before the shuffle in split_data(), and optionally seed `np.random.seed(42)` before network construction for full reproducibility."
-  },
-  {
-    "bugId": "BUG-7",
     "verdict": "NOT_A_BUG",
     "trueSeverity": "Low",
-    "confidenceScore": 100,
+    "confidenceScore": 95,
     "confidenceLabel": "high",
     "verificationMode": "INDEPENDENTLY_VERIFIED",
-    "analysisSummary": "Independent code read confirms: both branches of the if/else at reflex.py:487-494 execute identical code (cmd.split()). However, this pattern does NOT produce incorrect behavior — both 'input keyevent N' and 'termux-torch on/off' are correctly split and executed by subprocess.run(). The redundant conditional is dead code / style issue. Hunter SKILL.md explicitly excludes 'unused code' from scope. Skeptic's DISPROVE on this ground is correct. NOT A BEHAVIORAL BUG."
+    "analysisSummary": "timer.js line 78 has a dead conditional where both branches call renderTimers() identically. The 'changed' variable is computed but its value is never used for branching — renderTimers() is always called every 250ms regardless. The timer display updates correctly with no wrong behavior, crash, or missing functionality. This is a code quality issue (unused variable), not a behavioral bug. The Hunter's own evidence states 'No behavioral impact.' This matches OUT OF SCOPE rules explicitly excluding 'unused code' and 'suggestions'."
   }
 ]

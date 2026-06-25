@@ -50,25 +50,62 @@ class TextEmbedding:
     Output: 128-dim vector
     """
 
+    # Class-level constant data (never changes between instances)
+    CHAR_SET = (
+        "abcdefghijklmnopqrstuvwxyz"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "0123456789"
+        " .,!?-+:@#$%&*()[]{}'\""
+        "अआइईउऊऋएऐओऔकखगघङचछजझञटठडढणतथदधनपफबभमयरलवशषसह"
+        "ािीुूृेैोौंः्"
+        "़ऽ"
+    )
+
+    # Intent-specific keyword groups (dims 92-127) — created once
+    _KEYWORD_GROUPS = [
+        ["open", "kholo", "khol", "launch", "start"],
+        ["close", "band", "exit", "hatao"],
+        ["play", "music", "song", "gaana", "bajao"],
+        ["pause", "stop", "rok"],
+        ["search", "google", "dhundh", "dhoondh", "khoj", "find"],
+        ["weather", "mausam", "temperature"],
+        ["time", "samay", "kitna", "bajaa", "baje", "ghanti"],
+        ["date", "tareekh", "din"],
+        ["remind", "reminder", "yaad", "alarm"],
+        ["call", "phone", "dial", "fone"],
+        ["message", "text", "sms", "msg", "bhej"],
+        ["camera", "photo", "picture", "selfie"],
+        ["flash", "torch", "light"],
+        ["volume", "aawaz", "sound"],
+        ["home", "gher"],
+        ["back", "peeche", "wapis", "pichh"],
+        ["setting"],
+        ["whatsapp", "wa"],
+        ["youtube", "yt"],
+        ["telegram", "insta", "instagram"],
+        ["maps", "map"],
+        ["mail", "gmail"],
+        ["calculator", "calc"],
+        ["calendar"],
+        ["clock", "alarm"],
+        ["playstore", "store", "play store"],
+        ["spotify", "music player"],
+        ["wifi", "bluetooth"],
+        ["up", "increase", "badhao", "zyada", "tez", "plus", "aur"],
+        ["down", "decrease", "kam", "ghatao", "minus", "halka"],
+        ["weather", "mausam", "temperature"],
+        ["kholo", "khol", "chalu", "jalao"],
+        ["band", "off", "bujhao"],
+        ["unknown", "hello", "hi", "how"],
+        ["camera", "photo", "selfie"],
+        ["phone", "contact", "number", "dial"],
+    ]
+
     def __init__(self, dim: int = 128):
         self.dim = dim
-        self.char_set = self._build_char_set()
-        self.char_to_idx = {c: i for i, c in enumerate(self.char_set)}
-        self.vocab_size = len(self.char_set)
-
-    def _build_char_set(self) -> str:
-        """Build character set from common scripts."""
-        # English + Hindi + common symbols
-        chars = (
-            "abcdefghijklmnopqrstuvwxyz"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            "0123456789"
-            " .,!?-+:@#$%&*()[]{}'\""
-            "अआइईउऊऋएऐओऔकखगघङचछजझञटठडढणतथदधनपफबभमयरलवशषसह"
-            "ािीुूृेैोौंः्"
-            "़ऽ"
-        )
-        return chars
+        self.char_to_idx = {c: i for i, c in enumerate(self.CHAR_SET)}
+        self.vocab_size = len(self.CHAR_SET)
+        self._zeros = np.zeros(dim, dtype=np.float32)  # reusable empty array
 
     def embed(self, text: str) -> np.ndarray:
         """
@@ -79,62 +116,59 @@ class TextEmbedding:
         """
         text = str(text).strip()
         if not text:
-            return np.zeros(self.dim, dtype=np.float32)
+            return self._zeros.copy()
 
-        embedding = np.zeros(self.dim, dtype=np.float32)
+        embedding = self._zeros.copy()
         text_lower = text.lower()
         words = text_lower.split()
         total_chars = len(text_lower)
 
         # ── 1. Character frequency (dims 0-39) ─────────────────
-        # Robust to all languages, good general signal
-        for i, char in enumerate(text_lower[:80]):
-            if char in self.char_to_idx:
-                idx = self.char_to_idx[char] % 40
-                embedding[idx] += 1.0
-        char_sum = np.sum(embedding[:40])
-        if char_sum > 0:
-            embedding[:40] /= char_sum
+        ct = self.char_to_idx
+        for char in text_lower[:80]:
+            idx = ct.get(char)
+            if idx is not None:
+                embedding[idx % 40] += 1.0
+        s = embedding[:40].sum()
+        if s > 0:
+            embedding[:40] /= s
 
         # ── 2. Character bigrams via hashing (dims 40-55) ──────
-        bigrams = set()
-        for i in range(len(text_lower) - 1):
+        seen = set()
+        n_minus_1 = len(text_lower) - 1
+        for i in range(n_minus_1):
             bg = text_lower[i:i + 2]
-            bigrams.add(bg)
-        for bg in bigrams:
-            h = (ord(bg[0]) * 31 + ord(bg[-1])) & 0x0F
-            embedding[40 + h] += 0.1
+            if bg not in seen:
+                seen.add(bg)
+                h = (ord(bg[0]) * 31 + ord(bg[-1])) & 0x0F
+                embedding[40 + h] += 0.1
 
         # ── 3. Word-level features (dims 56-71) ───────────────
-        # Word presence bits for short common words
         for word in words:
             h = hash(word) & 0x0F
             embedding[56 + h] += 1.0
-        # Word bigrams
         for i in range(len(words) - 1):
-            wbg = words[i] + "_" + words[i + 1]
-            h = hash(wbg) & 0x0F
+            h = hash(words[i] + '_' + words[i + 1]) & 0x0F
             embedding[64 + h] += 1.0
 
         # ── 4. Direction / opposition (dims 72-79) ────────────
-        # KEY for differentiating on/off, up/down, play/pause
-        dir_feats = [
-            "on" in words, "off" in words,
-            "up" in words, "down" in words,
-            ("play" in text_lower or "bajao" in text_lower or "chalao" in text_lower),
-            ("pause" in text_lower or "stop" in text_lower or "rok" in text_lower or "band" in text_lower),
-            ("kholo" in text_lower or "open" in text_lower or "chalu" in text_lower or "on" in words or "jalao" in text_lower),
-            ("badhao" in text_lower or "increase" in text_lower or "zyada" in text_lower or "tez" in text_lower),
-        ]
-        for i, val in enumerate(dir_feats):
-            embedding[72 + i] = 1.0 if val else 0.0
+        wset = set(words) if len(words) > 3 else words  # fast membership for short lists
+        embedding[72] = 1.0 if 'on' in wset else 0.0
+        embedding[73] = 1.0 if 'off' in wset else 0.0
+        embedding[74] = 1.0 if 'up' in wset else 0.0
+        embedding[75] = 1.0 if 'down' in wset else 0.0
+        embedding[76] = 1.0 if ('play' in text_lower or 'bajao' in text_lower or 'chalao' in text_lower) else 0.0
+        embedding[77] = 1.0 if ('pause' in text_lower or 'stop' in text_lower or 'rok' in text_lower or 'band' in text_lower) else 0.0
+        embedding[78] = 1.0 if ('kholo' in text_lower or 'open' in text_lower or 'chalu' in text_lower or 'on' in wset or 'jalao' in text_lower) else 0.0
+        embedding[79] = 1.0 if ('badhao' in text_lower or 'increase' in text_lower or 'zyada' in text_lower or 'tez' in text_lower) else 0.0
 
         # ── 5. Structural / script features (dims 80-91) ──────
+        n_words = len(words)
         embedding[80] = min(1.0, total_chars / 60.0)
-        embedding[81] = min(1.0, len(words) / 10.0)
-        embedding[82] = 1.0 if len(words) == 1 else 0.0
-        embedding[83] = 1.0 if "?" in text else 0.0
-        embedding[84] = 1.0 if "!" in text else 0.0
+        embedding[81] = min(1.0, n_words / 10.0)
+        embedding[82] = 1.0 if n_words == 1 else 0.0
+        embedding[83] = 1.0 if '?' in text else 0.0
+        embedding[84] = 1.0 if '!' in text else 0.0
 
         devanagari = sum(1 for c in text if '\u0900' <= c <= '\u097F')
         embedding[85] = min(1.0, devanagari / max(1, total_chars))
@@ -143,58 +177,18 @@ class TextEmbedding:
         digits = sum(1 for c in text if c.isdigit())
         embedding[87] = min(1.0, digits / max(1, total_chars))
 
-        embedding[88] = 1.0 if any(k in words for k in ["please", "pls", "karo", "kar", "dijiye"]) else 0.0
+        embedding[88] = 1.0 if any(k in words for k in ("please", "pls", "karo", "kar", "dijiye")) else 0.0
 
         # Hindi-specific action verb markers
-        hindi_actions = "kholochalaobajaobataobadhaokambanddhundh"
-        embedding[89] = 1.0 if any(c in text_lower for c in hindi_actions) else 0.0
+        embedding[89] = 1.0 if any(c in text_lower for c in "kholochalaobajaobataobadhaokambanddhundh") else 0.0
 
         # ── 6. Intent-specific keyword groups (dims 92-127) ────
-        # Each group maps to a specific intent with multiple synonyms
-        groups = [
-            ["open", "kholo", "khol", "launch", "start"],                # 92: OPEN
-            ["close", "band", "exit", "hatao"],                           # 93: CLOSE
-            ["play", "music", "song", "gaana", "bajao"],                  # 94: MUSIC/PLAY
-            ["pause", "stop", "rok"],                                     # 95: PAUSE
-            ["search", "google", "dhundh", "dhoondh", "khoj", "find"],    # 96: SEARCH
-            ["weather", "mausam", "temperature"],                          # 97: WEATHER
-            ["time", "samay", "kitna", "bajaa", "baje", "ghanti"],        # 98: TIME
-            ["date", "tareekh", "din"],                                    # 99: DATE
-            ["remind", "reminder", "yaad", "alarm"],                       # 100: REMINDER
-            ["call", "phone", "dial", "fone"],                             # 101: CALL
-            ["message", "text", "sms", "msg", "bhej"],                     # 102: MESSAGE
-            ["camera", "photo", "picture", "selfie"],                      # 103: CAMERA
-            ["flash", "torch", "light"],                                   # 104: FLASHLIGHT
-            ["volume", "aawaz", "sound"],                                  # 105: VOLUME
-            ["home", "gher"],                                              # 106: HOME
-            ["back", "peeche", "wapis", "pichh"],                          # 107: BACK
-            ["setting"],                                                   # 108: SETTING
-            ["whatsapp", "wa"],                                            # 109: WHATSAPP
-            ["youtube", "yt"],                                             # 110: YOUTUBE
-            ["telegram", "insta", "instagram"],                            # 111: SOCIAL
-            ["maps", "map"],                                               # 112: MAPS
-            ["mail", "gmail"],                                             # 113: MAIL
-            ["calculator", "calc"],                                        # 114: CALC
-            ["calendar"],                                                  # 115: CALENDAR
-            ["clock", "alarm"],                                            # 116: CLOCK
-            ["playstore", "store", "play store"],                          # 117: STORE
-            ["spotify", "music player"],                                   # 118: PLAYER
-            ["wifi", "bluetooth"],                                         # 119: CONNECT
-            ["up", "increase", "badhao", "zyada", "tez", "plus", "aur"],  # 120: UP/INC
-            ["down", "decrease", "kam", "ghatao", "minus", "halka"],       # 121: DOWN/DEC
-            ["weather", "mausam", "temperature"],                          # 122: WEATHER2
-            ["kholo", "khol", "chalu", "jalao"],                          # 123: TURN_ON
-            ["band", "off", "bujhao"],                                     # 124: TURN_OFF
-            ["unknown", "hello", "hi", "how"],                             # 125: UNKNOWN
-            ["camera", "photo", "selfie"],                                 # 126: CAMERA2
-            ["phone", "contact", "number", "dial"],                        # 127: PHONE
-        ]
-        for i, kws in enumerate(groups):
+        for i, kws in enumerate(self._KEYWORD_GROUPS):
             idx = 92 + i
             if idx < 128:
                 embedding[idx] = 1.0 if any(kw in text_lower for kw in kws) else 0.0
 
-        return embedding.astype(np.float32)
+        return embedding
 
 
 class DenseLayer:

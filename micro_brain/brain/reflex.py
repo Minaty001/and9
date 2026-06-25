@@ -512,11 +512,7 @@ class ReflexBrain:
         if action.name == "time" and query:
             from utils.timezone_utils import detect_city_time_query, get_time_in_city, format_city_time_response
             city = detect_city_time_query(query)
-            if city and city in (
-                "kolkata", "calcutta", "delhi", "new delhi", "dilli",
-                "mumbai", "bombay", "chennai", "madras",
-                "bangalore", "bengaluru", "hyderabad",
-            ):
+            if city:
                 info = get_time_in_city(city)
                 if info:
                     msg = format_city_time_response(city)

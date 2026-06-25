@@ -9,7 +9,7 @@ Supabase table: events
 """
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ class EventSystem:
             e = {"id": len(self._mem._mem.get("events", [])) + 1,
                  "title": title, "event_time": event_time,
                  "notes": notes, "repeat": repeat, "done": False,
-                 "created_at": datetime.utcnow().isoformat()}
+                 "created_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}
             self._mem._mem.setdefault("events", []).append(e)
             return e
         res = self._safe(lambda: q.insert({
@@ -84,7 +84,7 @@ class EventSystem:
 
     def get_upcoming_events(self, hours_ahead: int = 24) -> list:
         """Return events due in the next N hours."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         cutoff = (now + timedelta(hours=hours_ahead)).isoformat()
         now_str = now.isoformat()
 
@@ -105,7 +105,7 @@ class EventSystem:
 
     def get_due_events(self) -> list:
         """Return events that are due NOW (past event_time, not done)."""
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         q = self._q("events")
         if q is None:
             evs = self._mem._mem.get("events", [])
@@ -155,14 +155,14 @@ class EventSystem:
             n   = int(rel.group(1))
             unit = rel.group(2)
             if unit in ("minute", "min"):
-                dt = datetime.utcnow() + timedelta(minutes=n)
+                dt = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=n)
             elif unit in ("ghante", "hour"):
-                dt = datetime.utcnow() + timedelta(hours=n)
+                dt = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=n)
             else:
-                dt = datetime.utcnow() + timedelta(days=n)
+                dt = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=n)
             event_time = dt.isoformat()
         elif "kal" in t:
-            dt = datetime.utcnow() + timedelta(days=1)
+            dt = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=1)
             # Try to extract hour
             hr = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(baje|am|pm)?", t)
             if hr:
@@ -173,7 +173,7 @@ class EventSystem:
                 dt = dt.replace(hour=h, minute=m, second=0, microsecond=0)
             event_time = dt.isoformat()
         elif "aaj" in t:
-            dt = datetime.utcnow()
+            dt = datetime.now(timezone.utc).replace(tzinfo=None)
             # Try to extract hour
             hr = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(baje|am|pm)?", t)
             if hr:

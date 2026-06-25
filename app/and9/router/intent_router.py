@@ -17,6 +17,7 @@ Chrome is NEVER opened except for SEARCH/NEWS/WEB_LOOKUP.
 """
 import re
 import logging
+from functools import lru_cache
 from typing import Optional, Tuple
 
 from app.and9.core.constants import ActionType
@@ -46,6 +47,7 @@ from app.and9.router.entity_extractor import extract_entities
 logger = logging.getLogger(__name__)
 
 
+@lru_cache(maxsize=512)
 def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
     """Classify a normalized query into an intent with extracted parameters.
 

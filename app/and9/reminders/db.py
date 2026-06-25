@@ -33,8 +33,14 @@ _DB_PATH = os.environ.get(
     "/app/.jarvis_data/reminders.db"
 )
 
-# Ensure the directory exists
-os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+# Ensure the directory exists (gracefully handle unwritable paths on Android/Termux)
+try:
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+except (OSError, PermissionError):
+    logger.warning("Cannot create reminders DB directory at %s; using in-memory fallback", _DB_PATH)
+    _USE_MEMORY_FALLBACK = True
+else:
+    _USE_MEMORY_FALLBACK = False
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS reminders (
@@ -55,7 +61,8 @@ CREATE INDEX IF NOT EXISTS idx_reminders_trigger
 @contextmanager
 def _conn():
     """Thread-safe SQLite connection context manager."""
-    con = sqlite3.connect(_DB_PATH, check_same_thread=False)
+    db_path = ":memory:" if _USE_MEMORY_FALLBACK else _DB_PATH
+    con = sqlite3.connect(db_path, check_same_thread=False)
     con.row_factory = sqlite3.Row
     try:
         yield con

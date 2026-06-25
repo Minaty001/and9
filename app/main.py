@@ -109,6 +109,14 @@ def _init_and9(app: Flask) -> None:
     except Exception as e:
         _startup_logger.warning("AND9 PackageResolver error: %s", e)
 
+    # Phase 0: ensure legacy data directory
+    try:
+        from app.core.config import _ensure_notes_dir
+        _ensure_notes_dir()
+        _startup_logger.info("AND9 data directory ready.")
+    except Exception as e:
+        _startup_logger.warning("AND9 data directory setup: %s", e)
+
     _startup_logger.info("AND9 initialized. Three-Brain Architecture ACTIVE.")
 
 

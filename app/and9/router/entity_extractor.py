@@ -20,6 +20,7 @@ No regex is defined here.
 """
 import re
 import logging
+from functools import lru_cache
 from typing import Optional
 
 from app.and9.router.command_dictionary import (
@@ -39,6 +40,7 @@ from app.and9.utils.time_parser import parse_time, parse_duration
 logger = logging.getLogger(__name__)
 
 
+@lru_cache(maxsize=512)
 def extract_entities(intent: str, query: str) -> dict:
     """Top-level dispatcher — extract entities based on intent type.
 

@@ -72,12 +72,9 @@ def execute_set_reminder(trigger_at: dict,
     if events_sys and reminder_time:
         try:
             events_sys.add_event(
-                event_type="reminder",
-                timestamp=reminder_time.timestamp(),
-                metadata={
-                    "title": label,
-                    "time": reminder_time.isoformat(),
-                },
+                title=label,
+                event_time=reminder_time.isoformat(),
+                notes=f"Reminder: {label}",
             )
             persisted = True
         except Exception as e:

@@ -47,4 +47,10 @@ IS_WINDOWS = os.name == "nt"
 MEMORY_DB  = None   # no SQLite
 NOTES_DIR  = "/tmp/.jarvis_data"
 STATE_FILE = "/tmp/.jarvis_data/jarvis_state.json"
-os.makedirs(NOTES_DIR, exist_ok=True)
+# Lazy init: only create the directory when first needed
+_notes_dir_created = False
+def _ensure_notes_dir():
+    global _notes_dir_created
+    if not _notes_dir_created:
+        os.makedirs(NOTES_DIR, exist_ok=True)
+        _notes_dir_created = True

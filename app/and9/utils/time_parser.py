@@ -30,6 +30,7 @@ Returns:
 """
 import re
 import logging
+from functools import lru_cache
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -134,6 +135,7 @@ def parse_time(query: str) -> dict:
     }
 
 
+@lru_cache(maxsize=256)
 def parse_duration(query: str) -> Optional[int]:
     """Extract total duration in seconds from a query.
 
