@@ -64,10 +64,11 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
     Priority order:
         1. EMERGENCY   7. BLUETOOTH  13. REMINDER
         2. CALL        8. WIFI       14. TIMER
-        3. MESSAGE     9. VOLUME     15. GOAL
-        4. OPEN_APP   10. YOUTUBE    16. AUTOMATION
-        5. CAMERA     11. MUSIC      17. SEARCH
-        6. FLASHLIGHT 12. ALARM      18. CHAT
+        3. MESSAGE     9. VOLUME     15. CITY_TIME
+        4. OPEN_APP   10. YOUTUBE    16. GOAL
+        5. CAMERA     11. MUSIC      17. AUTOMATION
+        6. FLASHLIGHT 12. ALARM      18. SEARCH
+                                                           19. CHAT
     """
     q = query.lower().strip()
     if not q:
@@ -203,7 +204,13 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
     if TIMER_TRIGGER.search(q):
         return 'timer', ActionType.SET_TIMER.value, extract_entities('timer', q)
 
-    # ── Priority 15: GOAL ────────────────────────────────────────
+    # ── Priority 15: CITY TIME (before GOAL/Search) ──────────────
+    from app.and9.utils.timezone_utils import detect_city_time_query
+    city = detect_city_time_query(q)
+    if city:
+        return 'city_time', ActionType.CITY_TIME.value, {'city': city}
+
+    # ── Priority 16: GOAL ────────────────────────────────────────
     if GOAL_TRIGGER.search(q):
         return 'goal', ActionType.CHAT.value, {'query': q}
 

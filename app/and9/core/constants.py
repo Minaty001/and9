@@ -48,6 +48,9 @@ class ActionType(str, Enum):
     SET_TIMER = "set_timer"
     SET_REMINDER = "set_reminder"
 
+    # ── City Time ──────────────────────────────────────────────
+    CITY_TIME = "city_time"
+
     # ── Emergency ──────────────────────────────────────────────
     EMERGENCY = "emergency"
 
@@ -155,6 +158,11 @@ class ActionRegistry:
             "description": "Emergency SOS action",
             "requires": [],
             "response_template": "🚨 EMERGENCY! Help bhej raha hoon!",
+        },
+        ActionType.CITY_TIME: {
+            "description": "Tell current time in a specific Indian city",
+            "requires": ["city"],
+            "response_template": "In {city}, it's {time_12h} ({timezone} {offset})",
         },
         ActionType.SEARCH: {
             "description": "Web search via Chrome/browser",

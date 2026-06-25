@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 
 from config import REFLEX_CONFIG, INTENTS
 from utils.logger import get_logger
+from utils.timezone_utils import detect_city_time_query, format_city_time_response
 
 logger = get_logger()
 
@@ -190,6 +191,10 @@ class ReflexBrain:
                 "kitne baje", "time kya hai", "current time batao",
                 "what's the time", "samay kya hai",
                 "ghanti batao", "time do",
+                "kolkata time", "delhi time", "mumbai time",
+                "kolkata ka time", "delhi ka time", "mumbai ka time",
+                "kolkata ka samay", "delhi ka samay",
+                "india time", "india ka time",
             ],
         ))
 
@@ -504,6 +509,26 @@ class ReflexBrain:
 
     def _execute_fallback(self, action: Action, query: str) -> dict:
         """Fallback execution when not on Android."""
+        if action.name == "time" and query:
+            from utils.timezone_utils import detect_city_time_query, get_time_in_city, format_city_time_response
+            city = detect_city_time_query(query)
+            if city and city in (
+                "kolkata", "calcutta", "delhi", "new delhi", "dilli",
+                "mumbai", "bombay", "chennai", "madras",
+                "bangalore", "bengaluru", "hyderabad",
+            ):
+                info = get_time_in_city(city)
+                if info:
+                    msg = format_city_time_response(city)
+                    logger.info(f"Reflex: City time for {city} → {msg}")
+                    return {"success": True, "message": msg}
+
+            # Default: current local time
+            from datetime import datetime
+            now = datetime.now()
+            msg = now.strftime("Current time is %I:%M:%S %p (%A, %B %d, %Y)")
+            return {"success": True, "message": msg}
+
         logger.info(f"Reflex (Desktop): Would execute {action.name}")
         return {
             "success": True,

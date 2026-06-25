@@ -35,6 +35,7 @@ from app.and9.android.android_executor import execute as execute_action
 from app.and9.core.logger import get_logger, is_debug_enabled
 from app.and9.core.intent_trace import TraceContext, log_trace
 from app.and9.subconscious_brain import SubconsciousBrain
+from app.and9.utils.timezone_utils import format_city_time_response
 from app.and9.core.pipeline_status import status_manager, PipelineStage
 
 logger = logging.getLogger(__name__)
@@ -319,6 +320,25 @@ class Orchestrator:
         # ── Search → browser/Chrome ────────────────────────────────
         if intent_name == "search":
             return self._handle_search(params, start)
+
+        # ── City Time → timezone-aware response ────────────────────
+        if intent_name == "city_time":
+            city = params.get("city", "")
+            if city:
+                response_text = format_city_time_response(city)
+            else:
+                from datetime import datetime
+                response_text = f"Current time is {datetime.now().strftime('%I:%M:%S %p')}"
+
+            return BrainResult(
+                response=response_text,
+                action="city_time",
+                payload=params,
+                brain=BrainType.REFLEX,
+                intent=IntentType.TIME,
+                parameters=params,
+                execution_time_ms=(time.perf_counter() - start) * 1000,
+            )
 
         # ── Emergency ──────────────────────────────────────────────
         if intent_name == "emergency":

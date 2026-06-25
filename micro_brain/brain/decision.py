@@ -372,6 +372,13 @@ class DecisionBrain:
             if numbers:
                 entities["value"] = numbers[0]
 
+        # City extraction for TIME intent
+        if intent == "TIME":
+            from utils.timezone_utils import detect_city_time_query
+            city = detect_city_time_query(query)
+            if city:
+                entities["city"] = city
+
         return entities
 
     def get_decision_history(self, limit: int = 10) -> List[Dict]:
