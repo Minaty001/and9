@@ -14,6 +14,7 @@ retention. Label cleanup strips time-related noise words.
 """
 import logging
 import re
+import json
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from typing import Optional, Any
@@ -100,6 +101,9 @@ def _resolve_reminder_id(reminder_id: Any, user_id: str = "default") -> Optional
 
 def execute_set_reminder(trigger_at: dict,
                          label: str = "AND9 Reminder",
+                         repeat_rule: str = "",
+                         repeat_days: Optional[list[int]] = None,
+                         repeat_end: Optional[str] = None,
                          events_sys: Optional[Any] = None) -> dict:
     """Set a reminder with optional EventSystem persistence.
 
@@ -172,7 +176,14 @@ def execute_set_reminder(trigger_at: dict,
     if reminder_time:
         try:
             from app.reminders import storage as reminder_storage
-            rid = reminder_storage.add(title=label, trigger_time=reminder_time)
+            repeat_days_payload = json.dumps(repeat_days) if repeat_days else None
+            rid = reminder_storage.add(
+                title=label,
+                trigger_time=reminder_time,
+                repeat_rule=repeat_rule or "",
+                repeat_days=repeat_days_payload,
+                repeat_end=repeat_end,
+            )
             _set_context("default", "last_reminder_id", rid)
         except Exception as e:
             logger.error("Failed to persist reminder to worker storage: %s", e)
@@ -181,12 +192,14 @@ def execute_set_reminder(trigger_at: dict,
         return {
             "response": f"Reminder set kar diya! '{label}' ke liye ⏰",
             "action": "SET_REMINDER",
-            "payload": {
-                "trigger_at": trigger_at,
-                "label": label,
-                "persisted": persisted,
-            },
-        }
+                "payload": {
+                    "trigger_at": trigger_at,
+                    "label": label,
+                    "repeat_rule": repeat_rule,
+                    "repeat_days": repeat_days,
+                    "persisted": persisted,
+                },
+            }
 
     return {
         "response": "Reminder set kar diya! Par kya yaad dilana hai? ⏰",
@@ -194,6 +207,8 @@ def execute_set_reminder(trigger_at: dict,
         "payload": {
             "trigger_at": trigger_at,
             "label": "",
+            "repeat_rule": repeat_rule,
+            "repeat_days": repeat_days,
         },
     }
 

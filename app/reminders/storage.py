@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS reminders_v2 (
     title          TEXT    NOT NULL,
     trigger_time   TEXT    NOT NULL,
     repeat_rule    TEXT    NOT NULL DEFAULT '',
+    repeat_days    TEXT,
     repeat_end     TEXT,
     status         TEXT    NOT NULL DEFAULT 'pending'
                      CHECK(status IN ('pending','fired','cancelled','paused','snoozed')),
@@ -99,8 +100,16 @@ def init_storage() -> None:
     """Initialise the storage DB schema (idempotent)."""
     with _conn() as con:
         con.executescript(_SCHEMA)
+        _ensure_column(con, "reminders_v2", "repeat_days", "TEXT")
         con.commit()
     logger.info("Reminder storage DB initialised: %s", _DB_PATH)
+
+
+def _ensure_column(con: sqlite3.Connection, table: str, column: str, ddl: str) -> None:
+    """Add a missing column to an existing table if needed."""
+    cols = [row[1] for row in con.execute(f"PRAGMA table_info({table})").fetchall()]
+    if column not in cols:
+        con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
 
 
 # ── CRUD ─────────────────────────────────────────────────────────────
@@ -108,6 +117,7 @@ def init_storage() -> None:
 
 def add(title: str, trigger_time: datetime,
         repeat_rule: str = "",
+        repeat_days: Optional[str] = None,
         user_id: str = "default",
         session_id: Optional[str] = None,
         repeat_end: Optional[str] = None) -> int:
@@ -134,9 +144,9 @@ def add(title: str, trigger_time: datetime,
         # v2 table
         cur = con.execute(
             "INSERT INTO reminders_v2 "
-            "(title, trigger_time, repeat_rule, user_id, session_id, repeat_end) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (title, iso, repeat_rule, user_id, session_id, repeat_end or None),
+            "(title, trigger_time, repeat_rule, repeat_days, user_id, session_id, repeat_end) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (title, iso, repeat_rule, repeat_days, user_id, session_id, repeat_end or None),
         )
         con.commit()
     rid = cur.lastrowid
@@ -183,7 +193,7 @@ def get_upcoming(limit: int = 10, user_id: str = "default") -> List[Dict[str, An
     with _conn() as con:
         rows = con.execute(
             "SELECT id, user_id, session_id, title, trigger_time, "
-            "repeat_rule, status, created_at "
+            "repeat_rule, repeat_days, repeat_end, status, created_at "
             "FROM reminders_v2 "
             "WHERE user_id = ? AND status IN ('pending', 'snoozed') AND trigger_time > ? "
             "ORDER BY trigger_time ASC LIMIT ?",
@@ -279,7 +289,7 @@ def get_active(user_id: str = "default") -> List[Dict[str, Any]]:
     with _conn() as con:
         rows = con.execute(
             "SELECT id, user_id, session_id, title, trigger_time, "
-            "repeat_rule, repeat_end, status, created_at, "
+            "repeat_rule, repeat_days, repeat_end, status, created_at, "
             "retry_count, created_by "
             "FROM reminders_v2 "
             "WHERE user_id = ? AND status IN ('pending', 'paused', 'snoozed') "
@@ -293,7 +303,7 @@ def get_completed(user_id: str = "default", limit: int = 20) -> List[Dict[str, A
     """Return recently fired reminders for a user."""
     with _conn() as con:
         rows = con.execute(
-            "SELECT id, user_id, title, trigger_time, repeat_rule, "
+            "SELECT id, user_id, title, trigger_time, repeat_rule, repeat_days, "
             "status, created_at, fired_at "
             "FROM reminders_v2 "
             "WHERE user_id = ? AND status = 'fired' "
@@ -368,6 +378,7 @@ def reschedule_recurring(reminder_id: int, next_trigger: datetime) -> int:
         title=original.get("title", "Recurring Reminder"),
         trigger_time=next_trigger,
         repeat_rule=original.get("repeat_rule", ""),
+        repeat_days=original.get("repeat_days"),
         user_id=original.get("user_id", "default"),
         session_id=original.get("session_id"),
         repeat_end=original.get("repeat_end"),

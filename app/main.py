@@ -14,7 +14,7 @@ import time
 import uuid
 import logging
 from functools import wraps
-from flask import Flask, g, request, jsonify, render_template
+from app._flask_compat import Flask, g, request, jsonify, render_template
 
 from app.api.routes import api_bp
 from app.api.web_routes import web_bp

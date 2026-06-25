@@ -169,6 +169,13 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
         if params.get('app_name'):
             return 'open_app', ActionType.LAUNCH_APP.value, params
 
+    # Common Hindi phrasing for opening settings does not always include
+    # an explicit open verb ("settings chalana hai", "mobile data settings").
+    if re.search(r'\b(settings|setting)\b', q):
+        params = extract_entities('open_app', q)
+        if params.get("app_name"):
+            return 'open_app', ActionType.LAUNCH_APP.value, params
+
     # ── Priority 5: CAMERA ───────────────────────────────────────
     for pattern in CAMERA:
         if pattern.search(q):

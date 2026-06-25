@@ -8,7 +8,7 @@ import os
 import hashlib
 import logging
 from functools import wraps
-from flask import Blueprint, request, jsonify, session, render_template
+from app._flask_compat import Blueprint, request, jsonify, session, render_template
 
 from app.core.config import NOTES_DIR
 
@@ -372,4 +372,3 @@ def write_activity():
         return jsonify({"error": "Failed to write activity file."}), 500
 
     return jsonify({"status": "saved", "date": date_str, "size": len(content)})
-

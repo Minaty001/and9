@@ -8,7 +8,7 @@ Supported cities: Kolkata, Delhi, Mumbai, Chennai, Bengaluru, Hyderabad,
 and 16+ other Indian cities — all mapping to Asia/Kolkata (IST, UTC+5:30).
 """
 import re
-from datetime import datetime, date
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 INDIAN_TIMEZONE = "Asia/Kolkata"
@@ -71,7 +71,7 @@ def get_time_in_city(city_name: str) -> dict | None:
         return None
     tz = ZoneInfo(tz_name)
     now = datetime.now(tz)
-    today = date.today()
+    today = now.date()
     hour_12 = now.hour % 12 or 12
     period = "AM" if now.hour < 12 else "PM"
     time_12 = f"{hour_12}:{now.minute:02d}:{now.second:02d} {period}"

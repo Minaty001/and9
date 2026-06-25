@@ -3,7 +3,7 @@ AND9 — Memory API.
 REST endpoints for the 4-layer memory system (Working, Episodic, Semantic, Procedural).
 """
 import logging
-from flask import Blueprint, jsonify, request
+from app._flask_compat import Blueprint, jsonify, request
 from app.api.routes import get_personality
 
 logger = logging.getLogger(__name__)

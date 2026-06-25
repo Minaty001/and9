@@ -434,6 +434,7 @@ AIRPLANE_MODE: Pattern = _c(r'\b(airplane\s*mode|flight\s*mode|aeroplane\s*mode)
 ACTION_NOISE_WORDS = [
     "open", "launch", "start", "kholo", "chalao", "open karo",
     "launch karo", "start karo", "chalu karo",
+    "chalana", "kholna", "hai",
     "call", "dial", "phone", "phone lagao", "call karo", "call lagao",
     "search", "find", "google", "search karo", "dhundo",
     "play", "bajao", "sunao", "play karo", "laga do",

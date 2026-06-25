@@ -137,7 +137,12 @@ def parse_time(query: str) -> dict:
     if result:
         return result
 
-    # ── 2. Absolute time ─────────────────────────────────────────
+    # ── 2. Calendar-relative time ────────────────────────────────
+    result = parse_calendar_time(q)
+    if result:
+        return result
+
+    # ── 3. Absolute time ─────────────────────────────────────────
     result = _parse_absolute(q)
     if result:
         return result

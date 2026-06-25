@@ -73,6 +73,9 @@ def _reminder_mapper(params: dict, events_sys: Any) -> dict:
     return {
         "trigger_at": params.get("trigger_at", {}),
         "label": params.get("label", "AND9 Reminder"),
+        "repeat_rule": params.get("repeat_rule", ""),
+        "repeat_days": params.get("repeat_days"),
+        "repeat_end": params.get("repeat_end"),
         "events_sys": events_sys,
     }
 

@@ -12,7 +12,8 @@ Supported rules:
     yearly   → same date next year
 """
 import logging
-from datetime import datetime, timedelta, date
+import json
+from datetime import datetime, timedelta
 from calendar import monthrange
 from zoneinfo import ZoneInfo
 from typing import Optional
@@ -135,6 +136,14 @@ class RecurringEngine:
         find the next one; otherwise just add 7 days.
         """
         days: Optional[list] = reminder.get("days")  # from parse_recurring
+        if not days:
+            repeat_days = reminder.get("repeat_days")
+            if isinstance(repeat_days, str) and repeat_days:
+                try:
+                    days = json.loads(repeat_days)
+                except Exception:
+                    parts = [p.strip() for p in repeat_days.split(",") if p.strip()]
+                    days = [int(p) for p in parts if p.isdigit()]
         if days and len(days) > 0:
             # Pinned to specific weekday(s) — find the next one
             target = days[0]  # use the first specified day

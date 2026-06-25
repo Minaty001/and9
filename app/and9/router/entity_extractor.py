@@ -35,7 +35,7 @@ from app.and9.router.command_dictionary import (
     ACTION_NOISE_WORDS,
     TIME_NOISE_WORDS,
 )
-from app.and9.utils.time_parser import parse_time, parse_duration
+from app.and9.utils.time_parser import parse_time, parse_duration, parse_recurring
 
 logger = logging.getLogger(__name__)
 
@@ -309,9 +309,13 @@ def extract_reminder(query: str) -> dict:
     q = query.strip()
     trigger_at = parse_time(q)
     label = _extract_label(q) or "AND9 Reminder"
+    recurring = parse_recurring(q)
     return {
         "trigger_at": trigger_at,
         "label": label,
+        "repeat_rule": recurring["rule"] if recurring else "",
+        "repeat_days": recurring["days"] if recurring else None,
+        "repeat_raw": recurring["raw"] if recurring else "",
     }
 
 

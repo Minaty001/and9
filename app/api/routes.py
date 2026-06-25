@@ -4,7 +4,7 @@ app/api/routes.py — JSON API endpoints for the chat interface.
 import io
 import asyncio
 import logging
-from flask import Blueprint, request, jsonify, Response
+from app._flask_compat import Blueprint, request, jsonify, Response
 
 from app.core.orchestrator import Orchestrator
 from app.core.memory import Memory
@@ -856,7 +856,7 @@ def get_personality():
 
     # Try to get from Flask app (initialized during startup)
     try:
-        from flask import current_app
+        from app._flask_compat import current_app
         if current_app and hasattr(current_app, "personality_os"):
             _personality = current_app.personality_os
             if _personality is not None:
@@ -1086,4 +1086,3 @@ def pipeline_status():
             status_manager.unregister_listener(listener)
 
     return Response(event_stream(), mimetype="text/event-stream")
-

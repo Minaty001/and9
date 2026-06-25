@@ -1,7 +1,7 @@
 """
 app/api/web_routes.py — HTML page routes.
 """
-from flask import Blueprint, render_template
+from app._flask_compat import Blueprint, render_template
 
 web_bp = Blueprint("web", __name__)
 
