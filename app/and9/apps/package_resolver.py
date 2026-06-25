@@ -289,6 +289,17 @@ class PackageResolver:
                 "component": "com.google.android.apps.docs.editors.sheets/.app.DocumentsActivity",
                 "category": "android.intent.category.LAUNCHER",
             },
+            # Games
+            "bgmi": {
+                "action": "android.intent.action.MAIN",
+                "package": "com.pubg.imobile",
+                "category": "android.intent.category.LAUNCHER",
+            },
+            "battlegrounds": {
+                "action": "android.intent.action.MAIN",
+                "package": "com.pubg.imobile",
+                "category": "android.intent.category.LAUNCHER",
+            },
         }
 
         # ── Alias Map ────────────────────────────────────────────
@@ -340,6 +351,8 @@ class PackageResolver:
             "prime": "prime video",
             # Netflix
             "net": "netflix",
+            # Music
+            "music": "spotify",
             # Hotstar
             "star": "hotstar", "hot star": "hotstar",
             # Food

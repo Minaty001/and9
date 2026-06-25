@@ -56,6 +56,47 @@ from app.and9.router.entity_extractor import extract_entities
 
 logger = logging.getLogger(__name__)
 
+# --- Integration with offline Micro Neural Brain ---
+MICRO_BRAIN_INTENT_MAP = {
+    "OPEN_APP": ("open_app", ActionType.LAUNCH_APP.value),
+    "CLOSE_APP": ("close_app", ActionType.CLOSE_APP.value),
+    "PLAY_MUSIC": ("youtube", ActionType.YOUTUBE_PLAY.value),
+    "PAUSE_MUSIC": ("youtube", ActionType.CLOSE_APP.value),
+    "SEARCH_WEB": ("search", ActionType.SEARCH.value),
+    "WEATHER": ("search", ActionType.SEARCH.value),
+    "TIME": ("time", ActionType.GET_TIME.value),
+    "DATE": ("time", ActionType.GET_TIME.value),
+    "REMINDER": ("reminder", ActionType.SET_REMINDER.value),
+    "CALL": ("call", ActionType.CALL.value),
+    "MESSAGE": ("message", ActionType.SEND_SMS.value),
+    "CAMERA": ("camera", ActionType.OPEN_CAMERA.value),
+    "FLASHLIGHT_ON": ("flashlight", ActionType.FLASHLIGHT_ON.value),
+    "FLASHLIGHT_OFF": ("flashlight", ActionType.FLASHLIGHT_OFF.value),
+    "VOLUME_UP": ("volume", ActionType.VOLUME_UP.value),
+    "VOLUME_DOWN": ("volume", ActionType.VOLUME_DOWN.value),
+    "HOME": ("home", ActionType.GO_HOME.value),
+    "BACK": ("home", ActionType.CLOSE_APP.value),
+    "SETTING": ("open_app", ActionType.LAUNCH_APP.value),
+}
+
+_NEURAL_BRAIN = None
+
+def _get_neural_brain():
+    global _NEURAL_BRAIN
+    if _NEURAL_BRAIN is None:
+        import sys
+        import os
+        mb_dir = "/root/and9/micro_brain"
+        if mb_dir not in sys.path:
+            sys.path.append(mb_dir)
+        try:
+            from micro_brain.brain.neural import NeuralBrain
+            _NEURAL_BRAIN = NeuralBrain()
+            logger.info("Integrated Offline Micro Neural Brain loaded for fallback routing.")
+        except Exception as e:
+            logger.error("Failed to load offline Micro Neural Brain: %s", e)
+    return _NEURAL_BRAIN
+
 
 @lru_cache(maxsize=512)
 def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
@@ -115,12 +156,12 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
             if pattern.search(q):
                 return 'camera', ActionType.OPEN_CAMERA.value, {}
 
-        # YouTube open → Priority 10, but "youtube kholo" is app launch
-        if YOUTUBE_TRIGGER.search(q) and not YOUTUBE_PLAY_TRIGGER.search(q):
+        # YouTube open/play
+        if YOUTUBE_TRIGGER.search(q):
             params = extract_entities('youtube', q)
-            if params.get('action') == 'open':
-                return 'youtube', ActionType.YOUTUBE_SEARCH.value, params
-            # Has a query → youtube search
+            action = params.get('action', 'open')
+            if action == 'play' or YOUTUBE_PLAY_TRIGGER.search(q):
+                return 'youtube', ActionType.YOUTUBE_PLAY.value, params
             return 'youtube', ActionType.YOUTUBE_SEARCH.value, params
 
         # Generic app open
@@ -264,6 +305,25 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
     # ── Priority 17: SEARCH (LAST for device actions) ────────────
     if SEARCH_TRIGGER.search(q):
         return 'search', ActionType.SEARCH.value, extract_entities('search', q)
+
+    # ── Try offline Micro Neural Brain fallback ────────────────────
+    nb = _get_neural_brain()
+    if nb:
+        try:
+            nb_intent, nb_conf, _ = nb.recognize_intent(q)
+            if nb_conf >= 0.75 and nb_intent in MICRO_BRAIN_INTENT_MAP:
+                mapped_intent, mapped_action = MICRO_BRAIN_INTENT_MAP[nb_intent]
+                extracted = extract_entities(mapped_intent, q)
+                # Ensure we have required entities for actions that need them
+                if mapped_intent == "open_app" and not extracted.get("app_name"):
+                    pass
+                elif mapped_intent == "call" and not (extracted.get("number") or extracted.get("contact")):
+                    pass
+                else:
+                    logger.info("Offline Neural Brain classified intent: %s -> %s (conf: %.2f)", nb_intent, mapped_intent, nb_conf)
+                    return mapped_intent, mapped_action, extracted
+        except Exception as e:
+            logger.error("Error in offline Neural Brain prediction fallback: %s", e)
 
     # ── Priority 18: CHAT (default fallback) ─────────────────────
     return 'chat', ActionType.CHAT.value, {'query': q}

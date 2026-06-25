@@ -109,6 +109,15 @@ def _init_and9(app: Flask) -> None:
     except Exception as e:
         _startup_logger.warning("AND9 PackageResolver error: %s", e)
 
+    # Validate database (Priority: self diagnostics)
+    try:
+        from app.and9.core.activity_db import validate_database
+        validate_database()
+        _startup_logger.info("AND9 Activity Database validated.")
+    except Exception as e:
+        _startup_logger.critical("AND9 Activity Database validation FAILED: %s", e)
+        raise
+
     # Phase 0: ensure legacy data directory
     try:
         from app.core.config import _ensure_notes_dir

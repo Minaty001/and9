@@ -103,6 +103,7 @@ class TextEmbedding:
 
     def __init__(self, dim: int = 128):
         self.dim = dim
+        self.char_set = self.CHAR_SET
         self.char_to_idx = {c: i for i, c in enumerate(self.CHAR_SET)}
         self.vocab_size = len(self.CHAR_SET)
         self._zeros = np.zeros(dim, dtype=np.float32)  # reusable empty array

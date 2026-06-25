@@ -246,6 +246,7 @@ def _clean_media_query(q: str) -> str:
         "youtube", "pe", "par", "aur", "search", "karo", "play",
         "sunao", "bajao", "chalao", "laga", "do", "on",
         "song", "gaana", "gana", "music", "video", "kholo",
+        "open", "and",
     ]
     result = q
     for word in noise:

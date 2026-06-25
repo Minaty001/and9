@@ -160,8 +160,13 @@ def handle_device_command(query: str) -> dict:
     q = query.lower()
     executor = IntentExecutor()
 
-    # YouTube playback
-    if "youtube" in q or ("play" in q and ("song" in q or "music" in q or "youtube" in q)):
+    # YouTube — only route to music handler when there's playback/search intent
+    # "open youtube" should open the app, NOT search music
+    _youtube_play_intent = (
+        re.search(r"\b(play|search|find|watch|dekhna|sunna|chalao|laga|bajao)\b", q)
+        and "youtube" in q
+    )
+    if _youtube_play_intent:
         from app.skills.youtube import handle_music_request
         result = handle_music_request(query)
         if result and result.get("youtube_url"):
@@ -251,15 +256,45 @@ def handle_device_command(query: str) -> dict:
             "youtube": "com.google.android.youtube",
             "whatsapp": "com.whatsapp",
             "chrome": "com.android.chrome",
+            "google chrome": "com.android.chrome",
             "calculator": "com.google.android.calculator",
             "maps": "com.google.android.apps.maps",
+            "google maps": "com.google.android.apps.maps",
             "telegram": "org.telegram.messenger",
             "spotify": "com.spotify.music",
             "instagram": "com.instagram.android",
-            "camera": "com.android.camera"
+            "camera": "com.android.camera",
+            "gmail": "com.google.android.gm",
+            "phone": "com.google.android.dialer",
+            "dialer": "com.google.android.dialer",
+            "contacts": "com.google.android.contacts",
+            "settings": "com.android.settings",
+            "gallery": "com.google.android.apps.photos",
+            "photos": "com.google.android.apps.photos",
+            "play store": "com.android.vending",
+            "playstore": "com.android.vending",
+            "clock": "com.google.android.deskclock",
+            "files": "com.google.android.documentsui",
+            "drive": "com.google.android.apps.docs",
+            "meet": "com.google.android.apps.meetings",
+            "twitter": "com.twitter.android",
+            "x": "com.twitter.android",
+            "facebook": "com.facebook.katana",
+            "snapchat": "com.snapchat.android",
+            "netflix": "com.netflix.mediaclient",
+            "amazon": "com.amazon.mShop.android.shopping",
+            "flipkart": "com.flipkart.android",
+            "paytm": "net.one97.paytm",
+            "phonepe": "com.phonepe.app",
+            "gpay": "com.google.android.apps.walletnfcrel",
+            "google pay": "com.google.android.apps.walletnfcrel",
+            "zoom": "us.zoom.videomeetings",
+            "music": "com.google.android.music",
+            "youtube music": "com.google.android.apps.youtube.music",
         }
         target = None
-        for key, pkg in app_map.items():
+        # Sort by key length descending so multi-word keys ("youtube music") match before shorter ones
+        for key, pkg in sorted(app_map.items(), key=lambda x: len(x[0]), reverse=True):
             if key in app_name:
                 target = pkg
                 break

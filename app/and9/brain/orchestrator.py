@@ -305,6 +305,7 @@ class Orchestrator:
                     success=False,
                     metadata={"diagnostics": diag_report}
                 )
+                self._log_result(query, locals().get("normalized", ""), i_name, p_dict, result)
                 status_manager.set_stage(PipelineStage.DEGRADED, "Pipeline recovered in degraded state")
                 return result.to_dict()
 
@@ -444,7 +445,7 @@ class Orchestrator:
 
     def _log_result(self, query: str, normalized: str,
                     intent: str, params: dict, result: BrainResult):
-        """Log the query result to the QueryLogger."""
+        """Log the query result to the QueryLogger and activities.db."""
         effective_intent = intent or (result.intent.value if result.intent else "")
         self.query_logger.log(
             raw_query=query,
@@ -457,6 +458,26 @@ class Orchestrator:
             execution_time_ms=result.execution_time_ms,
             success=result.success,
         )
+
+        try:
+            from app.and9.core.activity_db import log_activity, format_action_result
+            res_summary = format_action_result(result.action or effective_intent, query, result.response, result.success)
+            details = {
+                "normalized": normalized,
+                "parameters": params or result.parameters,
+                "payload": result.payload,
+                "brain": result.brain.value,
+                "duration": result.execution_time_ms,
+            }
+            log_activity(
+                query=query,
+                intent=effective_intent,
+                action=result.action or effective_intent or "unknown",
+                result_summary=res_summary,
+                details_dict=details
+            )
+        except Exception as e:
+            logger.error("Failed to log activity in _log_result: %s", e)
 
     def get_stats(self) -> dict:
         """Get system statistics."""

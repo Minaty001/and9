@@ -48,7 +48,11 @@ class IntentRouter:
                      "bluetooth", "torch", "flashlight", "volume", "brightness", "battery",
                      "camera", "photo", "youtube", "whatsapp", "chrome", "calculator",
                      "maps", "telegram", "spotify", "instagram", "alarm", "call", "dial",
-                     "contact", "contacts", "file", "folder", "directory", "storage"],
+                     "contact", "contacts", "file", "folder", "directory", "storage",
+                     "open ", "launch ", "kholo", "band karo", "gmail", "settings",
+                     "gallery", "netflix", "facebook", "twitter", "snapchat", "zoom",
+                     "phonepe", "paytm", "gpay", "google pay", "amazon", "flipkart",
+                     "clock", "timer", "set alarm", "set timer", "play store", "drive"],
     }
 
     def route(self, query: str) -> str:

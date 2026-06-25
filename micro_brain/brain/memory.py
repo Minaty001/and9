@@ -364,6 +364,41 @@ class MemoryBrain:
                 (query, intent, action, result, duration, success),
             )
             conn.commit()
+
+            # Connect and log to the central activities.db
+            try:
+                import sqlite3
+                import json
+                from datetime import datetime
+                central_db = "/root/and9/activities.db"
+                c_conn = sqlite3.connect(central_db)
+                c_cursor = c_conn.cursor()
+                c_cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS activities (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL,
+                        query TEXT NOT NULL,
+                        intent TEXT NOT NULL,
+                        action TEXT NOT NULL,
+                        result TEXT NOT NULL,
+                        details TEXT
+                    )
+                """)
+                timestamp = datetime.now().isoformat()
+                details_json = json.dumps({
+                    "duration": duration,
+                    "success": success,
+                    "source": "micro_brain"
+                })
+                c_cursor.execute("""
+                    INSERT INTO activities (timestamp, query, intent, action, result, details)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (timestamp, query, intent, action, result, details_json))
+                c_conn.commit()
+                c_conn.close()
+            except Exception as e:
+                pass
+
             return cur.lastrowid
 
     def get_recent_activities(self, limit: int = 20) -> List[Dict]:
