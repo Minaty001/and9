@@ -24,6 +24,7 @@ from .device_actions import (
 )
 from .reminder_actions import execute_set_reminder
 from .timer_actions import execute_set_timer
+from .time_actions import handle_get_time
 from .youtube_actions import execute_youtube_search, execute_youtube_play
 
 __all__ = [
@@ -47,6 +48,7 @@ __all__ = [
     "handle_notification_read",
     "execute_set_reminder",
     "execute_set_timer",
+    "handle_get_time",
     "execute_youtube_search",
     "execute_youtube_play",
 ]

@@ -44,6 +44,7 @@ _REQUIRED_ACTIONS = frozenset({
     "bluetooth",
     "airplane_mode",
     "emergency",
+    "get_time",
     "search",
     "clipboard_read",
     "clipboard_write",
@@ -120,6 +121,13 @@ REGISTRY: Dict[str, Dict[str, Any]] = {
         "android_intent": "AND9_INTERNAL",
         "description": "Set a reminder with SQLite persistence and background scheduler",
         "params": ["trigger_at", "label"],
+        "whitelisted": True,
+    },
+    "get_time": {
+        "handler": "actions.time_actions.handle_get_time",
+        "android_intent": None,
+        "description": "Tell the current IST time (no Android intent needed)",
+        "params": [],
         "whitelisted": True,
     },
 

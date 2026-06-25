@@ -44,7 +44,7 @@ class BrainType(Enum):
 class IntentType(Enum):
     """All supported intents, ordered by descending priority.
 
-    Priority is 1 (highest — emergency) through 20 (lowest — chat).
+    Priority is 1 (highest — emergency) through 21 (lowest — chat).
     The priority router checks intents in this exact order so that
     critical actions like emergency and calls always take precedence
     over entertainment or informational queries.
@@ -52,7 +52,8 @@ class IntentType(Enum):
     Priority order:
       Emergency → Call → Message → Open App → Camera → Flashlight →
       Bluetooth → WiFi → Airplane Mode → Volume → YouTube → Music →
-      Alarm → Reminder → Timer → Goal → Home → Automation → Search → Chat
+      Alarm → Reminder → Timer → Time → Goal → Home → Automation →
+      Search → Chat
     """
     EMERGENCY = "emergency"         # Priority 1 —  SOS, danger, accident
     CALL = "call"                   # Priority 2 —  Phone calls, dial
@@ -69,15 +70,16 @@ class IntentType(Enum):
     SET_ALARM = "set_alarm"         # Priority 13 — Set an alarm
     SET_REMINDER = "set_reminder"   # Priority 14 — Set a reminder
     SET_TIMER = "set_timer"         # Priority 15 — Set a countdown timer
-    GOAL = "goal"                   # Priority 16 — Goal/project management
-    HOME = "home"                   # Priority 17 — Go to home screen
-    AUTOMATION = "automation"       # Priority 18 — Automation/routines
-    SEARCH = "search"               # Priority 19 — Web search, lookup
-    CHAT = "chat"                   # Priority 20 — General conversation, LLM
+    TIME = "time"                   # Priority 16 — Generic time query
+    GOAL = "goal"                   # Priority 17 — Goal/project management
+    HOME = "home"                   # Priority 18 — Go to home screen
+    AUTOMATION = "automation"       # Priority 19 — Automation/routines
+    SEARCH = "search"               # Priority 20 — Web search, lookup
+    CHAT = "chat"                   # Priority 21 — General conversation, LLM
 
     @property
     def priority(self) -> int:
-        """Return the numeric priority level (1 = highest, 20 = lowest)."""
+        """Return the numeric priority level (1 = highest, 21 = lowest)."""
         priorities = {
             IntentType.EMERGENCY: 1,
             IntentType.CALL: 2,
@@ -94,11 +96,12 @@ class IntentType(Enum):
             IntentType.SET_ALARM: 13,
             IntentType.SET_REMINDER: 14,
             IntentType.SET_TIMER: 15,
-            IntentType.GOAL: 16,
-            IntentType.HOME: 17,
-            IntentType.AUTOMATION: 18,
-            IntentType.SEARCH: 19,
-            IntentType.CHAT: 20,
+            IntentType.TIME: 16,
+            IntentType.GOAL: 17,
+            IntentType.HOME: 18,
+            IntentType.AUTOMATION: 19,
+            IntentType.SEARCH: 20,
+            IntentType.CHAT: 21,
         }
         return priorities[self]
 

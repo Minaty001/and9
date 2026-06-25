@@ -152,6 +152,7 @@ def _device_toggle_mapper(params: dict, events_sys: Any) -> dict:
 # Registering skills
 register_skill("set_alarm", "app.and9.actions.alarm_actions", "execute_set_alarm", _alarm_mapper)
 register_skill("set_timer", "app.and9.actions.timer_actions", "execute_set_timer", _timer_mapper)
+register_skill("get_time", "app.and9.actions.time_actions", "handle_get_time", lambda p, e: {})
 register_skill("set_reminder", "app.and9.actions.reminder_actions", "execute_set_reminder", _reminder_mapper)
 register_skill("call", "app.and9.actions.call_actions", "execute_call", _call_mapper)
 register_skill("send_sms", "app.and9.actions.call_actions", "execute_message", _sms_mapper)

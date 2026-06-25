@@ -19,10 +19,13 @@ import logging
 import os
 import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from contextlib import contextmanager
 from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger(__name__)
+
+IST = ZoneInfo("Asia/Kolkata")
 
 _DB_PATH = os.environ.get(
     "AND9_REMINDERS_STORAGE_DB",
@@ -92,7 +95,7 @@ def add(title: str, trigger_time: datetime) -> int:
 
 def get_due() -> List[Dict[str, Any]]:
     """Return all pending reminders whose trigger_time has passed."""
-    now_iso = datetime.now().isoformat()
+    now_iso = datetime.now(IST).isoformat()
     with _conn() as con:
         rows = con.execute(
             "SELECT id, title, trigger_time, status, created_at "
@@ -106,7 +109,7 @@ def get_due() -> List[Dict[str, Any]]:
 
 def get_upcoming(limit: int = 10) -> List[Dict[str, Any]]:
     """Return pending reminders not yet due."""
-    now_iso = datetime.now().isoformat()
+    now_iso = datetime.now(IST).isoformat()
     with _conn() as con:
         rows = con.execute(
             "SELECT id, title, trigger_time, status, created_at "

@@ -36,6 +36,7 @@ from app.and9.router.command_dictionary import (
     ALARM_TRIGGER,
     REMINDER_TRIGGER,
     TIMER_TRIGGER,
+    TIME_TRIGGER,
     GOAL_TRIGGER,
     AUTOMATION_TRIGGER,
     SEARCH_TRIGGER,
@@ -206,11 +207,17 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
     if TIMER_TRIGGER.search(q):
         return 'timer', ActionType.SET_TIMER.value, extract_entities('timer', q)
 
-    # ── Priority 15: CITY TIME (before GOAL/Search) ──────────────
+    # ── Priority 15: CITY TIME (before generic TIME / GOAL) ────────
     from app.and9.utils.timezone_utils import detect_city_time_query
     city = detect_city_time_query(q)
     if city:
         return 'city_time', ActionType.CITY_TIME.value, {'city': city}
+
+    # ── Priority 15: TIME (generic, after city_time) ───────────────
+    # Catches "time batao", "what's time" etc. Only matches after
+    # city_time check fails (no city detected in query).
+    if TIME_TRIGGER.search(q):
+        return 'time', ActionType.GET_TIME.value, {}
 
     # ── Priority 16: GOAL ────────────────────────────────────────
     if GOAL_TRIGGER.search(q):

@@ -311,7 +311,17 @@ TIMER_PATTERNS: List[Pattern] = [
 
 
 # ══════════════════════════════════════════════════════════════════
-# PRIORITY 15 — GOAL
+# PRIORITY 15 — TIME (generic, after city_time check)
+# ══════════════════════════════════════════════════════════════════
+
+TIME_TRIGGER: Pattern = _c(
+    r'\b(time|samay|baje|kitne\s+baje|kya\s+time|'
+    r'ka\s+samay|ghanti|time\s+batao|time\s+kiya)\b'
+)
+
+
+# ══════════════════════════════════════════════════════════════════
+# PRIORITY 16 — GOAL
 # ══════════════════════════════════════════════════════════════════
 
 GOAL_TRIGGER: Pattern = _c(r'\b(goal|target|lakshya|aim|objective)\b')

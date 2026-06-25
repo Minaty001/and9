@@ -31,10 +31,14 @@ Returns:
 import re
 import logging
 from functools import lru_cache
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+# ── IST timezone ─────────────────────────────────────────────────────
+IST = ZoneInfo("Asia/Kolkata")
 
 
 # ── Unit multipliers (seconds) ─────────────────────────────────────
@@ -183,7 +187,7 @@ def _parse_relative(q: str) -> Optional[dict]:
             unit = m.group(2).lower()
             multiplier = _UNIT_SECONDS.get(unit, 1)
             total_seconds = int(num * multiplier)
-            now = datetime.now()
+            now = datetime.now(IST)
             trigger = now + timedelta(seconds=total_seconds)
             return {
                 "type": "relative",
@@ -255,7 +259,7 @@ def _parse_absolute(q: str) -> Optional[dict]:
     if _TOMORROW_KW.search(q):
         day_offset = 1
 
-    now = datetime.now()
+    now = datetime.now(IST)
     trigger = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
     trigger += timedelta(days=day_offset)
 

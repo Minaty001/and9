@@ -431,6 +431,7 @@ class Orchestrator:
             "alarm": IntentType.SET_ALARM,
             "reminder": IntentType.SET_REMINDER,
             "timer": IntentType.SET_TIMER,
+            "time": IntentType.TIME,
             "volume": IntentType.VOLUME,
             "wifi": IntentType.WIFI,
             "bluetooth": IntentType.BLUETOOTH,

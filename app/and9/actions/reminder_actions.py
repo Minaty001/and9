@@ -10,9 +10,12 @@ retention. Label cleanup strips time-related noise words.
 """
 import logging
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import Optional, Any
 
 logger = logging.getLogger(__name__)
+
+IST = ZoneInfo("Asia/Kolkata")
 
 
 def execute_set_reminder(trigger_at: dict,
@@ -43,7 +46,7 @@ def execute_set_reminder(trigger_at: dict,
             "payload": {},
         }
 
-    now = datetime.now()
+    now = datetime.now(IST)
     reminder_time = None
 
     if trigger_at["type"] == "absolute":
@@ -79,6 +82,14 @@ def execute_set_reminder(trigger_at: dict,
             persisted = True
         except Exception as e:
             logger.error("Failed to persist reminder: %s", e)
+
+    # Also persist to the worker-polled SQLite DB for guaranteed firing
+    if reminder_time:
+        try:
+            from app.reminders import storage as reminder_storage
+            reminder_storage.add(title=label, trigger_time=reminder_time)
+        except Exception as e:
+            logger.error("Failed to persist reminder to worker storage: %s", e)
 
     if label and label != "AND9 Reminder":
         return {
