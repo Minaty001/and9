@@ -16,9 +16,24 @@ Supports:
         tomorrow 7 am / kal subah 7 baje
         today 8 pm / aaj raat 8 baje
 
+    Recurring (Phase B):
+        har somvar / every Monday → weekly[day]
+        har roz / every day → daily
+        weekdays / kaam ke din → weekdays
+        har mahina / every month → monthly
+        har saal / every year → yearly
+
+    Calendar-relative (Phase B):
+        next Monday → next weekday occurrence + time
+        this evening / aaj shaam → today at 18:00
+        tonight / aaj raat → today at 21:00
+        tomorrow morning / kal subah → tomorrow at 9:00
+        parson / day after tomorrow → day_offset=2
+        next week → day_offset=7
+
 Returns:
     {
-        "type":     "relative" | "absolute" | "unknown",
+        "type":     "relative" | "absolute" | "recurring" | "unknown",
         "seconds":  int | None,         # for relative only
         "hour":     int | None,          # 24h, for absolute
         "minute":   int | None,          # for absolute
@@ -312,3 +327,254 @@ def format_time(hour: int, minute: int) -> str:
     period = "AM" if hour < 12 else "PM"
     display_hour = hour % 12 or 12
     return f"{display_hour}:{minute:02d} {period}"
+
+
+# ── Recurring Rule Parsing (Phase B) ─────────────────────────────────
+
+
+# Hinglish/English day-of-week names → weekday index (0=Monday … 6=Sunday)
+_DAY_NAMES: dict[str, int] = {
+    # English
+    "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+    "friday": 4, "saturday": 5, "sunday": 6,
+    # Hinglish
+    "somvar": 0, "mangalvar": 1, "budhvar": 2,
+    "guruvar": 3, "veervar": 3,
+    "shukravar": 4, "shanivar": 5, "ravivar": 6,
+    "som": 0, "mangal": 1, "budh": 2,
+    "guru": 3, "veer": 3,
+    "shukra": 4, "shani": 5, "ravi": 6,
+}
+
+_RECURRING_PATTERNS: list[tuple[re.Pattern, str, Optional[int]]] = [
+    # daily — "har roz", "har din", "daily", "every day"
+    # "din" alone is too short — require "har din" or "har roz"
+    (re.compile(r'\b(?:har\s+(?:roz|din)|daily|every\s*day)\b', re.IGNORECASE), "daily", None),
+    # weekdays / working days
+    (re.compile(r'\b(?:weekdays?|working\s*days?|kaam\s*ke\s*din)\b', re.IGNORECASE), "weekdays", None),
+    # weekly / every week / har hafte
+    (re.compile(r'\b(?:weekly|every\s*week|har\s*hafte)\b', re.IGNORECASE), "weekly", None),
+    # monthly / every month / har mahina
+    (re.compile(r'\b(?:monthly|every\s*month|har\s*mahina)\b', re.IGNORECASE), "monthly", None),
+    # yearly / every year / har saal
+    (re.compile(r'\b(?:yearly|every\s*years?|har\s*saal)\b', re.IGNORECASE), "yearly", None),
+    # every <day-of-week> / har <day>
+    (re.compile(
+        r'\b(?:every|har)\s+(' + '|'.join(re.escape(d) for d in _DAY_NAMES) + r')\b',
+        re.IGNORECASE
+    ), "weekly", None),  # will fill day index after match
+]
+
+
+def parse_recurring(query: str) -> Optional[dict]:
+    """Extract a recurring rule from a natural language query.
+
+    Args:
+        query: Normalized query string.
+
+    Returns:
+        {"rule": str, "days": Optional[list[int]], "raw": str} or None.
+
+    Result rule values:
+        - "daily"     → fires every day
+        - "weekdays"  → fires Monday–Friday
+        - "weekly"    → fires every N weeks (days list specifies weekdays)
+        - "monthly"   → fires on the same day every month
+        - "yearly"    → fires on the same date every year
+
+    Examples:
+        >>> parse_recurring("har somvar reminder")
+        {"rule": "weekly", "days": [0], "raw": "har somvar"}
+        >>> parse_recurring("daily alarm")
+        {"rule": "daily", "days": None, "raw": "daily"}
+    """
+    q = query.lower().strip()
+    for pattern, rule, _ in _RECURRING_PATTERNS:
+        m = pattern.search(q)
+        if m:
+            days = None
+            # If this is a "every <day>" pattern, extract the day index
+            if rule == "weekly" and len(m.groups()) >= 1:
+                day_name = m.group(1).lower()
+                idx = _DAY_NAMES.get(day_name)
+                if idx is not None:
+                    days = [idx]
+            return {
+                "rule": rule,
+                "days": days,
+                "raw": m.group(0),
+            }
+    return None
+
+
+# ── Calendar-Relative Parsing (Phase B) ──────────────────────────────
+
+
+_CALENDAR_TODAY_PART = re.compile(
+    r'\b(?:aaj\s*)?(?:subah|morning|dopehar|afternoon|shaam|evening|raat|night|tonight)\b',
+    re.IGNORECASE
+)
+_CALENDAR_TOMORROW_PART = re.compile(
+    r'\b(?:kal|tomorrow)\s+(?:subah|morning|dopehar|afternoon|shaam|evening|raat|night)\b',
+    re.IGNORECASE
+)
+_CALENDAR_NEXT_DAY = re.compile(
+    r'\b(?:agle|next)\s+(' + '|'.join(re.escape(d) for d in _DAY_NAMES) + r')\b',
+    re.IGNORECASE
+)
+_CALENDAR_PASSON = re.compile(r'\b(?:parson|day\s+after\s+tomorrow|next\s+(?:to\s+)?2\s*days)\b', re.IGNORECASE)
+_CALENDAR_NEXT_WEEK = re.compile(r'\bnext\s+week\b', re.IGNORECASE)
+
+
+def parse_calendar_time(query: str) -> Optional[dict]:
+    """Parse a calendar-relative expression into a concrete datetime.
+
+    Handles constructs like "next Monday", "this evening", "kal subah",
+    "parson", "next week".
+
+    Args:
+        query: Normalized query string.
+
+    Returns:
+        Time dict (same shape as parse_time return) or None if no match.
+
+    Examples:
+        >>> parse_calendar_time("next Monday 7 am")
+        # → absolute time for next Monday 7:00 AM
+        >>> parse_calendar_time("aaj raat")
+        # → today at 21:00
+    """
+    q = query.lower().strip()
+    now = datetime.now(IST)
+    result = None
+
+    # 1. "parson" / "day after tomorrow" → +2 days
+    if _CALENDAR_PASSON.search(q):
+        result = _apply_time_to_base(q, now + timedelta(days=2))
+        if result:
+            result["day_offset"] = 2
+            return result
+
+    # 2. "next week" → +7 days
+    if _CALENDAR_NEXT_WEEK.search(q):
+        result = _apply_time_to_base(q, now + timedelta(days=7))
+        if result:
+            result["day_offset"] = 7
+            return result
+
+    # 3. "next <day>", "agle <day>" → next occurrence of that weekday
+    m = _CALENDAR_NEXT_DAY.search(q)
+    if m:
+        day_name = m.group(1).lower()
+        target_weekday = _DAY_NAMES.get(day_name)
+        if target_weekday is not None:
+            days_ahead = target_weekday - now.weekday()
+            if days_ahead <= 0:  # target day is today or already passed this week
+                days_ahead += 7
+            base = now + timedelta(days=days_ahead)
+            result = _apply_time_to_base(q, base)
+            if result:
+                result["day_offset"] = days_ahead
+                return result
+
+    # 4. "kal <part>" / "tomorrow <part>" → tomorrow + semantic time
+    m = _CALENDAR_TOMORROW_PART.search(q)
+    if m:
+        return _resolve_calendar_part(q, _find_part_of_day(m.group(0)), day_offset=1)
+
+    # 5. "aaj <part>" / "this <part>" / standalone part-of-day → today
+    if _CALENDAR_TODAY_PART.search(q):
+        return _resolve_calendar_part(q, _find_part_of_day(q), day_offset=0)
+
+    return None
+
+
+# ── Part-of-day mapping ──────────────────────────────────────────────
+
+_SEMANTIC_HOURS: dict[str, tuple[int, int]] = {
+    "subah": (9, 0),
+    "morning": (9, 0),
+    "dopehar": (14, 0),
+    "afternoon": (14, 0),
+    "shaam": (18, 0),
+    "evening": (18, 0),
+    "raat": (21, 0),
+    "night": (21, 0),
+    "tonight": (21, 0),
+}
+
+
+def _find_part_of_day(text: str) -> tuple[int, int]:
+    """Extract the (hour, minute) tuple from a part-of-day keyword in text."""
+    for kw, (h, m) in _SEMANTIC_HOURS.items():
+        if kw in text:
+            return (h, m)
+    return (18, 0)  # default to evening
+
+
+def _resolve_calendar_part(query: str,
+                           hour_minute: tuple[int, int],
+                           day_offset: int = 0) -> Optional[dict]:
+    """Build a time dict from a semantic part-of-day with offset."""
+    hour, minute = hour_minute
+    now = datetime.now(IST)
+    base = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    trigger = base + timedelta(days=day_offset)
+    if trigger <= now:
+        trigger += timedelta(days=1)
+
+    # Extract matched raw text
+    raw_match = query
+    return {
+        "type": "absolute",
+        "seconds": None,
+        "hour": hour,
+        "minute": minute,
+        "timestamp": trigger.timestamp(),
+        "datetime": trigger.isoformat(),
+        "day_offset": day_offset,
+        "raw": raw_match,
+    }
+
+
+def _apply_time_to_base(query: str, base: datetime) -> Optional[dict]:
+    """If query also contains a clock time, use it; otherwise use now's time.
+
+    This helper checks whether the query has an absolute clock time
+    (7 am, 7:30 pm, 19:30, subah, raat, etc.) and combines it with
+    the calendar base date.
+    """
+    # Try absolute clock time first
+    abs_result = _parse_absolute(query)
+    if abs_result:
+        # Override date part with the calendar base
+        base_dt = base.replace(
+            hour=abs_result["hour"], minute=abs_result["minute"],
+            second=0, microsecond=0,
+        )
+        now = datetime.now(IST)
+        if base_dt <= now:
+            base_dt += timedelta(days=1)
+        abs_result["timestamp"] = base_dt.timestamp()
+        abs_result["datetime"] = base_dt.isoformat()
+        abs_result["day_offset"] = (base_dt.date() - now.date()).days
+        abs_result["raw"] = abs_result.get("raw", query)
+        return abs_result
+
+    # Try part-of-day semantic
+    part = _find_part_of_day(query)
+    hour, minute = part
+    base_dt = base.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    now = datetime.now(IST)
+    if base_dt <= now:
+        base_dt += timedelta(days=1)
+    return {
+        "type": "absolute",
+        "seconds": None,
+        "hour": hour,
+        "minute": minute,
+        "timestamp": base_dt.timestamp(),
+        "datetime": base_dt.isoformat(),
+        "day_offset": (base_dt.date() - now.date()).days,
+        "raw": query,
+    }
