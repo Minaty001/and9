@@ -609,3 +609,37 @@ animateSolarSystem();
 document.getElementById('imageDisplay').addEventListener('click', function() {
     this.style.display = 'none';
 });
+
+// ── Reminder in-app alert polling ────────────────────────────────
+
+function startReminderAlertPolling() {
+    setInterval(async () => {
+        try {
+            const resp = await fetch('/api/reminder/alerts');
+            const data = await resp.json();
+            if (data.alerts && data.alerts.length > 0) {
+                data.alerts.forEach(alert => {
+                    showToast('⏰ ' + alert.title, 'reminder', 8000);
+                    // Refresh side panel if open
+                    const panel = document.getElementById('sidePanel');
+                    if (panel && panel.classList.contains('open')) {
+                        if (typeof loadEvents === 'function') loadEvents();
+                    }
+                    // Vibrate
+                    if (navigator.vibrate) {
+                        navigator.vibrate([200, 100, 200]);
+                    }
+                    // TTS
+                    if (typeof window.speak === 'function') {
+                        window.speak('Reminder: ' + alert.title);
+                    }
+                });
+            }
+        } catch (e) {
+            // Silently retry
+        }
+    }, 10000); // every 10 seconds
+}
+
+// Start polling on load
+startReminderAlertPolling();

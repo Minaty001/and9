@@ -12,7 +12,8 @@ Recovery after restart:
 Notification mechanism:
     - Logs a REMINDER FIRED event (picked up by log aggregators)
     - Calls any registered callbacks (e.g., WebSocket push, SSE)
-    - TODO: integrate with Android push / FCM for real device notifications
+    - Enqueues to _alert_queue (polled by GET /api/reminder/alerts)
+    - Tries Termux local notification (Android)
 
 Usage:
     from app.reminders.worker import start_worker, stop_worker
@@ -42,6 +43,10 @@ _stop_event = threading.Event()
 # Optional callbacks invoked when a reminder fires
 # Signature: (reminder: dict) -> None
 _fire_callbacks: List[Callable[[dict], None]] = []
+
+# ── In-app alert queue (polled by GET /api/reminder/alerts) ─────────
+_alert_queue: List[dict] = []
+_alert_queue_lock = threading.Lock()
 
 # ── Worker state persistence (survives APK close/reopen) ────────────
 _STATE_DIR = os.environ.get(
@@ -104,6 +109,18 @@ def register_callback(fn: Callable[[dict], None]) -> None:
     _fire_callbacks.append(fn)
 
 
+def get_alerts() -> List[dict]:
+    """Return queued reminder alerts (claim-based, each alert once).
+
+    Called by the GET /api/reminder/alerts endpoint.
+    Returns all queued alerts and clears them.
+    """
+    with _alert_queue_lock:
+        alerts = list(_alert_queue)
+        _alert_queue.clear()
+    return alerts
+
+
 def _try_termux_notify(title: str) -> None:
     """Send a Termux notification/speech/vibrate (Android-local, best-effort)."""
     if shutil.which("termux-notification"):
@@ -134,6 +151,15 @@ def _fire(reminder: dict) -> None:
     # Mark fired first (prevent double-firing even if callback raises)
     storage.mark_fired(rid)
     logger.warning("REMINDER FIRED: #%d '%s' (was due: %s)", rid, title, trigger_time)
+
+    # Enqueue for in-app alert polling
+    with _alert_queue_lock:
+        _alert_queue.append({
+            "id": rid,
+            "title": title,
+            "trigger_time": trigger_time,
+            "timestamp": time.time(),
+        })
 
     # Try Termux local notification/speech (Android)
     _try_termux_notify(title)

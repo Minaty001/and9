@@ -399,6 +399,18 @@ def mark_event_done(event_id):
     return jsonify({"status": "done" if ok else "not_found", "id": event_id})
 
 
+@api_bp.route("/reminder/alerts", methods=["GET"])
+def reminder_alerts():
+    """GET /api/reminder/alerts — polled by frontend for in-app reminder notifications.
+
+    Returns reminders that just fired. Each reminder appears in
+    exactly one response (claim-based queue).
+    """
+    from app.reminders.worker import get_alerts
+    alerts = get_alerts()
+    return jsonify({"alerts": alerts})
+
+
 # ═══════════════════════════════════════════════════════════════
 # Reflection API
 # ═══════════════════════════════════════════════════════════════
