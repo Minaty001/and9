@@ -352,6 +352,7 @@ def _extract_label(query: str) -> Optional[str]:
 
     # Strip action keywords
     action_kw = [
+        "set a reminder", "set an reminder", "set a alarm", "set an alarm", "set a timer", "set an timer",
         "set alarm", "set reminder", "set timer",
         "alarm lagao", "alarm laga do", "alarm set karo", "alarm set",
         "reminder lagao", "timer lagao",
