@@ -24,6 +24,7 @@ INTENT_TRIGGERS = {
     "youtube": ["youtube", "yt", "video", "play"],
     "home": ["home", "back", "recents", "screen"],
     "time": ["time", "samay", "baje", "clock", "ghadi", "date", "tarikh", "calendar"],
+    "city_time": ["time", "samay", "baje", "clock", "ghadi", "date", "tarikh", "calendar"],
 }
 
 def score_intent(intent: str, query: str, params: Dict[str, Any]) -> float:
@@ -152,6 +153,15 @@ def score_intent(intent: str, query: str, params: Dict[str, Any]) -> float:
         if has_trigger_word:
             return 0.98
         return 0.90
+
+    elif intent == "city_time":
+        has_city = bool(params.get("city"))
+        if has_city and has_trigger_word:
+            return 0.98
+        elif has_city:
+            return 0.88
+        else:
+            return 0.55
 
     # Default fallback calculation: ratio of matched words
     query_words = set(q.split())

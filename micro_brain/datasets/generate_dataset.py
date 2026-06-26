@@ -81,7 +81,7 @@ class IntentDatasetGenerator:
             "police", "driver", "helper", "john", "alice",
         ]
 
-    def generate(self, target: int = 8000) -> list:
+    def generate(self, target: int = 9500) -> list:
         """
         Generate the full dataset with at least `target` examples.
         Returns list of (text, intent_label_index) tuples.
@@ -615,6 +615,33 @@ class IntentDatasetGenerator:
             "tum bahut achhe ho", "good morning sir",
             "hello ji", "namaste", "pranam",
             "let's chat", "baat karein", "kya kar rahe ho",
+            # Conversational greetings & chat
+            "wassup bro", "yo what's up", "hey there", "namaste jarvis",
+            "radhe radhe", "salaam", "adaab", "hello bot", "aur sunao",
+            "kya chal raha hai", "kaisa chal raha hai sab", "sab badhiya?",
+            "aur batao", "kuch naya batao", "how was your day", "din kaisa raha",
+            "aaj tumne kya kiya", "kya kar rhe ho yaar",
+            # Small talk & compliments
+            "you are awesome", "you are very helpful", "thank you so much",
+            "dhanyawad dost", "thanks a lot", "dil jeet liya tune",
+            "bahut badiya kaam kiya", "very good job", "proud of you",
+            "tum bahut samajhdar ho", "you are so smart", "gazab",
+            # Philosophy, knowledge & LLM prompts
+            "explain photosynthesis", "tell me about quantum computing",
+            "write a code to print prime numbers", "help me draft an email",
+            "what is the capital of India", "who is the prime minister",
+            "calculate 25 * 40", "maths equation solve karo",
+            "should I buy a house or rent", "give me relationship advice",
+            "mujhe tension ho rahi hai", "career guidelines do",
+            "how to cook biryani", "recipe for chicken tikka", "chai kaise banate hain",
+            "who wrote the play hamlet", "tell me a fun fact", "history of space travel",
+            "write a poem about stars", "create a story of a brave knight",
+            # Decision-making helpers
+            "kya mujhe abhi sona chahiye?", "should I work out today?",
+            "is coding better than designing?", "what option is better?",
+            "which phone should I buy", "best laptop under 50k", "suggest a good movie",
+            "should I learn python or javascript", "give me a dynamic workout plan",
+            "how do I improve my memory?", "how to prepare for a coding interview",
         ]
         return (unknown_phrases * 5)[:count]
 
@@ -678,6 +705,6 @@ class IntentDatasetGenerator:
 
 if __name__ == "__main__":
     generator = IntentDatasetGenerator()
-    examples = generator.generate(target=8000)
+    examples = generator.generate(target=9500)
     path = generator.save("intents.json")
     generator.get_split()

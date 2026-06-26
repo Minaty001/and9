@@ -679,3 +679,21 @@ def test_admin_auth_fallback():
     assert resp.status_code == 200
     assert resp.json["status"] == "authenticated"
 
+
+def test_api_understanding_analyze():
+    from app.main import create_app
+    app = create_app()
+    client = app.test_client()
+
+    # Test missing query
+    resp = client.post("/api/understanding/analyze", json={})
+    assert resp.status_code == 400
+
+    # Test valid query
+    resp = client.post("/api/understanding/analyze", json={"query": "hello, how are you?"})
+    assert resp.status_code == 200
+    assert "intent" in resp.json
+    assert "emotion" in resp.json
+    assert "entities" in resp.json
+
+

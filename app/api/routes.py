@@ -314,6 +314,50 @@ def brain_sessions():
     })
 
 
+@api_bp.route("/understanding/analyze", methods=["POST"])
+def analyze_query():
+    """POST /api/understanding/analyze — analyze user query using UnderstandingEngine."""
+    data = request.get_json(silent=True) or {}
+    query = (data.get("query") or "").strip()
+    if not query:
+        return jsonify({"error": "query is required"}), 400
+
+    try:
+        user_profile = get_mem().get_user_profile()
+        analysis = get_orch().understanding.analyze(query, user_profile)
+        
+        result = {
+            "intent": analysis.intent,
+            "emotion": analysis.emotion,
+            "emotion_intensity": analysis.emotion_intensity,
+            "entities": analysis.entities,
+            "is_memory_store": analysis.is_memory_store,
+            "is_memory_recall": analysis.is_memory_recall,
+            "topic": analysis.topic,
+            "expertise_level": analysis.expertise_level,
+            "nlp_confidence": analysis.nlp_confidence,
+        }
+        
+        if analysis.nlp_result:
+            nlp = analysis.nlp_result
+            result["nlp_details"] = {
+                "sentiment_score": getattr(nlp, "sentiment_score", 0.0),
+                "sentence_complexity": getattr(nlp, "sentence_complexity", 0.0),
+                "tokens": getattr(nlp, "tokens", []),
+                "lemmas": getattr(nlp, "lemmas", []),
+                "pos_tags": getattr(nlp, "pos_tags", []),
+                "noun_chunks": getattr(nlp, "noun_chunks", []),
+                "root_verbs": getattr(nlp, "root_verbs", []),
+                "pipeline_active": getattr(nlp, "pipeline_active", False),
+                "word_count": getattr(nlp, "word_count", 0),
+            }
+            
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("Error in /api/understanding/analyze")
+        return jsonify({"error": str(e)}), 500
+
+
 # ═══════════════════════════════════════════════════════════════
 # Goals API
 # ═══════════════════════════════════════════════════════════════
