@@ -14,12 +14,16 @@ Architecture:
 Model Size: <2MB (INT8 quantized)
 Framework: NumPy-based (lightweight, no PyTorch dependency)
 """
+from __future__ import annotations
 
 import os
 import json
 import math
 import time
-import numpy as np
+try:
+    import numpy as np
+except ImportError:  # pragma: no cover - exercised only in minimal envs
+    np = None
 from typing import Optional, List, Tuple, Dict
 from dataclasses import dataclass
 
@@ -27,6 +31,15 @@ from config import NN_CONFIG, INTENTS, INTENT_LABELS
 from utils.logger import get_logger
 
 logger = get_logger()
+
+
+def _require_numpy() -> None:
+    """Raise a clear error if NumPy-backed features are unavailable."""
+    if np is None:
+        raise ImportError(
+            "NumPy is required for micro_brain neural features. "
+            "Install dependencies with `pip install numpy`."
+        )
 
 
 @dataclass
@@ -102,6 +115,7 @@ class TextEmbedding:
     ]
 
     def __init__(self, dim: int = 128):
+        _require_numpy()
         self.dim = dim
         self.char_set = self.CHAR_SET
         self.char_to_idx = {c: i for i, c in enumerate(self.CHAR_SET)}
@@ -197,6 +211,7 @@ class DenseLayer:
 
     def __init__(self, input_size: int, output_size: int,
                  activation: str = "relu"):
+        _require_numpy()
         self.input_size = input_size
         self.output_size = output_size
         self.activation = activation
@@ -250,6 +265,7 @@ class TinyNeuralNetwork:
     """
 
     def __init__(self, config: Optional[NeuralConfig] = None):
+        _require_numpy()
         self.config = config or NeuralConfig()
         self.layers: List[DenseLayer] = []
         self._build()

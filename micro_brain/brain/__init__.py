@@ -11,11 +11,11 @@
 5. Learning Brain - Habit/pattern learning
 """
 
-from brain.reflex import ReflexBrain
-from brain.neural import NeuralBrain
-from brain.memory import MemoryBrain
-from brain.decision import DecisionBrain
-from brain.learning import LearningBrain
+from .reflex import ReflexBrain
+from .neural import NeuralBrain
+from .memory import MemoryBrain
+from .decision import DecisionBrain
+from .learning import LearningBrain
 
 __all__ = [
     "ReflexBrain",

@@ -8,7 +8,10 @@
 import os
 import json
 import time
-import psutil
+try:
+    import psutil
+except ImportError:  # pragma: no cover - optional in minimal envs
+    psutil = None
 from collections import defaultdict, deque
 from datetime import datetime
 from pathlib import Path
@@ -146,18 +149,22 @@ class MetricsTracker:
 
     def get_ram_usage_mb(self):
         """Get current process RAM usage in MB."""
+        if psutil is None:
+            return 0.0
         try:
             process = psutil.Process(os.getpid())
             return process.memory_info().rss / (1024 * 1024)
-        except (psutil.NoSuchProcess, ImportError, AttributeError):
+        except (AttributeError, Exception):
             return 0.0
 
     def get_cpu_usage_percent(self):
         """Get current CPU usage percent."""
+        if psutil is None:
+            return 0.0
         try:
             process = psutil.Process(os.getpid())
             return process.cpu_percent(interval=0.1)
-        except (psutil.NoSuchProcess, ImportError, AttributeError):
+        except (AttributeError, Exception):
             return 0.0
 
     def get_uptime_seconds(self):
