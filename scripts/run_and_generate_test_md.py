@@ -47,6 +47,14 @@ def run_tests():
             "validate": lambda r: r.json.get("action") == "set_reminder"
         },
         {
+            "name": "Reflex: Reminder Set (after 5 seconds)",
+            "method": "POST",
+            "path": "/api/and9",
+            "payload": {"query": "set reminder for after 5 seconds"},
+            "expected_status": 200,
+            "validate": lambda r: r.json.get("action") == "set_reminder" and r.json.get("payload", {}).get("trigger_at", {}).get("seconds") == 5
+        },
+        {
             "name": "Reflex: Time query in city",
             "method": "POST",
             "path": "/api/and9",

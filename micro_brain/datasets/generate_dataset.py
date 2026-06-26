@@ -379,7 +379,9 @@ class IntentDatasetGenerator:
     def _gen_reminder(self, count: int) -> list:
         times = ["5 min", "10 min", "30 min", "1 hour", "2 hours", "tomorrow",
                  "5 minute", "10 minute", "ek ghanta", "aaj raat", "kal",
-                 "1 minute", "15 minute", "30 second", "after 5 min"]
+                 "1 minute", "15 minute", "30 second", "after 5 min",
+                 "5 seconds", "5 second", "after 5 seconds", "after 10 seconds",
+                 "after 30 seconds", "10 seconds", "10 second"]
         tasks = ["call", "meeting", "pills", "water", "medicine", "lunch",
                  "dinner", "breakfast", "workout", "yoga", "homework"]
         base = [
