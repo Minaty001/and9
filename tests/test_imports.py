@@ -637,3 +637,45 @@ def test_api_brain_sessions():
     resp = client.get("/api/brain/sessions")
     assert resp.status_code == 200
     assert "session_id" in resp.json
+
+
+def test_api_memory_endpoints():
+    from app.main import create_app
+    app = create_app()
+    client = app.test_client()
+
+    # Test cache stats
+    resp = client.get("/api/memory/cache/stats")
+    assert resp.status_code == 200
+    assert "hits" in resp.json
+
+    # Test sessions summary
+    resp = client.get("/api/memory/sessions")
+    assert resp.status_code == 200
+    assert "sessions" in resp.json
+
+    # Test episode search
+    resp = client.get("/api/memory/episodes/search?q=test")
+    assert resp.status_code == 200
+    assert "results" in resp.json
+
+    # Test recall
+    resp = client.get("/api/memory/recall?q=hello")
+    assert resp.status_code == 200
+    assert "matched_episodes" in resp.json
+
+
+def test_admin_auth_fallback():
+    from app.main import create_app
+    app = create_app()
+    client = app.test_client()
+
+    # Test invalid auth
+    resp = client.post("/api/admin/auth", json={"password": "wrong_password"})
+    assert resp.status_code == 403
+
+    # Test valid auth (with try/except session.permanent guard)
+    resp = client.post("/api/admin/auth", json={"password": "code10"})
+    assert resp.status_code == 200
+    assert resp.json["status"] == "authenticated"
+

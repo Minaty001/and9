@@ -66,6 +66,12 @@ python main.py --cli "torch on"
 | Home/Back | `input keyevent 3/4` | Simulated |
 | Web search, weather, time, date | Python response | Python response |
 
+### 📅 Timezone, Alarm & Reminder Commands
+
+- **Time / Timezone in City**: "what is the time in Mumbai", "current time in Delhi", "dilli ka time"
+- **Set Alarm**: "alarm 7 am", "alarm tomorrow 7 am", "alarm after 5 minutes", "alarm lagao 7 baje"
+- **Set Reminder**: "remind me after 5 min", "remind me tomorrow", "remind me to call mummy at 7 pm", "5 minute baad yaad dilana"
+
 ## Standalone Status
 
 micro_brain is an **independent subsystem** within the JARVIS PCOS project tree. It:

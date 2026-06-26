@@ -826,3 +826,126 @@ class Memory:
             "relevant_past":     f_relevant.result() if f_relevant else [],
             "session_id":        session_id,
         }
+
+    def search_episodes(self, keyword: str, limit: int = 10) -> list:
+        """Search episodic memory entries whose content contains the keyword (case-insensitive)."""
+        if self._ok:
+            res = self._safe(lambda: self._q("episodic_memory")
+                             .select("id, session_id, role, content, topic, emotion, importance, created_at")
+                             .ilike("content", f"%{keyword}%")
+                             .order("id", desc=True)
+                             .limit(limit)
+                             .execute(), None)
+            if not res or not res.data:
+                return []
+            return [{"id": r["id"], "session_id": r["session_id"], "role": r["role"],
+                     "content": r["content"], "topic": r.get("topic", "general"),
+                     "emotion": r.get("emotion", "neutral"), "importance": r.get("importance", 1),
+                     "timestamp": r.get("created_at", "")} for r in res.data]
+        else:
+            kw = keyword.lower()
+            return [{"id": e["id"], "session_id": e["session_id"], "role": e["role"],
+                     "content": e["content"], "topic": e.get("topic", "general"),
+                     "emotion": e.get("emotion", "neutral"), "importance": e.get("importance", 1),
+                     "timestamp": e.get("timestamp", "")}
+                    for e in reversed(self._mem["episodes"]) if kw in e.get("content", "").lower()][:limit]
+
+    def get_sessions_summary(self, limit: int = 5) -> list:
+        """Retrieve recent conversation session summaries.
+
+        Args:
+            limit: Maximum number of session summaries to return (default: 5).
+
+        Returns:
+            List of session dicts containing id, started_at, ended_at, summary, and dominant_emotion.
+        """
+        if self._ok:
+            res = self._safe(lambda: self._q("conversation_sessions")
+                             .select("id, started_at, ended_at, summary, dominant_emotion")
+                             .order("id", desc=True)
+                             .limit(limit)
+                             .execute(), None)
+            if not res or not res.data:
+                return []
+            return res.data
+        else:
+            return sorted(
+                [
+                    {
+                        "id": s["id"],
+                        "started_at": s.get("started_at", ""),
+                        "ended_at": s.get("ended_at"),
+                        "summary": s.get("summary", ""),
+                        "dominant_emotion": s.get("dominant_emotion", "neutral"),
+                    }
+                    for s in self._mem["sessions"]
+                ],
+                key=lambda x: x["id"],
+                reverse=True,
+            )[:limit]
+
+    def fast_recall(self, query: str, limit: int = 8) -> dict:
+        """Fast recall query matching cache and retrieving episodes + profile."""
+        global _RECALL_CACHE, _RECALL_CACHE_STATS
+        now = datetime.now(timezone.utc)
+        cache_key = (query, limit)
+        
+        # Check cache
+        if cache_key in _RECALL_CACHE:
+            val, expires_at = _RECALL_CACHE[cache_key]
+            if expires_at > now:
+                _RECALL_CACHE_STATS["hits"] += 1
+                res = val.copy()
+                res["cache_hit"] = True
+                return res
+            else:
+                _RECALL_CACHE.pop(cache_key, None)
+                
+        _RECALL_CACHE_STATS["misses"] += 1
+        
+        # Cache miss, retrieve data
+        matched = self.search_episodes(query, limit=limit)
+        profile = self.get_user_profile()
+        recent = self.get_recent_chat(limit=limit)
+        sessions = self.get_sessions_summary(limit=5)
+        
+        result = {
+            "cache_hit": False,
+            "matched_episodes": matched,
+            "user_profile": profile,
+            "recent_chat": recent,
+            "sessions_summary": sessions,
+        }
+        
+        # Store in cache
+        if len(_RECALL_CACHE) >= _RECALL_CACHE_STATS["max_size"]:
+            first_key = next(iter(_RECALL_CACHE))
+            _RECALL_CACHE.pop(first_key, None)
+            
+        ttl = _RECALL_CACHE_STATS["ttl_seconds"]
+        _RECALL_CACHE[cache_key] = (result, now + timedelta(seconds=ttl))
+        _RECALL_CACHE_STATS["size"] = len(_RECALL_CACHE)
+        
+        return result
+
+
+# ── Recall Cache Module State & Helper ────────────────────────
+_RECALL_CACHE = {}  # key -> (result_dict, expires_at)
+_RECALL_CACHE_STATS = {
+    "hits": 0,
+    "misses": 0,
+    "size": 0,
+    "max_size": 100,
+    "ttl_seconds": 300
+}
+
+
+def get_recall_cache_stats() -> dict:
+    """Return live recall cache statistics."""
+    global _RECALL_CACHE
+    now = datetime.now(timezone.utc)
+    expired_keys = [k for k, v in _RECALL_CACHE.items() if v[1] < now]
+    for k in expired_keys:
+        _RECALL_CACHE.pop(k, None)
+    _RECALL_CACHE_STATS["size"] = len(_RECALL_CACHE)
+    return _RECALL_CACHE_STATS

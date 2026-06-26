@@ -65,40 +65,49 @@ class IntentDatasetGenerator:
             ("music", "music", ""),
             ("video", "video", ""),
             ("file manager", "files", "com.android.documentsui"),
+            ("twitter", "twitter", "com.twitter.android"),
+            ("facebook", "facebook", "com.facebook.katana"),
+            ("uber", "uber", "com.ubercab"),
+            ("zomato", "zomato", "com.application.zomato"),
+            ("swiggy", "swiggy", "in.swiggy.android"),
+            ("paytm", "paytm", "net.one97.paytm"),
+            ("netflix", "netflix", "com.netflix.mediaclient"),
         ]
 
         self.contact_names = [
             "mummy", "papa", "bhai", "didi", "friend",
-            "ammu", "abu", "mama", "mausi",
+            "ammu", "abu", "mama", "mausi", "mom", "dad",
+            "sister", "brother", "boss", "colleague", "doctor",
+            "police", "driver", "helper", "john", "alice",
         ]
 
-    def generate(self, target: int = 5000) -> list:
+    def generate(self, target: int = 8000) -> list:
         """
         Generate the full dataset with at least `target` examples.
         Returns list of (text, intent_label_index) tuples.
         """
         # Generate examples for each intent
         generators = [
-            (self._gen_open_app, "OPEN_APP", 500),
-            (self._gen_close_app, "CLOSE_APP", 150),
-            (self._gen_play_music, "PLAY_MUSIC", 300),
-            (self._gen_pause_music, "PAUSE_MUSIC", 200),
-            (self._gen_search_web, "SEARCH_WEB", 350),
-            (self._gen_weather, "WEATHER", 250),
-            (self._gen_time, "TIME", 250),
-            (self._gen_date, "DATE", 200),
-            (self._gen_reminder, "REMINDER", 300),
-            (self._gen_call, "CALL", 350),
-            (self._gen_message, "MESSAGE", 250),
-            (self._gen_camera, "CAMERA", 200),
-            (self._gen_flashlight_on, "FLASHLIGHT_ON", 200),
-            (self._gen_flashlight_off, "FLASHLIGHT_OFF", 200),
-            (self._gen_volume_up, "VOLUME_UP", 200),
-            (self._gen_volume_down, "VOLUME_DOWN", 200),
-            (self._gen_home, "HOME", 150),
-            (self._gen_back, "BACK", 150),
-            (self._gen_setting, "SETTING", 200),
-            (self._gen_unknown, "UNKNOWN", 300),
+            (self._gen_open_app, "OPEN_APP", 800),
+            (self._gen_close_app, "CLOSE_APP", 250),
+            (self._gen_play_music, "PLAY_MUSIC", 450),
+            (self._gen_pause_music, "PAUSE_MUSIC", 300),
+            (self._gen_search_web, "SEARCH_WEB", 550),
+            (self._gen_weather, "WEATHER", 400),
+            (self._gen_time, "TIME", 400),
+            (self._gen_date, "DATE", 300),
+            (self._gen_reminder, "REMINDER", 450),
+            (self._gen_call, "CALL", 550),
+            (self._gen_message, "MESSAGE", 400),
+            (self._gen_camera, "CAMERA", 300),
+            (self._gen_flashlight_on, "FLASHLIGHT_ON", 300),
+            (self._gen_flashlight_off, "FLASHLIGHT_OFF", 300),
+            (self._gen_volume_up, "VOLUME_UP", 300),
+            (self._gen_volume_down, "VOLUME_DOWN", 300),
+            (self._gen_home, "HOME", 250),
+            (self._gen_back, "BACK", 250),
+            (self._gen_setting, "SETTING", 300),
+            (self._gen_unknown, "UNKNOWN", 500),
         ]
 
         intent_map = {name: idx for idx, name in enumerate(INTENTS)}
@@ -669,6 +678,6 @@ class IntentDatasetGenerator:
 
 if __name__ == "__main__":
     generator = IntentDatasetGenerator()
-    examples = generator.generate(target=5000)
+    examples = generator.generate(target=8000)
     path = generator.save("intents.json")
     generator.get_split()

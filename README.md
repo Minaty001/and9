@@ -41,14 +41,17 @@ User Input → Intent Router → Memory Retrieval → Truth Engine → Context B
 
 ## ⚡ Supported Assistant Commands
 
-JARVIS parses natural language requests and converts them into intent payloads executed natively on Android or via web fallbacks:
+JARVIS parses natural language requests and converts them into intent payloads executed natively on Android or via web fallbacks.
 
-*   **Android Operations**: Set Alarms, Open Apps, play YouTube Videos.
-*   **Device Management**: Flashlight toggles, WiFi, Battery state, Volume control, Camera access.
-*   **Cognitive Pipelines**: Goal tracking, Scheduled Events/Reminders, Session Reflection digests, Web search.
-*   **File Operations**: Read/write storage (requires user confirmation on Android).
+### 📅 Timezone, Alarm & Reminder Commands
 
-For exact API payloads, JSON structures, and natural language command examples, refer to the **[Commands Reference & Intent Guide](COMMANDS_REFERENCE.md)**.
+| Function | Intent Type | English Example | Hinglish Example |
+| :--- | :--- | :--- | :--- |
+| **Check Time Zone / City Time** | `get_time` | `what is the time in Mumbai` / `current time in Delhi` | `dilli ka time` / `mumbai me kya time ho raha hai` |
+| **Set Alarm** | `set_alarm` | `alarm 7 am` / `alarm tomorrow 7 am` / `alarm after 5 minutes` | `alarm lagao 7 baje` / `kal subah 7 baje alarm lagao` |
+| **Set Reminder** | `set_reminder` | `remind me after 5 min` / `remind me tomorrow` / `remind me to call mummy at 7 pm` | `5 minute baad yaad dilana` / `reminder set karo` |
+
+For exact API payloads, JSON structures, and more natural language command examples, refer to the **[Commands Reference & Intent Guide](COMMANDS_REFERENCE.md)** (or see `app/and9/utils/time_parser.py` for direct syntax mapping).
 
 ---
 

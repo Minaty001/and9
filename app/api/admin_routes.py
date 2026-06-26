@@ -53,7 +53,10 @@ def admin_auth():
 
     if pw_hash in VALID_HASHES:
         session["admin_authenticated"] = True
-        session.permanent = True
+        try:
+            session.permanent = True
+        except AttributeError:
+            pass
         logger.info("Admin access granted")
         return jsonify({"status": "authenticated", "message": "Welcome, Admin."})
     else:
