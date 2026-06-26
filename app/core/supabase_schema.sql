@@ -136,6 +136,23 @@ create table if not exists working_memory (
 );
 create index if not exists idx_working_session on working_memory(session_id);
 
+-- 11. Self Reflection Log
+create table if not exists reflection_log (
+    id                     bigserial primary key,
+    timestamp              double precision not null,
+    input                  text default '',
+    intent                 text default '',
+    action                 text default '',
+    brain_used             text default 'reflex',
+    execution_time_ms      double precision default 0.0,
+    success                boolean default true,
+    confidence             double precision default 1.0,
+    improvement_suggestion text default '',
+    learning_opportunity   text default '',
+    created_at             timestamptz default now()
+);
+create index if not exists idx_reflection_timestamp on reflection_log(timestamp);
+
 -- Enable Row Level Security (optional but recommended)
 -- alter table chat_history          enable row level security;
 -- alter table user_facts            enable row level security;
@@ -147,3 +164,5 @@ create index if not exists idx_working_session on working_memory(session_id);
 -- alter table projects              enable row level security;
 -- alter table events                enable row level security;
 -- alter table working_memory        enable row level security;
+-- alter table reflection_log        enable row level security;
+

@@ -52,7 +52,11 @@ class SelfReflection:
                     logger.info(f"Loaded {len(self._reflection_log)} reflections from Supabase.")
                     return
             except Exception as e:
-                logger.warning(f"Supabase reflection load failed, trying local file fallback: {e}")
+                err_msg = str(e)
+                if "PGRST205" in err_msg or "reflection_log" in err_msg:
+                    logger.info("Supabase 'reflection_log' table not found in schema cache. Using local file fallback.")
+                else:
+                    logger.warning(f"Supabase reflection load failed, trying local file fallback: {e}")
 
         # 2. Try Local File
         if os.path.exists(self._local_file):
