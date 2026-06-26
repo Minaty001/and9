@@ -27,7 +27,7 @@ INTENT_TRIGGERS = {
     "city_time": ["time", "samay", "baje", "clock", "ghadi", "date", "tarikh", "calendar"],
 }
 
-def score_intent(intent: str, query: str, params: Dict[str, Any]) -> float:
+def score_intent(intent: str, query: str, params: Dict[str, Any], action: str = "") -> float:
     """Calculate the confidence score for a given intent and query.
 
     Args:
@@ -132,6 +132,11 @@ def score_intent(intent: str, query: str, params: Dict[str, Any]) -> float:
             return 0.55
 
     elif intent == "reminder":
+        # Reminder management actions get high confidence if they are matched by the router
+        if action in ("list_reminders", "show_completed_reminders", "clear_all_reminders",
+                      "delete_reminder", "pause_reminder", "resume_reminder", "snooze_reminder"):
+            return 0.98
+
         has_title = bool(params.get("title")) or bool(params.get("label"))
         if has_title and has_trigger_word:
             return 0.98

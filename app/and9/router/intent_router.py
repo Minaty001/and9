@@ -350,7 +350,7 @@ def detect_intent_with_confidence(query: str) -> Tuple[Optional[str], Optional[s
         return None, None, {}, 0.0
     
     from app.and9.router.confidence_scorer import score_intent
-    confidence = score_intent(intent, query, params)
+    confidence = score_intent(intent, query, params, action or "")
     return intent, action, params, confidence
 
 

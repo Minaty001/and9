@@ -41,3 +41,15 @@ def test_reminder_extractor_keeps_recurring_metadata():
     assert result["trigger_at"]["type"] == "absolute"
     assert result["repeat_rule"] == "daily"
     assert result["repeat_days"] is None
+
+
+def test_relative_reminder_seconds():
+    result = extract_reminder("set reminder for after 5 seconds to take medicine")
+    assert result["trigger_at"]["type"] == "relative"
+    assert result["trigger_at"]["seconds"] == 5
+    assert result["label"] == "to take medicine"
+
+    result_s = extract_reminder("remind me after 5s")
+    assert result_s["trigger_at"]["type"] == "relative"
+    assert result_s["trigger_at"]["seconds"] == 5
+

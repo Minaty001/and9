@@ -142,7 +142,7 @@ class Orchestrator:
                     return result.to_dict()
 
                 # Priority 7: Validate Intent Parameters
-                is_valid, validation_msg = validate_intent(intent_name, params)
+                is_valid, validation_msg = validate_intent(intent_name, params, action_type or "")
                 if not is_valid:
                     result = BrainResult(
                         response=validation_msg,

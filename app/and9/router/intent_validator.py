@@ -14,12 +14,13 @@ from typing import Tuple
 logger = logging.getLogger(__name__)
 
 
-def validate_intent(intent_name: str, params: dict) -> Tuple[bool, str]:
+def validate_intent(intent_name: str, params: dict, action_type: str = "") -> Tuple[bool, str]:
     """Validate if the extracted parameters are sufficient for the intent.
 
     Args:
         intent_name: The detected intent string (e.g., 'alarm', 'timer', 'call').
         params: The extracted entities dict.
+        action_type: The detected action type string (e.g., 'set_reminder', 'list_reminders').
 
     Returns:
         (is_valid, error_message):
@@ -40,10 +41,11 @@ def validate_intent(intent_name: str, params: dict) -> Tuple[bool, str]:
             return False, "Timer kitne time ka lagana hai? Jaise '5 minutes' ya '10 seconds'. ⏱️"
 
     elif intent_name == "reminder":
-        # Reminder needs a valid time
-        trigger_at = params.get("trigger_at", {})
-        if trigger_at.get("type") == "unknown" or (trigger_at.get("hour") is None and trigger_at.get("seconds") is None):
-            return False, "Reminder ka time samajh nahi aaya. Kab yaad dilana hai? 📅"
+        # Reminder needs a valid time only when setting a reminder
+        if action_type == "set_reminder":
+            trigger_at = params.get("trigger_at", {})
+            if trigger_at.get("type") == "unknown" or (trigger_at.get("hour") is None and trigger_at.get("seconds") is None):
+                return False, "Reminder ka time samajh nahi aaya. Kab yaad dilana hai? 📅"
 
     elif intent_name == "call":
         # Call needs a target (number or contact)

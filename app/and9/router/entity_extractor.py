@@ -365,7 +365,12 @@ def _extract_label(query: str) -> Optional[str]:
     # Strip time expressions
     q = re.sub(
         r'(?:after|in|baad|me|ke\s*baad|for|at|ko)\s+'
-        r'\d+(?:\.\d+)?\s*(?:second|sec|minute|min|hour|hr|ghanta|ghante)s?',
+        r'\d+(?:\.\d+)?\s*(?:second|sec|secs|seconds|s|minute|min|mins|minutes|m|hour|hr|hrs|hours|h|ghanta|ghante)s?',
+        '', q, flags=re.IGNORECASE
+    )
+    q = re.sub(
+        r'\d+(?:\.\d+)?\s*(?:second|sec|secs|seconds|s|minute|min|mins|minutes|m|hour|hr|hrs|hours|h|ghanta|ghante)s?'
+        r'\s*(?:baad|ke\s*baad|me)?',
         '', q, flags=re.IGNORECASE
     )
     q = re.sub(r'\d{1,2}(?::\d{2})?\s*(?:am|pm|baje)?', '', q, flags=re.IGNORECASE)

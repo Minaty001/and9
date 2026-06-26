@@ -69,19 +69,19 @@ _RELATIVE_PATTERNS = [
     # "after 5 seconds" / "in 10 minutes" / "ke baad 2 hours"
     re.compile(
         r'(?:after|in|baad|me|ke\s*baad)\s+(\d+(?:\.\d+)?)\s*'
-        r'(second|sec|secs|seconds|minute|min|mins|minutes|hour|hr|hrs|hours|ghanta|ghante)s?',
+        r'(second|sec|secs|seconds|s|minute|min|mins|minutes|m|hour|hr|hrs|hours|h|ghanta|ghante)s?',
         re.IGNORECASE
     ),
     # "5 second baad" / "10 minute ke baad" / "1 ghante baad"
     re.compile(
         r'(\d+(?:\.\d+)?)\s*'
-        r'(second|sec|secs|seconds|minute|min|mins|minutes|hour|hr|hrs|hours|ghanta|ghante)s?'
+        r'(second|sec|secs|seconds|s|minute|min|mins|minutes|m|hour|hr|hrs|hours|h|ghanta|ghante)s?'
         r'\s+(?:baad|ke\s*baad|me)',
         re.IGNORECASE
     ),
     # "5 sec" / "10 min" / "2 hr" (bare number+unit with no preposition)
     re.compile(
-        r'^(\d+(?:\.\d+)?)\s*(second|sec|secs|seconds|minute|min|mins|minutes|hour|hr|hrs|hours|ghanta|ghante)s?$',
+        r'^(\d+(?:\.\d+)?)\s*(second|sec|secs|seconds|s|minute|min|mins|minutes|m|hour|hr|hrs|hours|h|ghanta|ghante)s?$',
         re.IGNORECASE
     ),
 ]
