@@ -189,6 +189,27 @@ class DecisionBrain:
                 "fallback": None,
                 "confirmation_required": False,
             },
+            "PYTHON_CODING": {
+                "action": "python_helper",
+                "description": "Provide python coding assistance",
+                "requires_entity": False,
+                "fallback": None,
+                "confirmation_required": False,
+            },
+            "AI_NEWS_MODELS": {
+                "action": "ai_helper",
+                "description": "Provide information about AI news and models",
+                "requires_entity": False,
+                "fallback": None,
+                "confirmation_required": False,
+            },
+            "CAPABILITIES": {
+                "action": "capabilities_helper",
+                "description": "Provide information about supported tasks, features, and functionalities",
+                "requires_entity": False,
+                "fallback": None,
+                "confirmation_required": False,
+            },
             "UNKNOWN": {
                 "action": "ask_clarification",
                 "description": "Ask user for clarification",

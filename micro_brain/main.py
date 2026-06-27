@@ -467,7 +467,7 @@ def main():
         print("Generating intent dataset...")
         from datasets.generate_dataset import IntentDatasetGenerator
         gen = IntentDatasetGenerator()
-        gen.generate(target=5500)
+        gen.generate(target=5000)
         gen.save()
         return 0
 

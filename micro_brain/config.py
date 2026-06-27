@@ -38,7 +38,7 @@ NN_CONFIG = {
     "hidden_1": 64,          # First hidden layer
     "hidden_2": 32,          # Second hidden layer
     "learning_rate": 0.01,
-    "epochs": 100,
+    "epochs": 15,
     "batch_size": 32,
     "validation_split": 0.2,
     "test_split": 0.1,
@@ -70,6 +70,9 @@ INTENTS = [
     "HOME",
     "BACK",
     "SETTING",
+    "PYTHON_CODING",
+    "AI_NEWS_MODELS",
+    "CAPABILITIES",
     "UNKNOWN",
 ]
 

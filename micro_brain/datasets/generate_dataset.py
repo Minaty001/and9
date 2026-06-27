@@ -81,7 +81,7 @@ class IntentDatasetGenerator:
             "police", "driver", "helper", "john", "alice",
         ]
 
-    def generate(self, target: int = 9500) -> list:
+    def generate(self, target: int = 5000) -> list:
         """
         Generate the full dataset with at least `target` examples.
         Returns list of (text, intent_label_index) tuples.
@@ -107,15 +107,24 @@ class IntentDatasetGenerator:
             (self._gen_home, "HOME", 250),
             (self._gen_back, "BACK", 250),
             (self._gen_setting, "SETTING", 300),
-            (self._gen_unknown, "UNKNOWN", 500),
+            (self._gen_python_coding, "PYTHON_CODING", 1800),
+            (self._gen_ai_news_models, "AI_NEWS_MODELS", 1800),
+            (self._gen_capabilities, "CAPABILITIES", 1800),
+            (self._gen_unknown, "UNKNOWN", 800),
         ]
 
         intent_map = {name: idx for idx, name in enumerate(INTENTS)}
 
+        # Scale count to sum up to target
+        total_default = sum(count for _, _, count in generators)
+        scale = target / total_default
+
         examples = []
         for gen_func, intent_name, count in generators:
+            scaled_count = int(count * scale)
             intent_idx = intent_map[intent_name]
-            texts = gen_func(count)
+            texts = gen_func(scaled_count)
+            texts = self._ensure_count(texts, scaled_count)
             for text in texts:
                 examples.append({"text": text, "intent": intent_name, "label": intent_idx})
 
@@ -137,6 +146,341 @@ class IntentDatasetGenerator:
             print(f"  {intent:20s}: {count:4d}")
 
         return examples
+
+    def _ensure_count(self, texts: list, count: int) -> list:
+        """Ensure texts list contains exactly count elements by repeating or slicing."""
+        if not texts:
+            return ["dummy example"] * count
+        return (texts * (count // len(texts) + 2))[:count]
+
+    def _gen_python_coding(self, count: int) -> list:
+        actions = [
+            "read a file line by line", "write json data to a file", "sort a list of dictionaries by key",
+            "find all prime numbers up to n", "reverse a string", "make an HTTP GET request",
+            "parse a JSON string", "connect to a PostgreSQL database", "calculate the factorial of a number",
+            "generate a random number between 1 and 100", "format a string with variables",
+            "merge two dictionaries", "download an image from a URL", "create a class with inheritance",
+            "remove duplicates from a list", "find the intersection of two lists",
+            "convert a string to a datetime object", "check if a key exists in a dict",
+            "get the current working directory", "execute a shell command", "convert celsius to fahrenheit",
+            "check if string is palindrome", "sum all items in a list", "find the maximum value in a list",
+            "group elements in a list", "flatten a nested list", "generate a UUID", "check if file exists",
+            "read environment variables", "create a directory if not exists", "zip a folder", "unzip a file",
+            "send an email via smtp", "hash a password with bcrypt", "serialize python object with pickle",
+            "convert csv to json", "parse XML data", "validate email address format", "find regex matches in text",
+            "replace substring in a string", "split string by delimiter", "strip whitespace from string",
+            "count word frequency in text", "get length of a list", "convert list to string",
+            "check if list is empty", "append elements to a list", "remove element by index",
+            "pop element from list", "slice a list in python"
+        ]
+
+        action_gerunds = [
+            "reading a file line by line", "writing json data to a file", "sorting a list of dictionaries",
+            "finding prime numbers", "reversing a string", "making an HTTP GET request",
+            "parsing JSON", "connecting to database", "calculating factorial", "generating random numbers",
+            "merging dictionaries", "creating classes", "removing duplicates", "flattening lists",
+            "hashing passwords", "parsing CSV", "validating emails", "using regex", "slicing lists"
+        ]
+
+        action_3rd_persons = [
+            "reads a file line by line", "writes json data to a file", "sorts a list of dictionaries",
+            "finds prime numbers", "reverses a string", "makes an HTTP GET request",
+            "parses JSON", "calculates factorial", "generates random numbers", "merges two dicts",
+            "removes duplicate items", "flattens list", "hashes a password", "converts csv to json"
+        ]
+
+        concepts = [
+            "list comprehension", "decorators", "generators", "iterators", "lambda functions",
+            "virtual environment", "dict comprehension", "args and kwargs", "dunder methods",
+            "object-oriented programming", "multiprocessing", "threading", "context manager",
+            "with statement", "dataclasses", "type hinting", "asyncio", "list slicing",
+            "decorators with arguments", "global variables", "shallow vs deep copy", "mutable vs immutable",
+            "try except blocks", "finally block", "custom exceptions", "logging module",
+            "pip package manager", "requirements.txt", "docstrings", "pep 8 style guide",
+            "f-strings", "walrus operator", "set operations", "tuple unpacking", "zip function",
+            "enumerate function", "map and filter", "list vs tuple", "dict vs set", "classmethods and staticmethods",
+            "property decorator", "super() function", "operator overloading", "multiple inheritance",
+            "abstract base classes", "metaclasses", "memory management in python", "garbage collection"
+        ]
+
+        errors = [
+            "IndentationError", "SyntaxError", "TypeError", "ValueError", "NameError",
+            "AttributeError", "KeyError", "IndexError", "ZeroDivisionError", "FileNotFoundError",
+            "ModuleNotFoundError", "RecursionError", "StopIteration", "ImportError", "RuntimeError",
+            "AssertionError", "KeyboardInterrupt", "MemoryError", "OverflowError", "PermissionError"
+        ]
+
+        ml_actions = [
+            "train a machine learning model", "split data into train and test sets", "calculate mean squared error",
+            "normalize features using standard scaler", "build a convolutional neural network", "fine-tune a BERT model",
+            "apply k-means clustering", "plot a confusion matrix", "compute cross-validation score",
+            "save a trained model using joblib", "load a PyTorch model state dict", "create a custom PyTorch dataset",
+            "define a loss function and optimizer", "perform grid search parameter tuning",
+            "handle missing values in a pandas dataframe", "one-hot encode categorical features",
+            "calculate precision recall and f1 score", "train a support vector machine", "implement gradient descent",
+            "plot ROC curve", "calculate cosine similarity between vectors", "train a logistic regression",
+            "fit a random forest classifier", "evaluate model on validation set", "preprocess text data for NLP",
+            "tokenize input text using HuggingFace", "define a sequential model in Keras", "use early stopping during training",
+            "compute gradient using PyTorch autograd", "plot learning curves of model training",
+            "compute correlation matrix using pandas", "perform feature selection", "impute missing data",
+            "detect outliers using Isolation Forest", "train a gradient boosting classifier", "apply principal component analysis PCA",
+            "save PyTorch model", "load TensorFlow model", "train a deep learning model", "predict labels using scikit-learn",
+            "get feature importances from random forest", "visualize decision boundary", "plot precision recall curve",
+            "calculate area under ROC curve ROC AUC", "train an XGBoost model", "implement k-fold cross validation"
+        ]
+
+        ml_concepts = [
+            "supervised learning", "unsupervised learning", "overfitting and underfitting", "regularization L1 and L2",
+            "backpropagation", "activation functions ReLU and Sigmoid", "dropout regularization",
+            "learning rate schedule", "transfer learning", "feature engineering", "principal component analysis PCA",
+            "confusion matrix", "gradient boosting", "neural network architecture", "cross entropy loss",
+            "stochastic gradient descent SGD", "adam optimizer", "batch normalization", "autoencoders",
+            "recurrent neural networks RNN", "convolutional neural networks CNN", "generative adversarial networks GAN",
+            "reinforcement learning", "decision trees", "random forest", "support vector machines SVM",
+            "k-nearest neighbors KNN", "naive bayes classifier", "linear regression", "logistic regression",
+            "hyperparameter optimization", "cross validation", "bias variance tradeoff", "precision recall tradeoff",
+            "mean absolute error MAE", "mean squared error MSE", "root mean squared error RMSE",
+            "transformer architecture", "attention mechanism", "self attention", "embeddings", "word2vec",
+            "t-SNE visualization", "cosine similarity", "Euclidean distance", "loss functions",
+            "optimizers", "learning rate decay", "weight decay", "momentum in SGD"
+        ]
+
+        ml_errors = [
+            "ValueError shapes not aligned", "RuntimeError CUDA out of memory", "KeyError column not found",
+            "ModuleNotFoundError sklearn", "ModuleNotFoundError tensorflow", "ModuleNotFoundError torch",
+            "ValueError Found input variables with inconsistent numbers of samples",
+            "NameError name pd is not defined", "NameError name np is not defined"
+        ]
+
+        actions.extend(ml_actions)
+        concepts.extend(ml_concepts)
+        errors.extend(ml_errors)
+
+        templates = [
+            "how to {action} in python",
+            "write a python code to {action}",
+            "python function for {action}",
+            "how do I {action} in python",
+            "python script to {action}",
+            "create a python script that {action_gerund}",
+            "write a function in python that {action_3rd_person}",
+            "can you show me python code to {action}",
+            "give me python code to {action}",
+            "write code in python to {action}",
+            "how {action} in python 3",
+            "explain {concept} in python",
+            "what is {concept} in python",
+            "how does {concept} work in python",
+            "python {concept} example",
+            "show me an example of {concept} in python",
+            "write a python script using {concept}",
+            "python code demonstrating {concept}",
+            "how to use {concept} in python",
+            "explain the concept of {concept} in python",
+            "fix python {error} error",
+            "why am I getting {error} in python",
+            "how to solve {error} in python",
+            "python {error} error handling",
+            "handle {error} exception in python",
+            "python code to fix {error}",
+            "what causes {error} in python",
+            "debug python {error}",
+            "python syntax for {concept}",
+            "how to avoid {error} in python code"
+        ]
+
+        texts = []
+        for t in templates:
+            if "{action}" in t:
+                for act in actions:
+                    texts.append(t.format(action=act))
+            elif "{action_gerund}" in t:
+                for ger in action_gerunds:
+                    texts.append(t.format(action_gerund=ger))
+            elif "{action_3rd_person}" in t:
+                for thd in action_3rd_persons:
+                    texts.append(t.format(action_3rd_person=thd))
+            elif "{concept}" in t:
+                for con in concepts:
+                    texts.append(t.format(concept=con))
+            elif "{error}" in t:
+                for err in errors:
+                    texts.append(t.format(error=err))
+
+        code_snippets = [
+            "def my_function(x): return x * 2",
+            "import os\nos.listdir('.')",
+            "import numpy as np",
+            "import pandas as pd",
+            "import json",
+            "with open('file.txt', 'r') as f: print(f.read())",
+            "class MyClass:\n    def __init__(self):\n        pass",
+            "[x**2 for x in range(10) if x % 2 == 0]",
+            "lambda x, y: x + y",
+            "try:\n    x = 1/0\nexcept ZeroDivisionError:\n    pass",
+            "import torch\nimport torch.nn as nn\nclass Net(nn.Module):",
+            "from sklearn.model_selection import train_test_split\nX_train, X_test = train_test_split(X)",
+            "from sklearn.ensemble import RandomForestClassifier\nclf = RandomForestClassifier().fit(X, y)",
+            "import tensorflow as tf\nmodel = tf.keras.Sequential()",
+            "import pandas as pd\ndf = pd.read_csv('data.csv')",
+            "loss = criterion(outputs, targets)\nloss.backward()\noptimizer.step()",
+            "from sklearn.metrics import accuracy_score\nacc = accuracy_score(y_true, y_pred)"
+        ]
+        texts.extend(code_snippets)
+
+        texts = [self._add_noise(t) for t in texts]
+        random.shuffle(texts)
+        return texts
+
+    def _gen_ai_news_models(self, count: int) -> list:
+        models = [
+            "Gemini 3.5 Flash", "Gemini 2.0 Flash", "Gemini 1.5 Pro", "Gemini 3.5 Pro",
+            "GPT-5", "GPT-4o", "GPT-4", "Claude 3.5 Sonnet", "Claude 4 Sonnet",
+            "Claude 3.5 Opus", "Claude 4 Opus", "Llama 4", "Llama 3.1", "Llama 3.2",
+            "DeepSeek-V3", "DeepSeek-R1", "DeepSeek-Coder", "Qwen 3", "Qwen 2.5-Coder",
+            "Mistral Large 3", "Grok 3", "Grok 2", "Phi-4", "Command R+"
+        ]
+        
+        actions = [
+            "what is the release date of", "tell me about the performance of",
+            "how to run {model} locally", "compare {model} with GPT-4o",
+            "benchmark results of", "context window size of", "pricing of API for",
+            "is {model} open source", "architecture of", "does {model} support reasoning",
+            "how to fine tune", "download weights for", "running {model} on termux",
+            "ollama support for", "system requirements for", "how many parameters in"
+        ]
+
+        news_topics = [
+            "NVIDIA Blackwell Ultra GPUs", "NVIDIA H200 AI chips", "Apple iOS 19 AI features",
+            "Apple Intelligence updates", "Google Gemini 3.5 announcements", "Google I/O 2026 AI releases",
+            "DeepSeek open source model release", "Anthropic Claude 4 Opus launch", "GPT-5 release date and leak",
+            "EU AI Act safety regulations", "Artificial General Intelligence AGI roadmap", "AI agents orchestration framework",
+            "Sora v2 text-to-video generator", "Veo 2 video generation model", "Kling AI global release",
+            "Suno v4 music generator", "Udio v2 text to music", "Midjourney v7 release date",
+            "Stable Diffusion 3.5 release", "AI safety summit 2026", "neuromorphic hardware breakthrough",
+            "quantum computing AI acceleration", "robotics transformer models RT-3", "humanoid robots powered by LLM"
+        ]
+
+        news_actions = [
+            "what are the latest updates on", "what is the news about", "explain the recent announcement regarding",
+            "tell me about", "latest news on", "what happened with", "is there any update on",
+            "summarize the news about", "give me the latest trends in", "any recent breakthroughs in"
+        ]
+
+        templates = [
+            "{action} {model}",
+            "{news_action} {news_topic}",
+            "what is the best AI model in 2026",
+            "latest AI news today",
+            "new LLM releases in 2026",
+            "compare {model} and {other_model}",
+            "explain the reasoning capabilities of {model}",
+            "is {model} better than {other_model}",
+            "latest AI news",
+            "current state of AGI in 2026",
+            "what are the top 10 models in HuggingFace right now",
+            "which model has the largest context window in 2026"
+        ]
+
+        texts = []
+        for t in templates:
+            if "{action}" in t:
+                for act in actions:
+                    for mod in models[:10]:
+                        texts.append(t.format(action=act, model=mod))
+            elif "{news_action}" in t:
+                for n_act in news_actions:
+                    for topic in news_topics:
+                        texts.append(t.format(news_action=n_act, news_topic=topic))
+            elif "{model}" in t and "{other_model}" in t:
+                for mod1 in models[:8]:
+                    for mod2 in models[8:16]:
+                        texts.append(t.format(model=mod1, other_model=mod2))
+            elif "{model}" in t:
+                for mod in models:
+                    texts.append(t.format(model=mod))
+            else:
+                texts.append(t)
+
+        news_snippets = [
+            "Google announced Gemini 3.5 Flash with 2 million context length",
+            "NVIDIA Blackwell GPUs are shipping in 2026",
+            "DeepSeek-R1 reasoning model achieves parity with OpenAI o1 on math benchmarks",
+            "Anthropic launches Claude 4 Opus with state of the art agentic capabilities",
+            "OpenAI GPT-5 is scheduled for release in late 2026 according to insiders",
+            "Apple iOS 19 introduces local agentic workflows powered by iOS-on-device LLM",
+            "EU AI Act safety compliance rules become active in 2026",
+            "Sora v2 released with photorealistic video generation up to 2 minutes"
+        ]
+        texts.extend(news_snippets)
+
+        texts = [self._add_noise(t) for t in texts]
+        random.shuffle(texts)
+        return texts
+
+    def _gen_capabilities(self, count: int) -> list:
+        subjects = [
+            "what can you do", "what tasks can you perform", "what are your features",
+            "list your capabilities", "what functionalities do you have", "what can this app do",
+            "what are the supported commands", "how can you help me", "what are your options",
+            "what features do you support", "show me what you can do", "what is your purpose",
+            "what tasks do you handle", "tell me your functionalities", "list your main features",
+            "what can you automate", "what are you capable of", "what is your job",
+            "show me your skills", "what skills do you have", "what actions can you take",
+            "who made jarvis", "who created jarvis", "who built jarvis", "who is minaty",
+            "who is the developer of jarvis", "what is the current status of jarvis"
+        ]
+
+        specifics = [
+            "can you set alarms", "can you play music", "what apps can you open",
+            "can you make phone calls", "can you send messages", "can you check the weather",
+            "can you tell the time", "can you tell the date", "can you turn on flashlight",
+            "can you control the volume", "can you write python code", "can you explain machine learning",
+            "can you help with coding", "can you search the web", "can you recall memories",
+            "can you remember things", "can you automate routines", "can you track habits",
+            "is jarvis a prototype", "are you just a prototype", "is minaty building more features",
+            "will jarvis get more functionalities", "will minaty add more functions", "is this assistant a prototype"
+        ]
+
+        hindi_variants = [
+            "kya kar sakte ho", "tum kya kya kar sakte ho", "capabilities kya hain",
+            "features kya hain tumhare", "kaam kya hai tumhara", "tumhari capabilities kya hain",
+            "kya tum music chala sakte ho", "kya tum alarm laga sakte ho", "phone call kar sakte ho kya",
+            "kya tum app khol sakte ho", "options kya hain", "commands kounsi support karte ho",
+            "jarvis kisne banaya", "minaty koun hai", "jarvis prototype hai kya", "kya minaty aur features bana raha hai"
+        ]
+
+        templates = [
+            "{subject}",
+            "tell me {subject}",
+            "show me {subject}",
+            "can you list {subject}",
+            "what are the details of {subject}",
+            "do you have {subject}",
+            "{specific}",
+            "can you tell me if {specific}",
+            "do you know if {specific}",
+            "is it possible that {specific}",
+            "{hindi}",
+            "mujhe batao {hindi}",
+            "aap {hindi}"
+        ]
+
+        texts = []
+        for t in templates:
+            if "{subject}" in t:
+                for sub in subjects:
+                    texts.append(t.format(subject=sub))
+            elif "{specific}" in t:
+                for spec in specifics:
+                    texts.append(t.format(specific=spec))
+            elif "{hindi}" in t:
+                for hin in hindi_variants:
+                    texts.append(t.format(hindi=hin))
+
+        texts = [self._add_noise(t) for t in texts]
+        random.shuffle(texts)
+        return texts
 
     def save(self, filename: str = "intents.json"):
         """Save dataset to JSON file."""
@@ -659,7 +1003,7 @@ class IntentDatasetGenerator:
             self._gen_flashlight_on, self._gen_flashlight_off,
             self._gen_volume_up, self._gen_volume_down,
             self._gen_home, self._gen_back,
-            self._gen_setting, self._gen_unknown,
+            self._gen_setting, self._gen_python_coding, self._gen_ai_news_models, self._gen_capabilities, self._gen_unknown,
         ]
         intent_map = {name: idx for idx, name in enumerate(INTENTS)}
         intent_names = list(intent_map.keys())
@@ -707,6 +1051,6 @@ class IntentDatasetGenerator:
 
 if __name__ == "__main__":
     generator = IntentDatasetGenerator()
-    examples = generator.generate(target=9500)
+    examples = generator.generate(target=5000)
     path = generator.save("intents.json")
     generator.get_split()

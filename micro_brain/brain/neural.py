@@ -56,6 +56,14 @@ class NeuralConfig:
     vocab_path: str = NN_CONFIG["vocab_path"]
 
 
+def _stable_hash(s: str) -> int:
+    """Stable, deterministic string hash for feature consistency across runs."""
+    h = 5381
+    for char in s:
+        h = ((h << 5) + h + ord(char)) & 0xFFFFFFFF
+    return h
+
+
 class TextEmbedding:
     """
     Lightweight text-to-vector embedding.
@@ -160,10 +168,10 @@ class TextEmbedding:
 
         # ── 3. Word-level features (dims 56-71) ───────────────
         for word in words:
-            h = hash(word) & 0x0F
+            h = _stable_hash(word) & 0x0F
             embedding[56 + h] += 1.0
         for i in range(len(words) - 1):
-            h = hash(words[i] + '_' + words[i + 1]) & 0x0F
+            h = _stable_hash(words[i] + '_' + words[i + 1]) & 0x0F
             embedding[64 + h] += 1.0
 
         # ── 4. Direction / opposition (dims 72-79) ────────────
@@ -520,6 +528,23 @@ class TinyNeuralNetwork:
 
         try:
             data = np.load(load_path)
+            # First, check shapes for all layers to avoid partial loads or shape mismatches
+            for i, layer in enumerate(self.layers):
+                w_key = f"layer_{i}_weights"
+                b_key = f"layer_{i}_bias"
+                if w_key in data and b_key in data:
+                    w_loaded = data[w_key]
+                    b_loaded = data[b_key]
+                    if w_loaded.shape != layer.weights.shape or b_loaded.shape != layer.bias.shape:
+                        logger.warning(
+                            f"NeuralBrain: Model shape mismatch in layer {i}. "
+                            f"Expected weights {layer.weights.shape}, got {w_loaded.shape}. "
+                            f"Expected bias {layer.bias.shape}, got {b_loaded.shape}. "
+                            "Ignoring loaded weights."
+                        )
+                        return False
+
+            # If all shapes match, load them
             for i, layer in enumerate(self.layers):
                 w_key = f"layer_{i}_weights"
                 b_key = f"layer_{i}_bias"

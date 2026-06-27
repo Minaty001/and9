@@ -99,12 +99,17 @@ class Trainer:
         start_time = time.time()
 
         # Train
+        epochs_to_run = epochs or NN_CONFIG["epochs"]
+        if len(train_texts) >= 200000:
+            epochs_to_run = min(epochs_to_run, 2)
+            logger.info(f"Dataset is very large ({len(train_texts)} samples). Capping epochs at {epochs_to_run} to prevent long training time.")
+
         history = self.network.train(
             texts=train_texts,
             labels=train_labels,
             val_texts=val_texts,
             val_labels=val_labels,
-            epochs=epochs or NN_CONFIG["epochs"],
+            epochs=epochs_to_run,
             lr=learning_rate or NN_CONFIG["learning_rate"],
         )
 
