@@ -86,7 +86,7 @@ def _get_neural_brain():
     if _NEURAL_BRAIN is None:
         import sys
         import os
-        mb_dir = "/root/and9/micro_brain"
+        mb_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "micro_brain"))
         if mb_dir not in sys.path:
             sys.path.append(mb_dir)
         try:

@@ -119,17 +119,22 @@ def chat():
         return jsonify({"reply": "Please provide a message."})
 
     try:
-        result = get_orch().run(message)
+        from app.api.routes import get_and9
+        result = get_and9().process(message)
         
-        # Extract intent from metadata if device action
+        # Extract intent from action/payload or metadata if device action
         intent = None
+        if result.get("action") and result.get("action") != "chat":
+            intent = result.get("payload") or result.get("action")
+            
         metadata = result.get("metadata", {})
-        if metadata.get("task") == "device" and (metadata.get("action") in ["PLAY_VIDEO", "LAUNCH_APP", "SET_ALARM", "CREATE_EVENT", "CALL"] or "intent" in metadata):
-            intent = metadata.get("intent") or metadata.get("payload")
+        if not intent:
+            if metadata.get("task") == "device" and (metadata.get("action") in ["PLAY_VIDEO", "LAUNCH_APP", "SET_ALARM", "CREATE_EVENT", "CALL"] or "intent" in metadata):
+                intent = metadata.get("intent") or metadata.get("payload")
 
         return jsonify({
             "reply":       result.get("response", ""),
-            "agent":       result.get("agent", "chat"),
+            "agent":       result.get("intent") or "chat",
             "time_ms":     result.get("time_ms", 0),
             "image_url":   result.get("metadata", {}).get("image_url"),
             "youtube_url": result.get("metadata", {}).get("youtube_url"),
@@ -137,7 +142,7 @@ def chat():
             "status":      "success" if result.get("success", True) else "error",
             "brain":       result.get("brain", {}),
             "metadata":    result.get("metadata", {}),
-            "intent":      intent,  # NEW: Device intent for frontend execution
+            "intent":      intent,  # Device intent for frontend execution
         })
     except Exception as e:
         logger.exception("Chat endpoint error")

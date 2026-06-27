@@ -942,7 +942,7 @@ class IntentDatasetGenerator:
         return texts[:count]
 
     def _gen_unknown(self, count: int) -> list:
-        """Generate out-of-scope / unknown examples."""
+        """Generate out-of-scope / unknown examples, including math equations."""
         unknown_phrases = [
             "hello", "hi", "hey", "how are you", "kaise ho",
             "good morning", "good night", "thank you",
@@ -989,7 +989,78 @@ class IntentDatasetGenerator:
             "should I learn python or javascript", "give me a dynamic workout plan",
             "how do I improve my memory?", "how to prepare for a coding interview",
         ]
-        return (unknown_phrases * 5)[:count]
+        
+        # Dynamically generate math, human science/behavior, and history expressions
+        math_ops = ["+", "-", "*", "/", "%", "**"]
+        math_templates = [
+            "calculate {a} {op} {b}",
+            "what is {a} {op} {b}",
+            "solve {a} {op} {b}",
+            "maths equation {a} {op} {b}",
+            "{a} {op} {b} is what",
+            "{a} {op} {b} solve karo",
+            "{a} {op} {b} kitna hoga",
+            "value of {a} {op} {b}"
+        ]
+        
+        behavior_actions = ["sleep", "dream", "cry", "laugh", "socialize", "procrastinate", "feel fear", "form habits", "cooperate", "compete"]
+        behavior_concepts = ["cognitive dissonance", "operant conditioning", "social conformity", "neuroplasticity", "groupthink", "altruism", "bystander effect", "confirmation bias", "human psychology", "cognitive psychology", "behavioral science"]
+        behavior_templates = [
+            "explain {concept} in human psychology",
+            "why do humans {action}?",
+            "what is the scientific explanation for why humans {action}?",
+            "explain human behavior concerning {concept}",
+            "how does {concept} influence behavior",
+            "what is the psychology behind {action}",
+            "human science and behavior: {concept}",
+            "why do we {action} when stressed"
+        ]
+        
+        history_events = ["French Revolution", "World War 2", "Industrial Revolution", "Fall of Rome", "Ancient Egypt", "Renaissance", "Magna Carta", "Cold War", "Ottoman Empire", "Mauryan Empire", "American Civil War"]
+        history_figures = ["Julius Caesar", "Napoleon", "Alexander the Great", "Mahatma Gandhi", "Abraham Lincoln", "Cleopatra", "Genghis Khan", "Ashoka the Great", "Winston Churchill"]
+        history_templates = [
+            "what happened during the {event}?",
+            "explain the significance of {figure} in history",
+            "top historical things about {event}",
+            "history of {event}",
+            "who was {figure} in historical context",
+            "tell me about {figure}",
+            "what caused the {event}",
+            "list top historical facts about {event}"
+        ]
+        
+        dyn_examples = []
+        math_count = count // 4
+        behavior_count = count // 4
+        history_count = count // 4
+        
+        # 1. Math
+        for _ in range(math_count):
+            a = random.randint(1, 1000)
+            b = random.randint(1, 1000)
+            op = random.choice(math_ops)
+            temp = random.choice(math_templates)
+            dyn_examples.append(temp.format(a=a, b=b, op=op))
+            
+        # 2. Behavior
+        for _ in range(behavior_count):
+            action = random.choice(behavior_actions)
+            concept = random.choice(behavior_concepts)
+            temp = random.choice(behavior_templates)
+            dyn_examples.append(temp.format(action=action, concept=concept))
+            
+        # 3. History
+        for _ in range(history_count):
+            event = random.choice(history_events)
+            figure = random.choice(history_figures)
+            temp = random.choice(history_templates)
+            dyn_examples.append(temp.format(event=event, figure=figure))
+            
+        phrases = unknown_phrases * (count // len(unknown_phrases) + 2)
+        random.shuffle(phrases)
+        result = phrases[:count - len(dyn_examples)] + dyn_examples
+        random.shuffle(result)
+        return result
 
     def _gen_random_examples(self, count: int) -> list:
         """Generate random mix of examples."""

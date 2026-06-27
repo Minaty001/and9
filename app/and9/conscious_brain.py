@@ -67,6 +67,12 @@ class ConsciousBrain:
 
             # Parse orchestrator response
             if isinstance(response, dict):
+                meta = {"raw_response": response}
+                if "metadata" in response and isinstance(response["metadata"], dict):
+                    meta.update(response["metadata"])
+                for key in ["image_url", "youtube_url", "sources"]:
+                    if key in response:
+                        meta[key] = response[key]
                 return BrainResult(
                     response=response.get("response", str(response)),
                     action=response.get("action") or "chat",
@@ -74,7 +80,7 @@ class ConsciousBrain:
                     brain=BrainType.CONSCIOUS,
                     intent=IntentType.CHAT,
                     execution_time_ms=elapsed,
-                    metadata={"raw_response": response},
+                    metadata=meta,
                 )
 
             return BrainResult(
