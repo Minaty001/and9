@@ -270,7 +270,8 @@ class TestUnderstandingIntegration:
     """End-to-end tests: UnderstandingEngine.analyze() with NLPPipeline active."""
 
     @pytest.fixture(scope="class")
-    def engine(self):
+    @classmethod
+    def engine(cls):
         from backend.core.understanding import UnderstandingEngine
         return UnderstandingEngine()
 
