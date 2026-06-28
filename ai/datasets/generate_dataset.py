@@ -110,6 +110,10 @@ class IntentDatasetGenerator:
             (self._gen_python_coding, "PYTHON_CODING", 1800),
             (self._gen_ai_news_models, "AI_NEWS_MODELS", 1800),
             (self._gen_capabilities, "CAPABILITIES", 1800),
+            (self._gen_web_coding, "WEB_CODING", 3000),
+            (self._gen_general_knowledge, "GENERAL_KNOWLEDGE", 6000),
+            (self._gen_medicine_knowledge, "MEDICINE_KNOWLEDGE", 3000),
+            (self._gen_movie_knowledge, "MOVIE_KNOWLEDGE", 3000),
             (self._gen_unknown, "UNKNOWN", 800),
         ]
 
@@ -1062,6 +1066,508 @@ class IntentDatasetGenerator:
         random.shuffle(result)
         return result
 
+    def _gen_web_coding(self, count: int) -> list:
+        """Generate HTML, CSS, JS coding examples."""
+        html_actions = [
+            "create a button in html", "make a form with input fields", "add an image to a webpage",
+            "create a navigation bar", "build a table with rows and columns", "add a video embed",
+            "create a dropdown menu", "make a list in html", "add a link to another page",
+            "use semantic html tags", "create a div container", "add a footer to a page",
+            "build a header section", "create a progress bar", "make an input checkbox",
+            "add a radio button group", "create a textarea", "use html data attributes",
+            "build a search input field", "create a file upload button", "add meta tags to head",
+            "create an ordered list", "make an unordered list", "add a horizontal line",
+            "create a span element", "use iframe to embed content", "build a simple calculator in html",
+            "create a login page", "make a contact form", "add a submit button",
+            "create a card component in html", "build a hero section", "make a modal dialog",
+            "create an accordion in html", "build a carousel slider", "add a tooltip",
+            "create a pricing table", "build a blog post layout", "make a sidebar layout",
+            "create a 404 error page",
+        ]
+        css_actions = [
+            "center a div using css", "style a button with hover effect", "create a css grid layout",
+            "make a flexbox responsive design", "add animations with css keyframes", "style text with fonts",
+            "create a gradient background", "add box shadow to elements", "use css variables",
+            "make a responsive navbar with media queries", "style a form input", "add transitions to elements",
+            "create a css card hover effect", "build a loading spinner with css", "make a sticky header",
+            "use css pseudo classes", "create a modal overlay", "add border radius to elements",
+            "style scrollbar with css", "make a css-only dropdown", "create a parallax effect",
+            "use css transform property", "create a responsive image gallery", "add a linear gradient",
+            "make a circular element with css", "style links with different states",
+            "create a css progress bar", "build a tooltip with css", "make a masonry layout",
+            "use css filter effects", "create a dark mode toggle", "style a checkbox with css",
+            "make a sliding menu with css", "add opacity and transparency",
+        ]
+        js_actions = [
+            "write a javascript function to add two numbers", "create an array and iterate over it",
+            "make an api call using fetch", "add event listener to a button",
+            "create a promise and handle it", "use async await syntax",
+            "manipulate the dom elements", "create a class in javascript es6",
+            "use array methods map filter reduce", "handle form submission with javascript",
+            "create a timer using settimeout", "build a countdown timer in javascript",
+            "use localstorage to save data", "create a json object and parse it",
+            "add error handling with try catch", "create a modal using javascript",
+            "build a to-do list app", "use destructuring in javascript",
+            "make a simple calculator in javascript", "use template literals",
+            "create a module and export it", "use spread operator in javascript",
+            "build a stopwatch in javascript", "create a slideshow with javascript",
+            "use arrow functions", "handle keyboard events in javascript",
+            "create a shopping cart in javascript", "use the dom queryselector",
+            "build a weather app with api", "create a form validator in javascript",
+        ]
+
+        templates = [
+            "how to {action}",
+            "write code to {action}",
+            "html code for {html_action}",
+            "css code to {css_action}",
+            "javascript code to {js_action}",
+            "how do I {action} in html",
+            "how do I {action} in css",
+            "how do I {action} in javascript",
+            "show me css code to {css_action}",
+            "write a javascript program to {js_action}",
+            "html css code for {html_action}",
+            "teach me how to {action}",
+            "example of {html_action} in html",
+            "example of {css_action} in css",
+            "example of {js_action} in javascript",
+            "create a webpage with {html_action}",
+            "frontend code to {action}",
+        ]
+
+        texts = []
+        for t in templates:
+            if "{html_action}" in t:
+                for a in html_actions:
+                    texts.append(t.format(html_action=a))
+            elif "{css_action}" in t:
+                for a in css_actions:
+                    texts.append(t.format(css_action=a))
+            elif "{js_action}" in t:
+                for a in js_actions:
+                    texts.append(t.format(js_action=a))
+            elif "{action}" in t:
+                for a in html_actions + css_actions + js_actions:
+                    texts.append(t.format(action=a))
+
+        code_snippets = [
+            "<button>Click me</button>",
+            "<div class=\"container\"></div>",
+            "<form><input type=\"text\"></form>",
+            "div { display: flex; justify-content: center; }",
+            ".card { box-shadow: 0 2px 5px rgba(0,0,0,0.1); }",
+            "@media (max-width: 768px) { body { font-size: 14px; } }",
+            "@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }",
+            "document.getElementById('app').innerHTML = '<h1>Hello</h1>';",
+            "fetch('/api/data').then(r => r.json()).then(d => console.log(d));",
+            "const add = (a, b) => a + b;",
+            "async function getData() { const res = await fetch(url); return res.json(); }",
+            "const arr = [1,2,3].map(x => x * 2);",
+            "document.querySelector('.btn').addEventListener('click', () => alert('clicked'));",
+            "export default function App() { return <div>Hello React</div>; }",
+            "const [count, setCount] = useState(0);",
+        ]
+        texts.extend(code_snippets)
+
+        texts = [self._add_noise(t) for t in texts]
+        random.shuffle(texts)
+        return texts[:count]
+
+    def _gen_general_knowledge(self, count: int) -> list:
+        """Generate general knowledge examples spanning 2005-2026."""
+        events = [
+            ("2005", "YouTube was founded"),
+            ("2005", "Hurricane Katrina devastated New Orleans"),
+            ("2006", "Twitter was launched"),
+            ("2006", "Pluto was reclassified as a dwarf planet"),
+            ("2007", "The first iPhone was released by Apple"),
+            ("2007", "Facebook expanded globally"),
+            ("2008", "Barack Obama was elected US President"),
+            ("2008", "The global financial crisis began"),
+            ("2008", "Bitcoin whitepaper was published"),
+            ("2009", "Swine flu H1N1 pandemic"),
+            ("2009", "WhatsApp was founded"),
+            ("2010", "Instagram was launched"),
+            ("2010", "The Arab Spring protests began"),
+            ("2010", "Deepwater Horizon oil spill"),
+            ("2011", "Osama bin Laden was killed"),
+            ("2011", "The Syrian civil war began"),
+            ("2011", "IBM Watson won Jeopardy"),
+            ("2012", "Felix Baumgartner jumped from space"),
+            ("2012", "Curiosity rover landed on Mars"),
+            ("2013", "Edward Snowden leaked NSA documents"),
+            ("2013", "Pope Francis became pope"),
+            ("2014", "Malaysia Airlines MH370 disappeared"),
+            ("2014", "Ebola outbreak in West Africa"),
+            ("2014", "Russia annexed Crimea"),
+            ("2015", "Paris climate agreement was signed"),
+            ("2015", "The migrant crisis in Europe"),
+            ("2015", "Google DeepMind AlphaGo defeated Lee Sedol in 2016"),
+            ("2016", "Brexit referendum passed in the UK"),
+            ("2016", "Donald Trump was elected US President"),
+            ("2017", "The #MeToo movement went viral"),
+            ("2017", "Hurricane Maria hit Puerto Rico"),
+            ("2017", "Bitcoin reached $19000"),
+            ("2018", "GDPR privacy law took effect in Europe"),
+            ("2018", "The Thai cave rescue mission"),
+            ("2018", "Elon Musk launched Falcon Heavy"),
+            ("2019", "COVID-19 pandemic began in Wuhan"),
+            ("2019", "Amazon forest fires"),
+            ("2019", "Hong Kong protests"),
+            ("2020", "COVID-19 declared a global pandemic"),
+            ("2020", "George Floyd protests worldwide"),
+            ("2020", "Joe Biden elected US President"),
+            ("2020", "Vaccines for COVID-19 developed at record speed"),
+            ("2021", "SpaceX civilian spaceflight Inspiration4"),
+            ("2021", "US withdrawal from Afghanistan"),
+            ("2021", "COP26 climate summit"),
+            ("2021", "Chip shortage affected global industries"),
+            ("2022", "Russia invaded Ukraine"),
+            ("2022", "Queen Elizabeth II died"),
+            ("2022", "ChatGPT was released by OpenAI"),
+            ("2022", "US inflation reached 40-year high"),
+            ("2023", "India became the most populous country"),
+            ("2023", "ChatGPT reached 100 million users"),
+            ("2023", "Israel-Hamas war began"),
+            ("2023", "AI safety summit held in the UK"),
+            ("2024", "European Union AI Act was passed"),
+            ("2024", "US presidential election"),
+            ("2024", "Apple Vision Pro released"),
+            ("2024", "Olympics held in Paris"),
+            ("2025", "GPT-5 was released"),
+            ("2025", "DeepSeek-R1 gained global attention"),
+            ("2025", "NVIDIA became the most valuable company"),
+            ("2025", "Quantum computing reached milestone"),
+            ("2026", "NVIDIA Blackwell Ultra GPUs shipped"),
+            ("2026", "Gemini 3.5 Flash with 2M context length"),
+            ("2026", "EU AI Act safety compliance enforced"),
+            ("2026", "Apple iOS 19 AI features launched"),
+        ]
+
+        people = [
+            "Barack Obama", "Donald Trump", "Joe Biden", "Elon Musk", "Jeff Bezos",
+            "Mark Zuckerberg", "Bill Gates", "Steve Jobs", "Tim Cook", "Sam Altman",
+            "Sundar Pichai", "Satya Nadella", "Bernard Arnault", "Warren Buffett",
+            "Taylor Swift", "Beyonce", "Cristiano Ronaldo", "Lionel Messi",
+            "Angela Merkel", "Vladimir Putin", "Xi Jinping", "Narendra Modi",
+            "Volodymyr Zelenskyy", "Kamala Harris", "Greta Thunberg",
+        ]
+
+        science = [
+            "CRISPR gene editing", "James Webb Space Telescope",
+            "quantum computing", "artificial general intelligence",
+            "fusion energy breakthrough", "mRNA vaccines",
+            "Mars colonization plans", "neuralink brain interface",
+            "autonomous electric vehicles", "renewable energy transition",
+            "5G and 6G networks", "lab grown meat", "metaverse",
+            "blockchain technology", "electric vertical takeoff aircraft",
+            "carbon capture technology", "artificial intelligence ethics",
+        ]
+
+        templates = [
+            "what happened in {year}",
+            "tell me about {event}",
+            "what is {event}",
+            "explain {event}",
+            "who is {person}",
+            "tell me about {person}",
+            "what is {person} known for",
+            "history of {event}",
+            "when did {event} happen",
+            "explain {science_topic}",
+            "what is {science_topic}",
+            "tell me about {science_topic} in simple terms",
+            "major events of {year}",
+            "what was the most important event in {year}",
+            "facts about {event}",
+            "list important events from {year}",
+            "what happened in {year} history",
+            "summarize {event}",
+            "how did {event} change the world",
+            "impact of {event}",
+            "explain the significance of {event}",
+        ]
+
+        texts = []
+        for year, event in events:
+            for t in templates:
+                if "{year}" in t and "{event}" not in t:
+                    texts.append(t.format(year=year))
+                elif "{event}" in t and "{year}" not in t:
+                    texts.append(t.format(event=event))
+                elif "{event}" in t and "{year}" in t:
+                    texts.append(t.format(year=year, event=event))
+
+        for person in people:
+            texts.append(f"who is {person}")
+            texts.append(f"tell me about {person}")
+            texts.append(f"what did {person} achieve")
+            texts.append(f"facts about {person}")
+
+        for topic in science:
+            texts.append(f"explain {topic}")
+            texts.append(f"what is {topic}")
+            texts.append(f"how does {topic} work")
+            texts.append(f"latest advances in {topic}")
+
+        texts = [self._add_noise(t) for t in texts]
+        random.shuffle(texts)
+        return texts[:count]
+
+    def _gen_medicine_knowledge(self, count: int) -> list:
+        """Generate basic medicine and health knowledge examples."""
+        medicines = [
+            ("paracetamol", "fever and mild pain relief"),
+            ("ibuprofen", "pain, inflammation and fever"),
+            ("aspirin", "pain relief and blood thinning"),
+            ("amoxicillin", "bacterial infections like strep throat"),
+            ("omeprazole", "acid reflux and heartburn"),
+            ("cetirizine", "allergies and hay fever"),
+            ("metformin", "type 2 diabetes management"),
+            ("atorvastatin", "lowering cholesterol"),
+            ("losartan", "high blood pressure treatment"),
+            ("salbutamol", "asthma relief"),
+            ("omeprazole", "stomach acid reduction"),
+            ("diazepam", "anxiety and muscle spasms"),
+            ("loratadine", "allergy symptoms"),
+            ("ranitidine", "stomach ulcers"),
+            ("insulin", "diabetes management"),
+            ("prednisone", "inflammation and immune suppression"),
+            ("codeine", "mild to moderate pain relief"),
+            ("amitriptyline", "depression and nerve pain"),
+            ("metronidazole", "bacterial and parasitic infections"),
+            ("warfarin", "blood thinning to prevent clots"),
+        ]
+
+        conditions = [
+            "diabetes", "hypertension", "asthma", "common cold", "influenza",
+            "pneumonia", "tuberculosis", "anemia", "migraine", "arthritis",
+            "cancer", "heart disease", "stroke", "Alzheimer's", "dementia",
+            "depression", "anxiety disorder", "eczema", "psoriasis", "UTI",
+            "food poisoning", "hepatitis", "HIV AIDS", "malaria", "dengue",
+            "typhoid", "chickenpox", "measles", "COVID-19", "bronchitis",
+        ]
+
+        body_parts = [
+            "heart", "lungs", "brain", "liver", "kidneys", "stomach",
+            "intestines", "skin", "eyes", "ears", "bones", "muscles",
+        ]
+
+        first_aid = [
+            "treat a minor burn", "perform CPR", "stop bleeding from a cut",
+            "treat a sprained ankle", "help someone who is choking",
+            "treat insect bites", "manage a nosebleed", "deal with a fracture",
+            "treat a fever at home", "handle an allergic reaction",
+            "treat sunburn", "help a fainting person",
+        ]
+
+        symptoms = [
+            "fever", "headache", "cough", "sore throat", "runny nose",
+            "chest pain", "shortness of breath", "nausea", "vomiting",
+            "diarrhea", "fatigue", "dizziness", "rash", "muscle pain",
+            "joint pain", "swelling", "weight loss", "loss of appetite",
+        ]
+
+        templates = [
+            "what is {med} used for",
+            "what does {med} treat",
+            "uses of {med} medicine",
+            "{med} is used for {use}",
+            "what is {condition}",
+            "symptoms of {condition}",
+            "how is {condition} treated",
+            "causes of {condition}",
+            "what causes {symptom}",
+            "how to treat {symptom}",
+            "first aid to {first_aid}",
+            "how to {first_aid}",
+            "basic knowledge about {condition}",
+            "tell me about {condition}",
+            "what is the function of {body_part}",
+            "how does the {body_part} work",
+            "common medicines for {condition}",
+            "side effects of {med}",
+            "what to do when you have {symptom}",
+            "explain {condition} in simple terms",
+            "difference between {condition} and {condition}",
+            "home remedies for {condition}",
+            "when to take {med}",
+            "how does {med} work in the body",
+        ]
+
+        texts = []
+        for med, use in medicines:
+            for t in templates:
+                if "{med}" in t and "{use}" in t:
+                    texts.append(t.format(med=med, use=use))
+                elif "{med}" in t:
+                    texts.append(t.format(med=med))
+                elif "{use}" in t:
+                    pass
+
+        for condition in conditions:
+            for t in templates:
+                if "{condition}" in t:
+                    texts.append(t.format(condition=condition))
+
+        for bp in body_parts:
+            for t in templates:
+                if "{body_part}" in t:
+                    texts.append(t.format(body_part=bp))
+
+        for fa in first_aid:
+            for t in templates:
+                if "{first_aid}" in t:
+                    texts.append(t.format(first_aid=fa))
+
+        for symptom in symptoms:
+            for t in templates:
+                if "{symptom}" in t:
+                    texts.append(t.format(symptom=symptom))
+
+        texts = [self._add_noise(t) for t in texts]
+        random.shuffle(texts)
+        return texts[:count]
+
+    def _gen_movie_knowledge(self, count: int) -> list:
+        """Generate Hollywood movies and famous actors examples."""
+        movies = [
+            ("The Dark Knight", "2008", "Christopher Nolan"),
+            ("Inception", "2010", "Christopher Nolan"),
+            ("Interstellar", "2014", "Christopher Nolan"),
+            ("Titanic", "1997", "James Cameron"),
+            ("Avatar", "2009", "James Cameron"),
+            ("Avengers Endgame", "2019", "Anthony and Joe Russo"),
+            ("Avengers Infinity War", "2018", "Anthony and Joe Russo"),
+            ("The Shawshank Redemption", "1994", "Frank Darabont"),
+            ("Pulp Fiction", "1994", "Quentin Tarantino"),
+            ("The Godfather", "1972", "Francis Ford Coppola"),
+            ("The Godfather Part II", "1974", "Francis Ford Coppola"),
+            ("Fight Club", "1999", "David Fincher"),
+            ("Forrest Gump", "1994", "Robert Zemeckis"),
+            ("The Matrix", "1999", "The Wachowskis"),
+            ("Goodfellas", "1990", "Martin Scorsese"),
+            ("The Silence of the Lambs", "1991", "Jonathan Demme"),
+            ("Schindler's List", "1993", "Steven Spielberg"),
+            ("Jurassic Park", "1993", "Steven Spielberg"),
+            ("Gladiator", "2000", "Ridley Scott"),
+            ("The Lion King", "1994", "Roger Allers and Rob Minkoff"),
+            ("Star Wars A New Hope", "1977", "George Lucas"),
+            ("The Empire Strikes Back", "1980", "Irvin Kershner"),
+            ("Return of the Jedi", "1983", "Richard Marquand"),
+            ("Lord of the Rings Fellowship", "2001", "Peter Jackson"),
+            ("Lord of the Rings Two Towers", "2002", "Peter Jackson"),
+            ("Lord of the Rings Return King", "2003", "Peter Jackson"),
+            ("The Social Network", "2010", "David Fincher"),
+            ("Whiplash", "2014", "Damien Chazelle"),
+            ("La La Land", "2016", "Damien Chazelle"),
+            ("Parasite", "2019", "Bong Joon-ho"),
+            ("Joker", "2019", "Todd Phillips"),
+            ("Oppenheimer", "2023", "Christopher Nolan"),
+            ("Barbie", "2023", "Greta Gerwig"),
+            ("Dune", "2021", "Denis Villeneuve"),
+            ("Dune Part Two", "2024", "Denis Villeneuve"),
+            ("The Martian", "2015", "Ridley Scott"),
+            ("Mad Max Fury Road", "2015", "George Miller"),
+            ("Deadpool", "2016", "Tim Miller"),
+            ("Top Gun Maverick", "2022", "Joseph Kosinski"),
+            ("Everything Everywhere All At Once", "2022", "Daniel Kwan and Daniel Scheinert"),
+        ]
+
+        actors = [
+            ("Leonardo DiCaprio", ["Titanic", "Inception", "The Wolf of Wall Street", "Django Unchained", "Once Upon a Time in Hollywood"]),
+            ("Tom Hanks", ["Forrest Gump", "Cast Away", "Saving Private Ryan", "Toy Story", "The Green Mile"]),
+            ("Robert De Niro", ["The Godfather Part II", "Taxi Driver", "Goodfellas", "The Irishman", "Raging Bull"]),
+            ("Al Pacino", ["The Godfather", "Scarface", "Scent of a Woman", "Heat", "Dog Day Afternoon"]),
+            ("Morgan Freeman", ["The Shawshank Redemption", "Million Dollar Baby", "Bruce Almighty", "Se7en", "Driving Miss Daisy"]),
+            ("Brad Pitt", ["Fight Club", "Once Upon a Time in Hollywood", "Inglourious Basterds", "Moneyball", "Ad Astra"]),
+            ("Meryl Streep", ["The Devil Wears Prada", "Mamma Mia", "Sophie's Choice", "The Iron Lady", "Kramer vs Kramer"]),
+            ("Scarlett Johansson", ["The Avengers", "Lost in Translation", "Marriage Story", "Lucy", "Black Widow"]),
+            ("Denzel Washington", ["Training Day", "Glory", "Malcolm X", "The Equalizer", "Flight"]),
+            ("Jennifer Lawrence", ["The Hunger Games", "Silver Linings Playbook", "American Hustle", "Joy", "X-Men"]),
+            ("Christian Bale", ["The Dark Knight", "American Psycho", "The Fighter", "Vice", "Ford v Ferrari"]),
+            ("Cate Blanchett", ["Blue Jasmine", "Elizabeth", "Carol", "The Aviator", "Lord of the Rings"]),
+            ("Tom Cruise", ["Top Gun", "Mission Impossible", "Jerry Maguire", "Rain Man", "A Few Good Men"]),
+            ("Will Smith", ["The Pursuit of Happyness", "Men in Black", "Ali", "I Am Legend", "Independence Day"]),
+            ("Samuel L Jackson", ["Pulp Fiction", "Jurassic Park", "The Avengers", "Django Unchained", "Snakes on a Plane"]),
+            ("Keanu Reeves", ["The Matrix", "John Wick", "Speed", "Point Break", "Bill and Ted"]),
+            ("Emma Stone", ["La La Land", "Easy A", "The Help", "Birdman", "Poor Things"]),
+            ("Ryan Gosling", ["La La Land", "Drive", "The Notebook", "Blade Runner 2049", "Crazy Stupid Love"]),
+        ]
+
+        awards = [
+            "Academy Awards Oscars", "Golden Globe Awards", "BAFTA Awards",
+            "Cannes Film Festival Palme d'Or", "Emmy Awards", "Screen Actors Guild Awards",
+        ]
+
+        templates = [
+            "who directed {movie}",
+            "tell me about the movie {movie}",
+            "what is {movie} about",
+            "when was {movie} released",
+            "who starred in {movie}",
+            "cast of {movie}",
+            "movies directed by {director}",
+            "best movies by {director}",
+            "what movies did {actor} star in",
+            "tell me about {actor}",
+            "movies featuring {actor}",
+            "who is {actor}",
+            "films by {actor}",
+            "list of {actor} movies",
+            "what is the plot of {movie}",
+            "did {movie} win an Oscar",
+            "box office collection of {movie}",
+            "highest grossing movie of {year}",
+            "famous movies from {year}",
+            "best {award} winning movies",
+            "what movie won best picture in {year}",
+            "who won the Oscar for best actor in {year}",
+            "top hollywood actors of all time",
+            "greatest movies ever made",
+            "highest rated imdb movies",
+            "upcoming movies in {year}",
+            "best sci fi movies",
+            "top action movies",
+            "all time box office hits",
+            "top rated movies on imdb",
+        ]
+
+        texts = []
+        for movie_title, year, director in movies:
+            for t in templates:
+                if "{movie}" in t and "{year}" in t and "{director}" in t:
+                    pass
+                elif "{movie}" in t and "{year}" in t:
+                    texts.append(t.format(movie=movie_title, year=year))
+                elif "{movie}" in t and "{director}" in t:
+                    texts.append(t.format(movie=movie_title, director=director))
+                elif "{year}" in t and "{director}" in t:
+                    pass
+                elif "{movie}" in t:
+                    texts.append(t.format(movie=movie_title))
+                elif "{director}" in t:
+                    texts.append(t.format(director=director))
+                elif "{year}" in t:
+                    texts.append(t.format(year=year))
+
+        for actor, film_list in actors:
+            for t in templates:
+                if "{actor}" in t:
+                    texts.append(t.format(actor=actor))
+            for film in film_list[:3]:
+                texts.append(f"{actor} starred in {film}")
+                texts.append(f"{film} features {actor}")
+
+        for award in awards:
+            texts.append(f"what are the {award}")
+            texts.append(f"tell me about {award}")
+
+        texts = [self._add_noise(t) for t in texts]
+        random.shuffle(texts)
+        return texts[:count]
+
     def _gen_random_examples(self, count: int) -> list:
         """Generate random mix of examples."""
         all_generators = [
@@ -1074,7 +1580,9 @@ class IntentDatasetGenerator:
             self._gen_flashlight_on, self._gen_flashlight_off,
             self._gen_volume_up, self._gen_volume_down,
             self._gen_home, self._gen_back,
-            self._gen_setting, self._gen_python_coding, self._gen_ai_news_models, self._gen_capabilities, self._gen_unknown,
+            self._gen_setting, self._gen_python_coding, self._gen_ai_news_models, self._gen_capabilities,
+            self._gen_web_coding, self._gen_general_knowledge, self._gen_medicine_knowledge, self._gen_movie_knowledge,
+            self._gen_unknown,
         ]
         intent_map = {name: idx for idx, name in enumerate(INTENTS)}
         intent_names = list(intent_map.keys())
