@@ -274,6 +274,7 @@ class TinyNeuralNetwork:
 
     def __init__(self, config: Optional[NeuralConfig] = None):
         _require_numpy()
+        np.random.seed(42)
         self.config = config or NeuralConfig()
         self.layers: List[DenseLayer] = []
         self._build()
