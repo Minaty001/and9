@@ -152,6 +152,13 @@ def _fire(reminder: dict) -> None:
     storage.mark_fired(rid)
     logger.warning("REMINDER FIRED: #%d '%s' (was due: %s)", rid, title, trigger_time)
 
+    # Reschedule if recurring
+    try:
+        from backend.services.reminder.recurring import RecurringEngine
+        RecurringEngine().reschedule(reminder)
+    except Exception as e:
+        logger.error("Failed to reschedule recurring reminder #%d: %s", rid, e)
+
     # Enqueue for in-app alert polling
     with _alert_queue_lock:
         _alert_queue.append({
