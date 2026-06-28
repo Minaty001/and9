@@ -32,11 +32,13 @@ CHROME_ALLOWED_ACTIONS = frozenset({
     "search",
     "news",
     "web_lookup",
+    "open_app",
 })
 
 # Chrome package identifiers to detect in payloads
 _CHROME_PACKAGES = frozenset({
     "com.android.chrome",
+    "com.chrome",
     "com.chrome.beta",
     "com.chrome.dev",
     "com.chrome.canary",

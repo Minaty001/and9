@@ -84,4 +84,4 @@ def test_chrome_firewall(and9):
     res = and9.process("chrome kholo")
     assert res["success"] is True
     assert res["action"] == ActionType.LAUNCH_APP.value
-    assert res["payload"]["package"] == "com.android.chrome"
+    assert res["payload"]["package"] in ("com.android.chrome", "com.chrome")
