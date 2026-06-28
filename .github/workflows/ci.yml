@@ -29,7 +29,7 @@ jobs:
     - name: Lint with ruff
       run: |
         pip install ruff
-        ruff check app/ tests/ --ignore=E402,F401
+        ruff check backend/ tests/ --ignore=E402,F401
 
     - name: Test with pytest
       env:
@@ -41,7 +41,7 @@ jobs:
 
     - name: Run integration tests
       run: |
-        python -m pytest tests/integration_tests.py -v
+        python -m pytest tests/integration/integration_tests.py -v
 
   docker:
     needs: test

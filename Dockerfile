@@ -25,7 +25,7 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy app code
-COPY app/ app/
+COPY backend/ backend/
 COPY requirements.txt .
 
 # Create data directory (reminders DB, traces DB, installed_apps.json)
@@ -42,4 +42,4 @@ ENV AND9_REMINDERS_STORAGE_DB=/app/.jarvis_data/reminders_engine.db
 ENV AND9_TRACES_DB=/app/.jarvis_data/intent_traces.db
 ENV AND9_INSTALLED_APPS_PATH=/app/.jarvis_data/installed_apps.json
 
-CMD gunicorn app.main:app --workers 2 --threads 4 --timeout 120 --bind "0.0.0.0:${PORT:-8000}"
+CMD gunicorn backend.main:app --workers 2 --threads 4 --timeout 120 --bind "0.0.0.0:${PORT:-8000}"
