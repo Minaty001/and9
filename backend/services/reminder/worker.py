@@ -148,8 +148,11 @@ def _fire(reminder: dict) -> None:
     title = reminder["title"]
     trigger_time = reminder["trigger_time"]
 
+    # Detect if the reminder is from v2 table (has user_id) or legacy table
+    from_v2 = "user_id" in reminder
+
     # Mark fired first (prevent double-firing even if callback raises)
-    storage.mark_fired(rid)
+    storage.mark_fired(rid, from_v2=from_v2)
     logger.warning("REMINDER FIRED: #%d '%s' (was due: %s)", rid, title, trigger_time)
 
     # Reschedule if recurring
