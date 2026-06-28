@@ -11,6 +11,7 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m spacy download en_core_web_sm
 
 # ── Runtime stage ───────────────────────────────────────────────────
 FROM python:3.11-slim
@@ -26,6 +27,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy app code
 COPY backend/ backend/
+COPY frontend/ frontend/
+COPY ai/ ai/
 COPY requirements.txt .
 
 # Create data directory (reminders DB, traces DB, installed_apps.json)
