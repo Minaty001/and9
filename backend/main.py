@@ -163,7 +163,7 @@ def _init_personality(app: Flask) -> None:
 
 def create_app() -> Flask:
     """Create and configure the Flask application."""
-    app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="")
+    app = Flask(__name__, template_folder="../frontend/templates", static_folder="../frontend/static", static_url_path="")
 
     # ── Configuration ───────────────────────────────────────────
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", uuid.uuid4().hex)
