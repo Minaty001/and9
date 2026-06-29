@@ -32,12 +32,12 @@ class ReflectionEngine:
         """
         self._mem = memory
 
-    def reflect_on_session(self, session_id: int, ask_llm_fn) -> str:
-        """Summarize a session using the LLM.
+    def reflect_on_session(self, session_id: int, _ask_llm_fn=None) -> str:
+        """Summarize a session using extractive transcript analysis (no LLM).
 
         Args:
             session_id: ID of the session to reflect on.
-            ask_llm_fn: Callable(messages) → str  (e.g. brain.ask_llm)
+            _ask_llm_fn: Deprecated, kept for backward compatibility only.
 
         Returns:
             Summary string, faithful to the actual transcript.
@@ -46,33 +46,23 @@ class ReflectionEngine:
         if not episodes:
             return "Koi conversation nahi mili is session mein."
 
-        # Build transcript
-        transcript_lines = []
+        # Build simple extractive summary
+        user_topics = []
+        assistant_responses = []
         for ep in episodes:
-            role = "Tu" if ep["role"] == "user" else "JARVIS"
-            transcript_lines.append(f"{role}: {ep['content'][:300]}")
-        transcript = "\n".join(transcript_lines[:30])  # cap at 30 turns
+            if ep["role"] == "user":
+                user_topics.append(ep['content'][:150])
+            else:
+                assistant_responses.append(ep['content'][:150])
 
-        prompt = f"""Yeh ek conversation session ka transcript hai:
+        num_turns = len(episodes)
+        summary_parts = [f"Session mein {num_turns} exchanges hue."]
+        if user_topics:
+            summary_parts.append(f"User ne baat ki: {user_topics[0][:100]}...")
+        if assistant_responses:
+            summary_parts.append(f"JARVIS ne jawab diya.")
 
-{transcript}
-
-Is session ka ek concise summary do (3-5 lines mein, Hinglish mein):
-- Sirf wohi likho jo transcript mein hai
-- Kya discuss hua
-- Koi important decisions ya facts (sirf transcript se)
-- User ka mood / emotional state
-- Koi unresolved questions ya next steps
-
-IMPORTANT: Sirf transcript mein di gayi information ka reference karo.
-Kuch bhi invent mat karo. Agar kuch nahi hai toh mat likho."""
-
-        try:
-            messages = [{"role": "user", "content": prompt}]
-            summary = ask_llm_fn(messages, max_tokens=300) or "Summary generate nahi ho saki."
-        except Exception as e:
-            logger.warning(f"Reflection LLM call failed: {e}")
-            summary = f"Session mein {len(episodes)} exchanges hue."
+        summary = " | ".join(summary_parts)
 
         # Store summary in session
         try:
@@ -82,13 +72,13 @@ Kuch bhi invent mat karo. Agar kuch nahi hai toh mat likho."""
 
         return summary
 
-    def daily_review(self, ask_llm_fn) -> str:
-        """Generate a daily review of what happened today.
+    def daily_review(self, _ask_llm_fn=None) -> str:
+        """Generate a daily review of what happened today (no LLM).
 
-        Only from chat_history, activity_logs, episodic_memory, journal_entries.
-        If no activity → 'No meaningful activity recorded.'
+        Pulls episodes from last 24 hours and returns a simple count-based summary.
 
-        Pulls episodes from last 24 hours and summarizes them faithfully.
+        Returns:
+            Review string with the number of conversations and basic stats.
         """
         recent = self._mem.get_recent_episodes(limit=50)
         if not recent:
@@ -109,34 +99,15 @@ Kuch bhi invent mat karo. Agar kuch nahi hai toh mat likho."""
         if not today_eps:
             return "Aaj koi activity nahi thi boss."
 
-        transcript = "\n".join(
-            f"{'Tu' if e['role']=='user' else 'JARVIS'}: {e['content'][:200]}"
-            for e in today_eps[:40]
-        )
+        user_count = sum(1 for e in today_eps if e.get("role") == "user")
+        assistant_count = sum(1 for e in today_eps if e.get("role") == "assistant")
+        topics = set(e.get("topic", "") for e in today_eps if e.get("topic"))
 
-        prompt = f"""Aaj ki JARVIS activity ka summary do (Hinglish mein, friendly tone):
-
-{transcript}
-
-Include karo:
-1. Kya discuss hua (sirf transcript se)
-2. Koi important decisions / facts (sirf jo transcript mein clearly hain)
-3. Pending tasks / goals jo aaj mention hue
-4. Kal ke liye suggestions
-
-Data-faithfulness rules:
-- ONLY include what is explicitly in the transcript above
-- Agar koi section mein kuch nahi hai toh skip karo
-- Kabhi bhi activities ya facts invent mat karo
-- Sirf actual conversations ka reference do"""
-
-        try:
-            messages = [{"role": "user", "content": prompt}]
-            review = ask_llm_fn(messages, max_tokens=400) or "Aaj ka review generate nahi ho saka."
-        except Exception as e:
-            logger.warning(f"Daily review failed: {e}")
-            review = f"Aaj {len(today_eps)} conversations hue."
-
+        review = f"Aaj {len(today_eps)} conversations hue — {user_count} user, {assistant_count} JARVIS."
+        if topics:
+            topic_str = ", ".join(t for t in topics if t)
+            if topic_str:
+                review += f" Topics: {topic_str}"
         return review
 
     def extract_key_facts(self, session_id: int) -> list[dict]:

@@ -67,10 +67,19 @@ class IntentType(Enum):
     VOLUME = "volume"               # Priority 10 — Volume up/down/mute
     YOUTUBE = "youtube"             # Priority 11 — YouTube search/play
     MUSIC = "music"                 # Priority 12 — Play music/songs
+    CLOSE_APP = "close_app"         # Priority 4b — Close an app
+    PLAY_MUSIC = "play_music"       # Priority 12a — Play specific music
+    PAUSE_MUSIC = "pause_music"     # Priority 12b — Pause music
     SET_ALARM = "set_alarm"         # Priority 13 — Set an alarm
     SET_REMINDER = "set_reminder"   # Priority 14 — Set a reminder
     SET_TIMER = "set_timer"         # Priority 15 — Set a countdown timer
     TIME = "time"                   # Priority 16 — Generic time query
+    DATE = "date"                   # Priority 16b — Date query
+    VOLUME_UP = "volume_up"         # Priority 10a — Volume up
+    VOLUME_DOWN = "volume_down"     # Priority 10b — Volume down
+    GO_HOME = "go_home"             # Priority 18 — Go to home screen
+    GO_BACK = "go_back"             # Priority 18b — Go back
+    OPEN_SETTINGS = "open_settings" # Priority 18c — Open settings
     GOAL = "goal"                   # Priority 17 — Goal/project management
     HOME = "home"                   # Priority 18 — Go to home screen
     AUTOMATION = "automation"       # Priority 19 — Automation/routines
@@ -79,26 +88,35 @@ class IntentType(Enum):
 
     @property
     def priority(self) -> int:
-        """Return the numeric priority level (1 = highest, 21 = lowest)."""
+        """Return the numeric priority level (1 = highest)."""
         priorities = {
             IntentType.EMERGENCY: 1,
             IntentType.CALL: 2,
             IntentType.MESSAGE: 3,
             IntentType.OPEN_APP: 4,
+            IntentType.CLOSE_APP: 4,
             IntentType.CAMERA: 5,
             IntentType.FLASHLIGHT: 6,
             IntentType.BLUETOOTH: 7,
             IntentType.WIFI: 8,
             IntentType.AIRPLANE_MODE: 9,
             IntentType.VOLUME: 10,
+            IntentType.VOLUME_UP: 10,
+            IntentType.VOLUME_DOWN: 10,
             IntentType.YOUTUBE: 11,
             IntentType.MUSIC: 12,
+            IntentType.PLAY_MUSIC: 12,
+            IntentType.PAUSE_MUSIC: 12,
             IntentType.SET_ALARM: 13,
             IntentType.SET_REMINDER: 14,
             IntentType.SET_TIMER: 15,
             IntentType.TIME: 16,
+            IntentType.DATE: 16,
             IntentType.GOAL: 17,
             IntentType.HOME: 18,
+            IntentType.GO_HOME: 18,
+            IntentType.GO_BACK: 18,
+            IntentType.OPEN_SETTINGS: 18,
             IntentType.AUTOMATION: 19,
             IntentType.SEARCH: 20,
             IntentType.CHAT: 21,

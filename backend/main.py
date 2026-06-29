@@ -31,11 +31,18 @@ class RateLimiter:
         self.limit = limit
         self.window_sec = window_sec
         self._buckets: dict[str, list[float]] = {}
+        self._last_cleanup = time.time()
 
     def check(self, key: str) -> tuple[bool, int]:
         """Returns (allowed, retry_after_seconds)."""
         now = time.time()
         window_start = now - self.window_sec
+
+        # Periodic cleanup of all stale keys (every 5 minutes)
+        if now - self._last_cleanup > 300:
+            self._cleanup(window_start)
+            self._last_cleanup = now
+
         bucket = self._buckets.get(key, [])
 
         # Prune old entries
@@ -43,11 +50,24 @@ class RateLimiter:
 
         if len(bucket) >= self.limit:
             retry_after = int(bucket[0] + self.window_sec - now) if bucket else self.window_sec
+            if not bucket:
+                self._buckets.pop(key, None)
+            else:
+                self._buckets[key] = bucket
             return False, max(1, retry_after)
 
         bucket.append(now)
         self._buckets[key] = bucket
         return True, 0
+
+    def _cleanup(self, window_start: float):
+        """Remove all stale keys from the dictionary to prevent memory leaks."""
+        stale_keys = []
+        for key, bucket in self._buckets.items():
+            if not bucket or max(bucket) <= window_start:
+                stale_keys.append(key)
+        for key in stale_keys:
+            self._buckets.pop(key, None)
 
 
 _limiter = RateLimiter(limit=30, window_sec=60)
@@ -196,6 +216,35 @@ def create_app() -> Flask:
         response.headers["X-Runtime-Ms"] = str(int((time.time() - getattr(g, "start_time", time.time())) * 1000))
         return response
 
+    # ── API Key Verification ─────────────────────────────────────
+    @app.before_request
+    def verify_api_key():
+        # Skip API key verification for static files, health checks, admin auth, and non-api routes
+        if (request.path in ("/health", "/api/health") or 
+            request.path.startswith("/static/") or 
+            request.path.startswith("/api/admin/") or 
+            not request.path.startswith("/api/")):
+            return None
+
+        # Check if an API key is configured on the server
+        server_api_key = os.environ.get("JARVIS_API_KEY")
+        if not server_api_key:
+            # If no API key is configured on the server, allow all requests
+            return None
+
+        # Retrieve client API key from headers or request parameters
+        client_api_key = request.headers.get("X-API-Key")
+        if not client_api_key:
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.lower().startswith("bearer "):
+                client_api_key = auth_header[7:]
+
+        if not client_api_key or client_api_key != server_api_key:
+            return jsonify({
+                "error": "unauthorized",
+                "message": "Invalid or missing API key."
+            }), 401
+
     # ── Rate limiting ───────────────────────────────────────────
     @app.before_request
     def rate_limit():
@@ -203,7 +252,15 @@ def create_app() -> Flask:
         if request.path in ("/health", "/api/health") or request.path.startswith("/static/"):
             return None
 
-        client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown")
+        # Trust X-Forwarded-For only if configured to trust proxy or running on Render
+        trust_proxy = os.environ.get("TRUST_PROXY", "").lower() in ("true", "1") or os.environ.get("RENDER", "").lower() in ("true", "1")
+        if trust_proxy:
+            client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown")
+            if "," in client_ip:
+                client_ip = client_ip.split(",")[0].strip()
+        else:
+            client_ip = request.remote_addr or "unknown"
+
         allowed, retry_after = _limiter.check(client_ip)
         if not allowed:
             return jsonify({

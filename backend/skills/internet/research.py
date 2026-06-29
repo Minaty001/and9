@@ -1,14 +1,11 @@
 """
 app/skills/research.py — Research tool functions (web fetching, summarization).
 
-These are used by ResearchAgent but are callable independently as tools.
+LLM-free: uses DuckDuckGo for search, extractive text for summarization.
 """
 import re
 import logging
 import requests
-
-from backend.core.config import SERP_API_KEY
-from backend.integrations.groq.brain import ask_llm
 
 logger = logging.getLogger(__name__)
 
@@ -17,24 +14,12 @@ _http.headers.update({"User-Agent": "Mozilla/5.0 (Linux; Android 12) AppleWebKit
 
 
 def search_sources(query: str, num: int = 5) -> list:
-    """Search web and return list of {title, link, snippet}."""
-    if not SERP_API_KEY:
-        logger.warning("SERP_API_KEY not set")
-        return []
+    """Search web using DuckDuckGo and return list of {title, link, snippet}."""
     try:
-        resp = _http.get(
-            "https://serpapi.com/search",
-            params={"q": query, "api_key": SERP_API_KEY, "num": num},
-            timeout=10,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            return [
-                {"title": item.get("title", ""), "link": item.get("link", ""), "snippet": item.get("snippet", "")}
-                for item in data.get("organic_results", [])
-            ]
+        from backend.integrations.duckduckgo import search_sources as ddg_sources
+        return ddg_sources(query, num=num)
     except Exception as e:
-        logger.warning(f"Search failed: {e}")
+        logger.warning(f"DuckDuckGo search failed: {e}")
     return []
 
 
@@ -61,23 +46,34 @@ def fetch_page(url: str, max_chars: int = 4000) -> str:
 
 
 def summarize_source(content: str, query: str, source_num: int = 1) -> str:
-    """Summarize web page content for research synthesis."""
-    try:
-        summary = ask_llm(
-            [{"role": "user", "content": f"Topic: {query}\n\nContent to summarize:\n{content[:3000]}"}],
-            system="Summarize this web page content in 3-5 sentences relevant to the research topic.",
-            max_tokens=300,
-            temperature=0.1,
-        )
-        if summary and not summary.startswith("["):
-            return summary
-    except Exception as e:
-        logger.debug("Research summarize_source failed: %s", e)
+    """Extractively summarize web page content (no LLM).
+
+    Returns the first portion of the text that contains query-relevant keywords.
+    Falls back to first 400 chars.
+    """
+    if not content:
+        return ""
+    # Try to find sentences containing query keywords
+    keywords = re.findall(r'\w+', query.lower())
+    sentences = re.split(r'(?<=[.!?])\s+', content)
+    relevant = []
+    for s in sentences:
+        s_lower = s.lower()
+        if any(kw in s_lower for kw in keywords if len(kw) > 3):
+            relevant.append(s.strip())
+        if len(relevant) >= 5:
+            break
+    if relevant:
+        return " | ".join(relevant)[:600]
     return content[:400]
 
 
 def synthesize_answer(query: str, sources_data: list) -> str:
-    """Synthesize a final answer from multiple sources."""
+    """Synthesize a final answer from multiple sources using extractive summaries.
+
+    Returns concatenated source excerpts with inline source numbering.
+    No LLM involved.
+    """
     summaries = []
     sources = []
     for i, item in enumerate(sources_data[:4], 1):
@@ -93,10 +89,5 @@ def synthesize_answer(query: str, sources_data: list) -> str:
         return "Could not retrieve content from any sources."
 
     combined = "\n\n".join(summaries)
-    final = ask_llm(
-        [{"role": "user", "content": f"Research question: {query}\n\nSource summaries:\n{combined}\n\nProvide a comprehensive answer with citations."}],
-        system="You are a research analyst. Synthesize sources into a clear, factual answer with inline citations.",
-        max_tokens=4096,
-    )
     source_lines = "\n".join([f"  [{s['num']}] {s['title']} — {s['url']}" for s in sources])
-    return f"{final}\n\nSources:\n{source_lines}"
+    return f"Research findings for: {query}\n\n{combined}\n\nSources:\n{source_lines}"

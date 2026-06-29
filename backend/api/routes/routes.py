@@ -6,7 +6,6 @@ import asyncio
 import logging
 from backend.utils._flask_compat import Blueprint, request, jsonify, Response
 
-from backend.cognition.conscious.jarvis_orchestrator import Orchestrator
 from backend.memory.episodic.memory import Memory
 from backend.core.goal_tracker import GoalTracker
 from backend.core.events import EventSystem
@@ -17,26 +16,22 @@ logger = logging.getLogger(__name__)
 api_bp = Blueprint("api", __name__)
 
 # Module-level singletons (lazy init to avoid import-time side effects)
-_orchestrator = None
 _memory       = None
 _goals        = None
 _events       = None
 _reflector    = None
 
 
-def get_orch():
-    """Get or create the singleton Orchestrator instance.
-
-    Lazy-initializes the orchestrator on first call and caches it
-    in the module-level ``_orchestrator`` variable.
-
-    Returns:
-        Orchestrator: The global orchestrator instance.
-    """
-    global _orchestrator
-    if _orchestrator is None:
-        _orchestrator = Orchestrator()
-    return _orchestrator
+_AGENTS_CATALOGUE = [
+    {"name": "chat",       "description": "General conversation and tasks"},
+    {"name": "search",     "description": "Real-time web search and facts"},
+    {"name": "research",   "description": "Multi-source research with citations"},
+    {"name": "music",      "description": "Search and play songs from YouTube"},
+    {"name": "goal",       "description": "Manage goals, tasks, and projects"},
+    {"name": "reminder",   "description": "Set and manage reminders and events"},
+    {"name": "reflection", "description": "Daily review and session summaries"},
+    {"name": "device",     "description": "Control Android device features"},
+]
 
 
 def get_mem():
@@ -122,15 +117,28 @@ def chat():
         from backend.api.routes.routes import get_and9
         result = get_and9().process(message)
         
-        # Extract intent from action/payload or metadata if device action
+        # Extract intent as a simple action string (not the payload dict).
+        # The frontend/Android bridge uses this to decide whether to
+        # execute a device action.  A payload dict is never a valid intent.
         intent = None
         if result.get("action") and result.get("action") != "chat":
-            intent = result.get("payload") or result.get("action")
-            
-        metadata = result.get("metadata", {})
+            intent = result.get("action")
+
+        metadata = dict(result.get("metadata", {}) or {})
         if not intent:
             if metadata.get("task") == "device" and (metadata.get("action") in ["PLAY_VIDEO", "LAUNCH_APP", "SET_ALARM", "CREATE_EVENT", "CALL"] or "intent" in metadata):
-                intent = metadata.get("intent") or metadata.get("payload")
+                intent = metadata.get("intent")
+
+        # Merge device action and payload into metadata for Android client compatibility
+        if result.get("action") and result.get("action") != "chat":
+            metadata["action"] = result.get("action")
+            payload = result.get("payload") or {}
+            if isinstance(payload, dict):
+                for k, v in payload.items():
+                    metadata[k] = v
+                metadata["payload"] = payload
+            else:
+                metadata["payload"] = payload
 
         return jsonify({
             "reply":       result.get("response", ""),
@@ -151,12 +159,12 @@ def chat():
 
 @api_bp.route("/agents", methods=["GET"])
 def list_agents():
-    """GET /api/agents — List all available agent names from the orchestrator.
+    """GET /api/agents — List all available agent types with descriptions.
 
     Returns:
-        JSON list of agent name strings.
+        JSON list of dicts, each with "name" and "description" strings.
     """
-    return jsonify(get_orch().list_agents())
+    return jsonify(_AGENTS_CATALOGUE)
 
 
 @api_bp.route("/history", methods=["GET"])
@@ -329,7 +337,9 @@ def analyze_query():
 
     try:
         user_profile = get_mem().get_user_profile()
-        analysis = get_orch().understanding.analyze(query, user_profile)
+        from backend.core.understanding import UnderstandingEngine
+        _engine = UnderstandingEngine()
+        analysis = _engine.analyze(query, user_profile)
         
         result = {
             "intent": analysis.intent,
@@ -467,14 +477,13 @@ def reminder_alerts():
 @api_bp.route("/reflect", methods=["GET"])
 def reflect():
     """GET /api/reflect?type=daily|session"""
-    from backend.integrations.groq.brain import ask_llm
     reflect_type = request.args.get("type", "daily")
     if reflect_type == "session":
         session_id = get_mem().get_or_create_session()
-        summary = get_reflector().reflect_on_session(session_id, ask_llm)
+        summary = get_reflector().reflect_on_session(session_id)
         return jsonify({"type": "session", "session_id": session_id, "summary": summary})
     else:
-        review = get_reflector().daily_review(ask_llm)
+        review = get_reflector().daily_review()
         return jsonify({"type": "daily", "review": review})
 
 

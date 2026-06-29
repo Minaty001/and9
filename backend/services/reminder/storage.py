@@ -84,16 +84,24 @@ CREATE INDEX IF NOT EXISTS idx_rem_v2_user
 _PENDING_STATUSES = ('pending', 'snoozed')
 
 
+_MEM_CONN = None
+
 @contextmanager
 def _conn():
-    """Context manager providing a SQLite connection (file or in-memory fallback)."""
-    db_path = ":memory:" if _USE_MEMORY_FALLBACK else _DB_PATH
-    con = sqlite3.connect(db_path, check_same_thread=False)
-    con.row_factory = sqlite3.Row
-    try:
-        yield con
-    finally:
-        con.close()
+    """Context manager providing a SQLite connection (file or thread-safe shared in-memory fallback)."""
+    global _MEM_CONN
+    if _USE_MEMORY_FALLBACK:
+        if _MEM_CONN is None:
+            _MEM_CONN = sqlite3.connect(":memory:", check_same_thread=False)
+            _MEM_CONN.row_factory = sqlite3.Row
+        yield _MEM_CONN
+    else:
+        con = sqlite3.connect(_DB_PATH, check_same_thread=False)
+        con.row_factory = sqlite3.Row
+        try:
+            yield con
+        finally:
+            con.close()
 
 
 def init_storage() -> None:
@@ -101,7 +109,8 @@ def init_storage() -> None:
     with _conn() as con:
         con.executescript(_SCHEMA)
         _ensure_column(con, "reminders_v2", "repeat_days", "TEXT")
-        con.commit()
+        if not _USE_MEMORY_FALLBACK:
+            con.commit()
     logger.info("Reminder storage DB initialised: %s", _DB_PATH)
 
 
@@ -121,11 +130,11 @@ def add(title: str, trigger_time: datetime,
         user_id: str = "default",
         session_id: Optional[str] = None,
         repeat_end: Optional[str] = None) -> int:
-    """Insert a reminder into both legacy and v2 tables.
+    """Insert a reminder into v2 table (only).
 
     Args:
         title: Reminder label/text.
-        trigger_time: When the reminder should fire (IST-aware).
+        trigger_time: When the reminder should fire.
         repeat_rule: '' (once), 'daily', 'weekly', 'weekdays', 'monthly', 'yearly'.
         user_id: User identifier.
         session_id: Optional session identifier.
@@ -134,14 +143,15 @@ def add(title: str, trigger_time: datetime,
     Returns:
         Row id from v2 table.
     """
+    # Ensure trigger_time is timezone-aware and in IST
+    if trigger_time.tzinfo is None:
+        trigger_time = trigger_time.replace(tzinfo=IST)
+    else:
+        trigger_time = trigger_time.astimezone(IST)
+
     iso = trigger_time.isoformat()
     with _conn() as con:
-        # Legacy table
-        con.execute(
-            "INSERT INTO reminders (title, trigger_time) VALUES (?, ?)",
-            (title, iso),
-        )
-        # v2 table
+        # v2 table only to prevent duplication
         cur = con.execute(
             "INSERT INTO reminders_v2 "
             "(title, trigger_time, repeat_rule, repeat_days, user_id, session_id, repeat_end) "

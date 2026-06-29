@@ -11,9 +11,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 # ════════════════════════════════════════════════════════════════
 
 def test_core_config():
-    from backend.core.config import GROQ_API_BASE, OPENCODE_API_BASE
-    assert GROQ_API_BASE == "https://api.groq.com/openai/v1"
-    assert OPENCODE_API_BASE == "https://opencode.ai/zen/v1"
+    from backend.core.config import NEURAL_MODEL_PATH
+    assert isinstance(NEURAL_MODEL_PATH, str)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -506,11 +505,9 @@ def test_context_builder_minimal():
 # ════════════════════════════════════════════════════════════════
 
 def test_orchestrator_routing():
-    from backend.cognition.conscious.jarvis_orchestrator import IntentRouter
+    from backend.core.intent_router import IntentRouter
     router = IntentRouter()
     assert router.route("search for python tutorials") == "search"
-    assert router.route("write code to sort a list") == "coding"
-    assert router.route("generate image of a cat") == "image"
     assert router.route("calculate 15% of 3500") == "chat"
     assert router.route("research the history of AI") == "research"
     assert router.route("good morning") == "chat"
@@ -522,26 +519,13 @@ def test_orchestrator_routing():
 
 def test_agents_import():
     from backend.agents import AGENT_REGISTRY
-    assert "coding" in AGENT_REGISTRY
     assert "research" in AGENT_REGISTRY
-    assert "chat" in AGENT_REGISTRY
 
 
-def test_assistant_agent():
-    from backend.agents.assistant.assistant_agent import AssistantAgent
-    agent = AssistantAgent()
-    assert agent.name == "AssistantAgent"
-    result = agent.run("what is the time")
-    assert "agent" in result
-    assert "success" in result
-
-
-def test_coding_agent_structure():
-    from backend.agents.coding.coding_agent import CodingAgent
-    agent = CodingAgent()
-    code, lang = agent._extract_code("```python\nprint('hello')\n```")
-    assert code == "print('hello')"
-    assert lang == "python"
+def test_research_agent():
+    from backend.agents.research.research_agent import ResearchAgent
+    agent = ResearchAgent()
+    assert agent.name == "ResearchAgent"
 
 
 # ════════════════════════════════════════════════════════════════

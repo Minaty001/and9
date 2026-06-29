@@ -15,12 +15,15 @@ Supported commands:
 import logging
 import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Optional, Any
 
 from backend.services.reminder.scheduler import get_engine
 from backend.utils.time_parser import format_duration, format_time
 
 logger = logging.getLogger(__name__)
+
+IST = ZoneInfo("Asia/Kolkata")
 
 class ReminderScheduler:
     """Legacy Adapter: Schedule and manage reminders.
@@ -54,7 +57,7 @@ class ReminderScheduler:
         elif t_type == "absolute":
             trigger_ts = trigger_at.get("timestamp")
             if trigger_ts is None:
-                now = datetime.now()
+                now = datetime.now(IST)
                 hour = trigger_at.get("hour", 0)
                 minute = trigger_at.get("minute", 0)
                 from datetime import timedelta
@@ -72,7 +75,7 @@ class ReminderScheduler:
             }
 
         try:
-            trigger_dt = datetime.fromtimestamp(trigger_ts)
+            trigger_dt = datetime.fromtimestamp(trigger_ts, tz=IST)
             engine = get_engine()
             rid = engine.add(label, trigger_dt)
             persisted = True

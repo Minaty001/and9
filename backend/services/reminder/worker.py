@@ -39,10 +39,15 @@ _POLL_INTERVAL = 10
 
 _worker_thread: Optional[threading.Thread] = None
 _stop_event = threading.Event()
+_worker_lock = threading.Lock()
 
 # Optional callbacks invoked when a reminder fires
 # Signature: (reminder: dict) -> None
 _fire_callbacks: List[Callable[[dict], None]] = []
+_fire_callbacks_lock = threading.Lock()
+
+# Deduplication set to prevent double firing: contains (reminder_id, trigger_time)
+_fired_reminders: Set[tuple] = set()
 
 # ── In-app alert queue (polled by GET /api/reminder/alerts) ─────────
 _alert_queue: List[dict] = []
@@ -106,7 +111,8 @@ def _detect_missed_reminders() -> List[dict]:
 
 def register_callback(fn: Callable[[dict], None]) -> None:
     """Register a callback to be called when a reminder fires."""
-    _fire_callbacks.append(fn)
+    with _fire_callbacks_lock:
+        _fire_callbacks.append(fn)
 
 
 def get_alerts() -> List[dict]:
@@ -148,11 +154,25 @@ def _fire(reminder: dict) -> None:
     title = reminder["title"]
     trigger_time = reminder["trigger_time"]
 
+    # Deduplicate in-memory to prevent double firing in edge cases or double threads
+    dedup_key = (rid, trigger_time)
+    if dedup_key in _fired_reminders:
+        logger.warning("Reminder #%d at %s already fired this session, skipping.", rid, trigger_time)
+        return
+
     # Detect if the reminder is from v2 table (has user_id) or legacy table
     from_v2 = "user_id" in reminder
 
-    # Mark fired first (prevent double-firing even if callback raises)
-    storage.mark_fired(rid, from_v2=from_v2)
+    # Mark fired first (prevent double-firing even if callback raises).
+    # If mark_fired fails (e.g. DB lock) do NOT add the dedup key so
+    # the reminder remains pending and can be retried on the next poll.
+    try:
+        storage.mark_fired(rid, from_v2=from_v2)
+    except Exception as e:
+        logger.error("Failed to mark reminder #%d as fired: %s", rid, e)
+        return
+
+    _fired_reminders.add(dedup_key)
     logger.warning("REMINDER FIRED: #%d '%s' (was due: %s)", rid, title, trigger_time)
 
     # Reschedule if recurring
@@ -174,7 +194,10 @@ def _fire(reminder: dict) -> None:
     # Try Termux local notification/speech (Android)
     _try_termux_notify(title)
 
-    for cb in _fire_callbacks:
+    with _fire_callbacks_lock:
+        callbacks_copy = list(_fire_callbacks)
+
+    for cb in callbacks_copy:
         try:
             cb(reminder)
         except Exception as e:
@@ -225,20 +248,28 @@ def start_worker() -> None:
     Thread is a daemon so it won't block app shutdown.
     """
     global _worker_thread
-    if _worker_thread and _worker_thread.is_alive():
-        logger.debug("ReminderWorker already running.")
-        return
-    _stop_event.clear()
-    _worker_thread = threading.Thread(
-        target=_worker_loop,
-        name="AND9-ReminderWorker",
-        daemon=True,
-    )
-    _worker_thread.start()
-    logger.info("AND9 ReminderWorker thread started.")
+    with _worker_lock:
+        if _worker_thread and _worker_thread.is_alive():
+            logger.debug("ReminderWorker already running.")
+            return
+
+        # If there's an old thread running/stopping, wait briefly for it to exit
+        if _worker_thread:
+            _stop_event.set()
+            _worker_thread.join(timeout=1.0)
+
+        _stop_event.clear()
+        _worker_thread = threading.Thread(
+            target=_worker_loop,
+            name="AND9-ReminderWorker",
+            daemon=True,
+        )
+        _worker_thread.start()
+        logger.info("AND9 ReminderWorker thread started.")
 
 
 def stop_worker() -> None:
-    """Signal the worker to stop. Does not block."""
-    _stop_event.set()
-    logger.info("AND9 ReminderWorker stop signalled.")
+    """Signal the worker to stop."""
+    with _worker_lock:
+        _stop_event.set()
+        logger.info("AND9 ReminderWorker stop signalled.")

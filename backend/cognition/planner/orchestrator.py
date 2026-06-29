@@ -168,14 +168,21 @@ class Orchestrator:
                     if suggestion:
                         confirm_prompt = suggestion["suggestion"]
                         action_summary = f"Suggest {suggestion['predicted_action']}"
-                        
+
+                        # Translate LAUNCH_APP to open_app for client whitelist compliance
+                        client_action = "open_app" if suggestion["predicted_action"] == "LAUNCH_APP" else suggestion["predicted_action"].lower()
+                        orig_params = {}
+                        if suggestion["app_name"]:
+                            orig_params["payload"] = suggestion["app_name"]
+                            orig_params["app_name"] = suggestion["app_name"]
+
                         result = BrainResult(
                             response=confirm_prompt,
-                            action="CONFIRM_ACTION",
+                            action="confirm_action",  # Lowercase to match client's "confirm_action" check
                             payload={
-                                "original_action": suggestion["predicted_action"],
-                                "original_intent": suggestion["predicted_action"],
-                                "original_params": {"app_name": suggestion["predicted_action"]} if "app" in suggestion["predicted_action"] else {},
+                                "original_action": client_action,
+                                "original_intent": client_action,
+                                "original_params": orig_params,
                                 "prompt": confirm_prompt,
                                 "summary": action_summary
                             },
@@ -216,7 +223,7 @@ class Orchestrator:
                         
                     result = BrainResult(
                         response=confirm_prompt,
-                        action="CONFIRM_ACTION",
+                        action="confirm_action",
                         payload={
                             "original_action": action_type,
                             "original_intent": intent_name,
@@ -401,8 +408,33 @@ class Orchestrator:
         return result
 
     def _handle_search(self, params: dict, start: float) -> BrainResult:
-        """Handle web search — Chrome allowed ONLY here (priority 17 = last resort)."""
+        """Handle web search — try DuckDuckGo inline, fall back to Chrome URL."""
         query = params.get("query", "")
+        elapsed = lambda: (time.perf_counter() - start) * 1000  # noqa: E731
+
+        # 1. Try inline DuckDuckGo search
+        try:
+            from backend.integrations.duckduckgo import web_search
+            results = web_search(query, max_results=5)
+            if results:
+                lines = [f"🔍 '{query}' ke liye results:"]
+                for i, r in enumerate(results, 1):
+                    lines.append(f"\n{i}. {r['title']}")
+                    lines.append(f"   {r['body']}")
+                response = "\n".join(lines)
+                return BrainResult(
+                    response=response,
+                    action="search",
+                    payload={"results": results, "query": query},
+                    brain=BrainType.REFLEX,
+                    intent=IntentType.SEARCH,
+                    parameters=params,
+                    execution_time_ms=elapsed(),
+                )
+        except Exception as e:
+            logger.debug("DuckDuckGo inline search failed, falling back: %s", e)
+
+        # 2. Fallback: open Chrome with Google search
         search_url = f"https://www.google.com/search?q={quote_plus(query)}"
         return BrainResult(
             response=f"Web pe '{query}' search kar raha hoon 🔍",
@@ -416,7 +448,7 @@ class Orchestrator:
             brain=BrainType.REFLEX,
             intent=IntentType.SEARCH,
             parameters=params,
-            execution_time_ms=(time.perf_counter() - start) * 1000,
+            execution_time_ms=elapsed(),
         )
 
     def _intent_from_name(self, name: str) -> Optional[IntentType]:

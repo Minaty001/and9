@@ -221,8 +221,8 @@ async function sendToJarvisV2(message) {
       showToast('⚡ Fast recall — cache hit!', 'success', 2000);
     }
 
-    // Device intent
-    if ((data.intent || data.metadata?.action) && typeof DeviceControl !== 'undefined') {
+    // Device intent — only act on string-typed intents, not payload dicts
+    if (((typeof data.intent === 'string' && data.intent) || data.metadata?.action) && typeof DeviceControl !== 'undefined') {
       DeviceControl.handleRemoteAction(data);
     }
 

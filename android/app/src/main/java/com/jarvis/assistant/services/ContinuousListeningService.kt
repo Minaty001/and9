@@ -93,6 +93,8 @@ class ContinuousListeningService : Service() {
     private var isListening = false
     private var isCommandMode = false
     private var isScreenOn = true
+    private var isRecreating = false
+    private var partialTriggerFired = false
 
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -160,7 +162,7 @@ class ContinuousListeningService : Service() {
             startForeground(
                 NOTIFICATION_ID,
                 buildNotification("JARVIS is active", "Continuous listening engine running"),
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                 } else {
                     0
@@ -219,9 +221,12 @@ class ContinuousListeningService : Service() {
     // ── Speech Recognizer Logic ─────────────────────────────────
 
     private fun recreateRecognizerAndRestart() {
+        if (isRecreating) return
+        isRecreating = true
         destroyRecognizer()
         if (!isScreenOn && !isCommandMode) {
             Log.d(TAG, "Screen off and not in command mode — skipping recognizer creation")
+            isRecreating = false
             return
         }
         try {
@@ -229,9 +234,11 @@ class ContinuousListeningService : Service() {
             recognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
                 setRecognitionListener(speechListener)
             }
+            isRecreating = false
             startListeningInternal()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create SpeechRecognizer", e)
+            isRecreating = false
             recoveryManager.recoverStt(SpeechRecognizer.ERROR_RECOGNIZER_BUSY, {
                 recreateRecognizerAndRestart()
             })
@@ -249,8 +256,18 @@ class ContinuousListeningService : Service() {
         isListening = false
     }
 
+    private fun cancelRecognizer() {
+        isListening = false
+        try {
+            recognizer?.cancel()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error cancelling SpeechRecognizer", e)
+        }
+    }
+
     private fun startListeningInternal() {
         if (isListening) return
+        partialTriggerFired = false
         if (recognizer == null) {
             recreateRecognizerAndRestart()
             return
@@ -363,6 +380,11 @@ class ContinuousListeningService : Service() {
 
         override fun onResults(results: Bundle?) {
             watchdog.onResult()
+            if (partialTriggerFired) {
+                Log.d(TAG, "onResults: skipping because partialTriggerFired is true")
+                partialTriggerFired = false
+                return
+            }
             val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
             val text = matches?.firstOrNull() ?: ""
             Log.d(TAG, "SpeechListener onResults: '$text'")
@@ -398,7 +420,8 @@ class ContinuousListeningService : Service() {
                     val detectResult = wakeWordDetector.detect(text)
                     if (detectResult.detected && detectResult.confidence >= 0.85f) {
                         Log.i(TAG, "🔥 Fast Wake Word Detected in partial: '${detectResult.matchedWord}'")
-                        stopListening()
+                        partialTriggerFired = true
+                        cancelRecognizer()
                         triggerAssistantOverlay(detectResult.inputText)
                     }
                 }

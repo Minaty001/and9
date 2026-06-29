@@ -48,10 +48,20 @@ class HabitBrain:
             display_routine = "night routine"
 
         # Generate a premium localized suggestion
-        localized_suggestion = f"Aap generally is samay ({display_routine}) '{action}' karte hain. Kya main isse open/execute karu? ⚡"
+        action_display = action
+        if action == "LAUNCH_APP" and prediction.get("app_name"):
+            pkg = prediction.get("app_name", "")
+            if "." in pkg:
+                parts = pkg.split('.')
+                action_display = f"open {parts[-2] if len(parts) >= 2 else parts[-1]}"
+            else:
+                action_display = f"open {pkg}"
+
+        localized_suggestion = f"Aap generally is samay ({display_routine}) '{action_display}' karte hain. Kya main isse open/execute karu? ⚡"
 
         return {
             "predicted_action": action,
+            "app_name": prediction.get("app_name"),
             "confidence": prediction["confidence"],
             "routine_type": routine,
             "suggestion": localized_suggestion,

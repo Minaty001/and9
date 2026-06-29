@@ -24,3 +24,5 @@ services:
         sync: false
       - key: SECRET_KEY
         generateValue: true
+      - key: MONGO_URI
+        sync: false

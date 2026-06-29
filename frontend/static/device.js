@@ -490,7 +490,10 @@ const DeviceControl = (() => {
     }
 
     async function handleRemoteAction(data) {
-        if (data.intent) {
+        // Only send the intent to the bridge when it is a plain string
+        // (an action name like "set_alarm").  A payload dict would
+        // be misinterpreted by the native app's intent parser.
+        if (data.intent && typeof data.intent === 'string') {
             if (window.AndroidBridge && window.AndroidBridge.executeIntent) {
                 try {
                     window.AndroidBridge.executeIntent(JSON.stringify(data.intent));

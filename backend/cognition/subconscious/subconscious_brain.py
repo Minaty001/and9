@@ -82,7 +82,18 @@ class SubconsciousBrain:
         self.history: List[PatternRecord] = []
         self.enable_learning = enable_learning
         self._supabase_client = None
-        self._local_file = "/tmp/.jarvis_data/pattern_history.json"
+        self._local_file = "/app/.jarvis_data/pattern_history.json"
+        
+        # Ensure parent directory is writeable, fallback to /tmp if not
+        import os
+        try:
+            os.makedirs(os.path.dirname(self._local_file), exist_ok=True)
+        except (OSError, PermissionError):
+            self._local_file = "/tmp/.jarvis_data/pattern_history.json"
+            try:
+                os.makedirs(os.path.dirname(self._local_file), exist_ok=True)
+            except Exception:
+                pass
         
         try:
             from backend.core.config import SUPABASE_KEY
@@ -226,17 +237,18 @@ class SubconsciousBrain:
                     "source": "sequential_pattern",
                     "suggestion": seq["suggestion"]
                 }
-        
+
         # 2. Try time-based frequency pattern next
         time_pat = self.get_pattern()
         if time_pat:
             return {
                 "action": time_pat["action"],
+                "app_name": time_pat.get("app_name"),
                 "confidence": 0.75,
                 "source": "time_pattern",
                 "suggestion": time_pat["suggestion"]
             }
-            
+
         return None
 
     def get_pattern(self, hour: Optional[int] = None,
@@ -253,6 +265,7 @@ class SubconsciousBrain:
         Returns:
             Dict with pattern info:
               - action: Most frequent action at this time
+              - app_name: Associated app name
               - count: How many times it occurred
               - total: Total actions recorded at this time
               - suggestion: Natural language suggestion
@@ -275,12 +288,12 @@ class SubconsciousBrain:
         if not matching:
             return None
 
-        # Find the most common action at this time
-        counter = Counter(r.action for r in matching)
+        # Find the most common action and app combination at this time
+        counter = Counter((r.action, r.app_name) for r in matching)
         most_common = counter.most_common(1)
 
         if most_common and most_common[0][1] >= _TIME_PATTERN_THRESHOLD:
-            action, count = most_common[0]
+            (action, app_name), count = most_common[0]
 
             # Build a human-readable suggestion
             hour_display = hour if hour <= 12 else hour - 12
@@ -290,13 +303,15 @@ class SubconsciousBrain:
             elif hour == 12:
                 hour_display = 12
 
+            action_display = f"open {app_name.split('.')[-2]}" if action == "LAUNCH_APP" and app_name else action
             suggestion = (
                 f"Aap generally {hour_display}:00 {period} {day} ko "
-                f"'{action}' karte ho ({count} baar) 🤔"
+                f"'{action_display}' karte ho ({count} baar) 🤔"
             )
 
             return {
                 "action": action,
+                "app_name": app_name,
                 "count": count,
                 "total": len(matching),
                 "hour": hour,

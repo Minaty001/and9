@@ -41,6 +41,17 @@ class JarvisBackendClient(private val context: Context) {
         get() = prefs.getString("backend_url", BuildConfig.JARVIS_BASE_URL)
             ?: BuildConfig.JARVIS_BASE_URL
 
+    private val apiKey: String?
+        get() = prefs.getString("backend_api_key", null)
+
+    private fun Request.Builder.addAuthHeader(): Request.Builder {
+        val key = apiKey
+        if (!key.isNullOrEmpty()) {
+            this.header("X-API-Key", key)
+        }
+        return this
+    }
+
     /**
      * Send [text] to the backend server for processing.
      * All AI/LLM logic happens server-side through the orchestrator pipeline.
@@ -63,6 +74,7 @@ class JarvisBackendClient(private val context: Context) {
         val request = Request.Builder()
             .url(url)
             .post(body)
+            .addAuthHeader()
             .build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -93,7 +105,7 @@ class JarvisBackendClient(private val context: Context) {
     fun syncApps(appsJson: JSONObject) {
         val url = if (baseUrl.endsWith("/")) "${baseUrl}and9/apps" else "$baseUrl/and9/apps"
         val body = appsJson.toString().toRequestBody("application/json".toMediaType())
-        val request = Request.Builder().url(url).post(body).build()
+        val request = Request.Builder().url(url).post(body).addAuthHeader().build()
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -116,6 +128,7 @@ class JarvisBackendClient(private val context: Context) {
         val request = Request.Builder()
             .url(url)
             .header("Accept", "text/event-stream")
+            .addAuthHeader()
             .build()
 
         val call = client.newCall(request)

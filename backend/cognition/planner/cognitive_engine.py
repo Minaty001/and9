@@ -1,7 +1,7 @@
 """
 ╔══════════════════════════════════════════════════════════════╗
 ║           COGNITIVE ENGINE — Unified Brain Orchestrator      ║
-║   Integrates Reflex, Habit, Reasoning, Memory, Learning      ║
+║   Integrates Reflex, Habit, Neural, Memory, Learning         ║
 ╚══════════════════════════════════════════════════════════════╝
 
 Every input — user command, notification, screen change, environmental
@@ -9,11 +9,11 @@ observation — flows through this engine. Processing order:
 
     1. REFLEX BRAIN     (< 300ms) — Instant actions, no LLM
     2. HABIT BRAIN      (~200ms)  — Pattern matching, habit prediction
-    3. REASONING BRAIN  (1-5s)    — LLM-powered deep thinking
+    3. NEURAL BRAIN     (< 50ms)  — Dataset-trained TinyNeuralNetwork
     4. MEMORY           (~100ms)  — Record, consolidate, learn
     5. REFLECTION       (async)   — Evaluate, improve, plan
 
-Architecture mirrors the human brain's layered cognitive processing.
+No external API calls — all processing is on-device.
 """
 
 import logging
@@ -31,7 +31,7 @@ class ProcessingLevel(Enum):
     """Which cognitive layer processed the input."""
     REFLEX = "reflex"           # Instant, no thought
     HABIT = "habit"             # Pattern-based prediction
-    REASONING = "reasoning"     # Deliberate LLM thinking
+    NEURAL = "neural"           # Dataset-trained neural network (<50ms)
     LEARNING = "learning"       # Background learning task
     REFLECTION = "reflection"   # Self-evaluation
 
@@ -343,14 +343,17 @@ class CognitiveEngine:
       │     Pattern matching. Time/day-based prediction.
       │     "You usually open WhatsApp at this time..."
       │
-      ├── 3. REASONING BRAIN (1-5s) ── LLM handles complex tasks
-      │     Planning, coding, research, problem-solving.
+      ├── 3. NEURAL BRAIN (<50ms) ──── Dataset-trained intent classification
+      │     TinyNeuralNetwork. No external API calls.
       │     Only invoked when reflex fails.
       │
       ├── 4. MEMORY (async) ────────── Record and consolidate
       │     Save episode, update patterns, learn from outcome.
       │
-      └── 5. REFLECTION (async) ────── Evaluate and improve
+      ├── 5. MongoDB (async) ──────── Persist to MongoDB Atlas
+      │     Every chat turn + system output logged to durable storage.
+      │
+      └── 6. REFLECTION (async) ────── Evaluate and improve
             Daily review, improvement suggestions, learning.
     """
 
@@ -372,6 +375,7 @@ class CognitiveEngine:
         self.reflection = SelfReflection()
         self.enable_learning = enable_learning
         self.memory_consolidation = memory_consolidation
+        self._mongodb = None  # lazy MongoDB logger
 
         # Shared thread pool for background tasks (reuses threads, avoids threading.Thread overhead)
         self._bg_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="cog_bg")
@@ -419,11 +423,11 @@ class CognitiveEngine:
             self._stats["habit_predicted"] += 1
 
         # ═══════════════════════════════════════════════════════════
-        # BRAIN 3: REASONING — LLM-powered deep thinking
+        # BRAIN 3: NEURAL — Dataset-trained intent classification
         # ═══════════════════════════════════════════════════════════
         if self.conscious:
             try:
-                ctx.processing_level = ProcessingLevel.REASONING
+                ctx.processing_level = ProcessingLevel.NEURAL
                 result = self._dispatch_to_conscious(ctx)
                 ctx.response = result.get("response", "")
                 ctx.detected_intent = result.get("intent", ctx.detected_intent)
@@ -432,7 +436,7 @@ class CognitiveEngine:
                 ctx.success = result.get("success", True)
                 ctx.execution_time_ms = ctx.elapsed_ms()
                 self._stats["reasoning_used"] += 1
-                logger.info(f"CognitiveEngine: Reasoning handled '{raw_input[:50]}' in {ctx.execution_time_ms:.0f}ms")
+                logger.info(f"CognitiveEngine: Neural handled '{raw_input[:50]}' in {ctx.execution_time_ms:.0f}ms")
             except Exception as e:
                 ctx.response = f"Samajhne mein problem hui: {str(e)}. Please try again! 😅"
                 ctx.success = False
@@ -461,7 +465,7 @@ class CognitiveEngine:
         return {"response": str(self.conscious), "success": True}
 
     def _post_process(self, ctx: CognitiveContext):
-        """Async post-processing: memory, learning, reflection."""
+        """Async post-processing: memory, learning, reflection, MongoDB log."""
         def _background():
             try:
                 from datetime import datetime
@@ -477,7 +481,7 @@ class CognitiveEngine:
                 if self.memory_consolidation:
                     self.memory_consolidation.add_to_working(
                         content=ctx.raw_input[:500],
-                        importance=0.8 if ctx.processing_level.value == "reasoning" else 0.4,
+                        importance=0.8 if ctx.processing_level.value == "neural" else 0.4,
                         topics=[ctx.topic or ctx.detected_intent or "general"],
                         entities=ctx.parameters or {},
                         source="user" if ctx.processing_level.value != "reasoning" else "assistant"
@@ -490,21 +494,70 @@ class CognitiveEngine:
                 # Reflect
                 self.reflection.reflect(ctx)
 
+                # Log to MongoDB (fire-and-forget, never crashes the pipeline)
+                self._log_to_mongodb(ctx)
+
             except Exception as e:
                 logger.warning(f"CognitiveEngine: Post-process error: {e}")
 
         self._bg_pool.submit(_background)
+
+    def _get_mongodb(self):
+        """Lazy-load the MongoDB logger on first use."""
+        if self._mongodb is None:
+            try:
+                from backend.core.mongodb import log_chat, log_output
+                self._mongodb = (log_chat, log_output)
+            except Exception as e:
+                logger.debug("CognitiveEngine: MongoDB logger not available: %s", e)
+                self._mongodb = (None, None)
+        return self._mongodb
+
+    def _log_to_mongodb(self, ctx: CognitiveContext):
+        """Persist the current processing turn to MongoDB (fire-and-forget)."""
+        try:
+            log_chat_fn, log_output_fn = self._get_mongodb()
+            if log_chat_fn is None:
+                return
+
+            log_chat_fn(
+                user_input=ctx.raw_input[:1000],
+                response=ctx.response[:2000],
+                intent=ctx.detected_intent,
+                action=ctx.detected_action,
+                brain_type=ctx.processing_level.value,
+                confidence=ctx.confidence,
+                emotion=ctx.emotion,
+                topic=ctx.topic,
+                time_ms=ctx.execution_time_ms,
+                success=ctx.success,
+                metadata=ctx.metadata,
+            )
+
+            if log_output_fn:
+                log_output_fn(
+                    source=f"brain/{ctx.processing_level.value}",
+                    content=ctx.response[:2000],
+                    output_type=ctx.detected_intent or "unknown",
+                    metadata={
+                        "intent": ctx.detected_intent,
+                        "action": ctx.detected_action,
+                        "time_ms": ctx.execution_time_ms,
+                    },
+                )
+        except Exception as e:
+            logger.debug("CognitiveEngine: MongoDB log skipped: %s", e)
 
     def _record_to_memory(self, ctx: CognitiveContext):
         """Record the action in memory systems."""
         try:
             if hasattr(self.memory, 'add_episode'):
                 self.memory.add_episode(
-                    role="user" if ctx.processing_level != ProcessingLevel.REASONING else "assistant",
+                    role="user" if ctx.processing_level != ProcessingLevel.NEURAL else "assistant",
                     content=ctx.raw_input[:500],
                     topic=ctx.topic or ctx.detected_intent or "general",
                     emotion=ctx.emotion or "neutral",
-                    importance=3 if ctx.processing_level == ProcessingLevel.REASONING else 1,
+                    importance=3 if ctx.processing_level == ProcessingLevel.NEURAL else 1,
                 )
         except Exception as e:
             logger.debug(f"Memory recording skipped: {e}")
@@ -514,7 +567,7 @@ class CognitiveEngine:
         s["total_processed"] += 1
         if ctx.processing_level == ProcessingLevel.REFLEX:
             s["reflex_handled"] += 1
-        elif ctx.processing_level == ProcessingLevel.REASONING:
+        elif ctx.processing_level == ProcessingLevel.NEURAL:
             s["reasoning_used"] += 1
         if not ctx.success:
             s["failures"] += 1

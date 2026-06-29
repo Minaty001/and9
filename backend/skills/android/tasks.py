@@ -16,31 +16,23 @@ import logging
 import re
 from datetime import datetime
 
-from backend.core.config import SERP_API_KEY, NEWS_API_KEY, NOTES_DIR, IS_TERMUX, IS_WINDOWS
+from backend.core.config import NEWS_API_KEY, NOTES_DIR, IS_TERMUX, IS_WINDOWS
 from backend.skills.android.intent_executor import IntentExecutor
 
 logger = logging.getLogger(__name__)
 
 
-# ── Web Search ─────────────────────────────────────────────────
+# ── Web Search (DuckDuckGo, no API key) ──────────────────────────
 
 def search_web(query: str) -> str:
-    """Quick web search via SerpAPI."""
-    if not SERP_API_KEY:
-        return "Search not configured (SERP_API_KEY not set)."
-    import requests
+    """Quick web search via DuckDuckGo."""
     try:
-        resp = requests.get(
-            "https://serpapi.com/search",
-            params={"q": query, "api_key": SERP_API_KEY},
-            timeout=8,
-        ).json()
-        answer = resp.get("answer_box", {}).get("answer")
-        if answer:
-            return str(answer)
-        results = resp.get("organic_results", [])
+        from backend.integrations.duckduckgo import web_search
+        results = web_search(query, max_results=3)
         if results:
-            return results[0].get("snippet", "") or results[0].get("title", "")
+            snippets = [r.get("body", "") or r.get("title", "") for r in results if r.get("body") or r.get("title")]
+            if snippets:
+                return " | ".join(snippets)
         return f"No results for '{query}'."
     except Exception as e:
         logger.warning(f"Search failed: {e}")
@@ -48,25 +40,12 @@ def search_web(query: str) -> str:
 
 
 def get_realtime_data(query: str) -> str:
-    """Fetch real-time data from SerpAPI without opening a browser."""
-    if not SERP_API_KEY:
-        return search_web(query)  # fallback to web search
-    import requests
+    """Fetch real-time data via DuckDuckGo without opening a browser."""
     try:
-        resp = requests.get(
-            "https://serpapi.com/search",
-            params={"q": query, "api_key": SERP_API_KEY, "num": 3},
-            timeout=8,
-        ).json()
-        answer = resp.get("answer_box", {}).get("answer")
-        if answer:
-            return str(answer)
-        kg = resp.get("knowledge_graph", {})
-        if kg.get("description"):
-            return kg["description"]
-        results = resp.get("organic_results", [])
+        from backend.integrations.duckduckgo import web_search
+        results = web_search(query, max_results=3)
         if results:
-            snippets = [r.get("snippet", "") for r in results[:3] if r.get("snippet")]
+            snippets = [r.get("body", "") for r in results if r.get("body")]
             if snippets:
                 return " | ".join(snippets)
         return f"No data found for '{query}'."

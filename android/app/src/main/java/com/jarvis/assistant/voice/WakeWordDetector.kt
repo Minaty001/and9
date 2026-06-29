@@ -27,22 +27,16 @@ class WakeWordDetector {
 
         // Primary wake words (case-insensitive)
         val WAKE_WORDS = listOf(
-            "hello",
             "jarvis",
-            "assistant",
             "hey jarvis",
             "ok jarvis",
-            "okay jarvis",
-            "jai",          // common STT mishearing of "Jarvis"
-            "java",         // common STT mishearing of "Jarvis"
+            "okay jarvis"
         )
 
         // Phonetic mappings — common STT errors for wake words
         private val PHONETIC_VARIANTS = mapOf(
-            "jarvis" to listOf("jarwis", "jarvas", "jarvas", "jarwes", "garvis", "darvis", "harvest"),
-            "hello"  to listOf("helo", "hellow", "helo", "ellow", "yelllo"),
-            "assistant" to listOf("asistant", "asisstant", "asistent", "assitant"),
-            "hey jarvis" to listOf("hay jarvis", "hey java", "hey garvis", "hey jarwis"),
+            "jarvis" to listOf("jarwis", "jarvas", "jarwes", "garvis", "darvis", "harvest"),
+            "hey jarvis" to listOf("hay jarvis", "hey java", "hey garvis", "hey jarwis")
         )
     }
 

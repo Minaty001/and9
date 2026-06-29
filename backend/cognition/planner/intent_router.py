@@ -98,7 +98,6 @@ def _get_neural_brain():
     return _NEURAL_BRAIN
 
 
-@lru_cache(maxsize=512)
 def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
     """Classify a normalized query into an intent with extracted parameters.
 
@@ -167,7 +166,11 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
         # Generic app open
         params = extract_entities('open_app', q)
         if params.get('app_name'):
-            return 'open_app', ActionType.LAUNCH_APP.value, params
+            app_name_lower = params['app_name'].lower().strip()
+            if app_name_lower in ["reminder", "reminders", "alarm", "alarms", "timer", "timers"]:
+                pass  # Do not classify as open_app; fall through to time/reminder intent checks
+            else:
+                return 'open_app', ActionType.LAUNCH_APP.value, params
 
     # Common Hindi phrasing for opening settings does not always include
     # an explicit open verb ("settings chalana hai", "mobile data settings").

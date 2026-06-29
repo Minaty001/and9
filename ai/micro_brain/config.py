@@ -247,7 +247,7 @@ LOG_CONFIG = {
     "backup_count": 2,
 }
 
-# ─── LLM Integration (Future) ────────────────────────────────
+# ─── LLM Integration (Disabled — Neural Bridge in use) ──────────
 LLM_CONFIG = {
     "enabled": False,
     "provider": "openai",

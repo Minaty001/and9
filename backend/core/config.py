@@ -22,25 +22,19 @@ def _str_env(key: str, default: str = "") -> str:
 
 
 # ── Supabase (primary database) ────────────────────────────────
-SUPABASE_URL = _str_env("SUPABASE_URL")   # set to your Supabase project URL
-SUPABASE_KEY = _str_env("SUPABASE_KEY")   # anon or service_role key from Supabase dashboard
-
-# ── Groq (Primary LLM — fast, free tier) ───────────────────────
-GROQ_API_KEY      = _str_env("GROQ_API_KEY")
-GROQ_API_BASE     = "https://api.groq.com/openai/v1"
-GROQ_CHAT_MODEL   = _str_env("GROQ_CHAT_MODEL",   "llama-3.3-70b-versatile")
-GROQ_CODING_MODEL = _str_env("GROQ_CODING_MODEL", "llama-3.3-70b-versatile")
-
-# ── Opencode Zen (Fallback LLM) ────────────────────────────────
-OPENCODE_API_KEY      = _str_env("OPENCODE_API_KEY")
-OPENCODE_API_BASE     = "https://opencode.ai/zen/v1"
-OPENCODE_CHAT_MODEL   = _str_env("OPENCODE_CHAT_MODEL",   "deepseek-v4-flash-free")
-OPENCODE_CODING_MODEL = _str_env("OPENCODE_CODING_MODEL", "deepseek-v4-flash-free")
+SUPABASE_URL = _str_env("SUPABASE_URL")
+SUPABASE_KEY = _str_env("SUPABASE_KEY")
 
 # ── External APIs (optional) ───────────────────────────────────
-SERP_API_KEY    = _str_env("SERP_API_KEY")
 NEWS_API_KEY    = _str_env("NEWS_API_KEY")
 WEATHER_API_KEY = _str_env("WEATHER_API_KEY")
+
+# ── MongoDB (optional; for persistent chat & output logging) ───
+MONGO_URI = _str_env("MONGO_URI", "mongodb+srv://1209saifaliansari_db_user:xJWzNzyg5O6lfPXy@cluster0.jvqzf7k.mongodb.net/?appName=Cluster0")
+
+# ── Neural Bridge ──────────────────────────────────────────────
+NEURAL_MODEL_PATH = _str_env("NEURAL_MODEL_PATH", "")
+# If empty, uses ai/models/ default
 
 # ── Vector / Embedding Search ──────────────────────────────────
 ENABLE_VECTOR_SEARCH = os.environ.get("ENABLE_VECTOR_SEARCH", "").lower() in ("true", "1")

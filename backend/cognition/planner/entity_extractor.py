@@ -40,7 +40,6 @@ from backend.utils.time_parser import parse_time, parse_duration, parse_recurrin
 logger = logging.getLogger(__name__)
 
 
-@lru_cache(maxsize=512)
 def extract_entities(intent: str, query: str) -> dict:
     """Top-level dispatcher — extract entities based on intent type.
 

@@ -257,8 +257,10 @@ async function sendToJarvis(message) {
 
             speak(data.reply);
 
-            // Trigger remote device action if returned from backend
-            if (data.intent || (data.metadata && data.metadata.task === "device" && data.metadata.action && data.metadata.action !== "none")) {
+            // Trigger remote device action only when the intent is a simple
+            // action string (not a payload dict) or metadata explicitly
+            // marks a device task.
+            if ((typeof data.intent === 'string' && data.intent) || (data.metadata && data.metadata.task === "device" && data.metadata.action && data.metadata.action !== "none")) {
                 if (typeof DeviceControl !== 'undefined' && DeviceControl.handleRemoteAction) {
                     DeviceControl.handleRemoteAction(data);
                 }

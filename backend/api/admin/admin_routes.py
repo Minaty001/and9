@@ -16,11 +16,35 @@ logger = logging.getLogger(__name__)
 
 admin_bp = Blueprint("admin", __name__)
 
-# ── Password hashes (code10 and codeten) ──────────────────────
-VALID_HASHES = {
-    hashlib.sha256("code10".encode()).hexdigest(),
-    hashlib.sha256("codeten".encode()).hexdigest(),
-}
+import time
+
+# ── Password hashes (loaded dynamically from environment, or fallback to default hashes with a warning) ──
+_env_hash = os.environ.get("JARVIS_ADMIN_HASH")
+if _env_hash:
+    VALID_HASHES = {_env_hash}
+else:
+    _env_password = os.environ.get("JARVIS_ADMIN_PASSWORD")
+    if _env_password:
+        VALID_HASHES = {hashlib.sha256(_env_password.encode()).hexdigest()}
+    else:
+        logger.warning("No JARVIS_ADMIN_HASH or JARVIS_ADMIN_PASSWORD configured. Using default passwords!")
+        VALID_HASHES = {
+            hashlib.sha256("code10".encode()).hexdigest(),
+            hashlib.sha256("codeten".encode()).hexdigest(),
+        }
+
+# IP-based failed login lockout: client_ip -> (fail_count, lockout_until_timestamp)
+FAILED_LOGINS = {}
+
+def _get_client_ip():
+    """Securely get client IP address, trusting X-Forwarded-For only if proxy is configured."""
+    trust_proxy = os.environ.get("TRUST_PROXY", "").lower() in ("true", "1") or os.environ.get("RENDER", "").lower() in ("true", "1")
+    if trust_proxy:
+        ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown")
+        if "," in ip:
+            ip = ip.split(",")[0].strip()
+        return ip
+    return request.remote_addr or "unknown"
 
 # ── Project root (where app code lives) ───────────────────────
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -43,8 +67,21 @@ def admin_required(f):
 @admin_bp.route("/auth", methods=["POST"])
 def admin_auth():
     """Authenticate with admin password."""
+    client_ip = _get_client_ip()
+    now = time.time()
+
+    # Check if locked out
+    lockout_info = FAILED_LOGINS.get(client_ip)
+    if lockout_info:
+        fail_count, lockout_until = lockout_info
+        if now < lockout_until:
+            retry_after = int(lockout_until - now)
+            return jsonify({
+                "error": f"Too many failed attempts. Locked out. Try again in {retry_after} seconds."
+            }), 429
+
     data = request.get_json(silent=True) or {}
-    password = (data.get("password") or "").strip().lower()
+    password = (data.get("password") or "").strip()
 
     if not password:
         return jsonify({"error": "Password required."}), 400
@@ -52,16 +89,32 @@ def admin_auth():
     pw_hash = hashlib.sha256(password.encode()).hexdigest()
 
     if pw_hash in VALID_HASHES:
+        # Reset failed login count
+        FAILED_LOGINS.pop(client_ip, None)
         session["admin_authenticated"] = True
         try:
             session.permanent = True
         except AttributeError:
             pass
-        logger.info("Admin access granted")
+        logger.info(f"Admin access granted to IP: {client_ip}")
         return jsonify({"status": "authenticated", "message": "Welcome, Admin."})
     else:
-        logger.warning("Failed admin login attempt")
-        return jsonify({"error": "Invalid password."}), 403
+        # Increment failed login count
+        fail_count = 0
+        if lockout_info:
+            fail_count = lockout_info[0]
+        fail_count += 1
+
+        # Lockout for 15 minutes after 5 failures
+        if fail_count >= 5:
+            lockout_until = now + 900
+            FAILED_LOGINS[client_ip] = (fail_count, lockout_until)
+            logger.warning(f"Admin login lockout triggered for IP: {client_ip}")
+            return jsonify({"error": "Invalid password. Too many failures, locked out for 15 minutes."}), 429
+        else:
+            FAILED_LOGINS[client_ip] = (fail_count, 0)
+            logger.warning(f"Failed admin login attempt from IP: {client_ip} (Attempt {fail_count}/5)")
+            return jsonify({"error": f"Invalid password. Attempt {fail_count}/5."}), 403
 
 
 @admin_bp.route("/logout", methods=["POST"])
