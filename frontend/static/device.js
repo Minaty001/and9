@@ -243,6 +243,16 @@ const DeviceControl = (() => {
         // Date
         if (/(?:what date|today's date|what day|current date)/.test(msg)) return getDate();
 
+        // Weather
+        if (/(?:weather|mausam|temperature|forecast)/.test(msg) && !msg.includes("app") && !msg.includes("open") && !msg.includes("launch")) {
+            let city = msg
+                .replace(/(?:weather|mausam|temperature|forecast|today|now|aaj|outside|report|update|status|check|kaisa|kya|batao|in|of|at|ko|karo|mein|par)/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            if (city === "") city = null;
+            return getWeather(city);
+        }
+
         // Copy
         const copyMatch = msg.match(/^(?:copy)\s+(.+)$/);
         if (copyMatch) return copyText(copyMatch[1].trim());
@@ -626,6 +636,92 @@ const DeviceControl = (() => {
                 responseText.textContent = "File deletion is only supported within the Android App.";
                 speak("File operations are only supported in the app.");
             }
+        }
+    }
+
+    function getGPSCoordinates() {
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) {
+                resolve(null);
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    resolve({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        name: "Current Location"
+                    });
+                },
+                (error) => {
+                    console.warn("Geolocation error:", error);
+                    resolve(null);
+                },
+                { timeout: 5000 }
+            );
+        });
+    }
+
+    async function getWeather(cityName) {
+        try {
+            let latitude, longitude, name;
+            
+            // If a city name is provided, use it. If not, try GPS first, then default to Delhi.
+            if (cityName) {
+                const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&country=India&count=1&format=json`;
+                const geoResponse = await fetch(geoUrl);
+                const geoData = await geoResponse.json();
+                
+                if (!geoData.results || geoData.results.length === 0) {
+                    return {
+                        reply: `Sorry, I couldn't find the city "${cityName}" in India. 🌤️`,
+                        speak: `Sorry, I couldn't find the city ${cityName}`
+                    };
+                }
+                latitude = geoData.results[0].latitude;
+                longitude = geoData.results[0].longitude;
+                name = geoData.results[0].name;
+            } else {
+                const coords = await getGPSCoordinates();
+                if (coords) {
+                    latitude = coords.latitude;
+                    longitude = coords.longitude;
+                    name = coords.name;
+                } else {
+                    // Fallback to Delhi
+                    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=Delhi&country=India&count=1&format=json`;
+                    const geoResponse = await fetch(geoUrl);
+                    const geoData = await geoResponse.json();
+                    if (geoData.results && geoData.results.length > 0) {
+                        latitude = geoData.results[0].latitude;
+                        longitude = geoData.results[0].longitude;
+                        name = "Delhi";
+                    } else {
+                        latitude = 28.6139;
+                        longitude = 77.2090;
+                        name = "Delhi";
+                    }
+                }
+            }
+            
+            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature&timezone=Asia/Kolkata`;
+            const weatherResponse = await fetch(weatherUrl);
+            const weatherData = await weatherResponse.json();
+            
+            const temp = weatherData.current.temperature_2m;
+            const apparentTemp = weatherData.current.apparent_temperature;
+            const humidity = weatherData.current.relative_humidity_2m;
+            
+            const reply = `Weather for ${name}:\nTemperature: ${temp}°C\nFeels Like: ${apparentTemp}°C\nHumidity: ${humidity}% 🌤️`;
+            const speakText = `Currently in ${name}, it is ${temp} degrees and feels like ${apparentTemp} degrees.`;
+            
+            return { reply, speak: speakText };
+        } catch (error) {
+            console.error("Error fetching weather data:", error);
+            return {
+                reply: "Sorry, I had trouble fetching the weather information. 🌤️",
+                speak: "Sorry, I had trouble fetching the weather information."
+            };
         }
     }
 

@@ -24,7 +24,7 @@ def _c(pattern: str, flags: int = re.IGNORECASE) -> Pattern:
 # PRIORITY 1 — EMERGENCY
 # ══════════════════════════════════════════════════════════════════
 EMERGENCY: List[Pattern] = [
-    _c(r'\b(emergency|help|bachao|danger|accident|sos|911|112)\b'),
+    _c(r'\b(emergency|bachao|danger|accident|sos|911|112)\b'),
 ]
 
 
@@ -52,6 +52,24 @@ CALL_CONTACT: List[Pattern] = [
     _c(r'^(.+?)\s+se\s+baat\s+karo$'),
     # "mummy ko call lagao"
     _c(r'^(.+?)\s+ko\s+call\s+lagao$'),
+    # "mummy ko dial karo"
+    _c(r'^(.+?)\s+ko\s+dial\s+karo$'),
+    # "call karo mummy"
+    _c(r'^call\s+karo\s+(.+)$'),
+    # "mummy call" / "papa call"
+    _c(r'^(.+?)\s+call$'),
+    # "make a call to mummy"
+    _c(r'^make\s+a\s+call\s+to\s+(.+)$'),
+    # "give a call to mummy"
+    _c(r'^give\s+a\s+call\s+to\s+(.+)$'),
+    # "call to mummy"
+    _c(r'^call\s+to\s+(.+)$'),
+    # "mummy se baat karani hai"
+    _c(r'^(.+?)\s+se\s+baat\s+karani\s+hai$'),
+    # "mummy se baat karna hai"
+    _c(r'^(.+?)\s+se\s+baat\s+karna\s+hai$'),
+    # "mummy ko phone karo"
+    _c(r'^(.+?)\s+ko\s+phone\s+karo$'),
 ]
 
 # Pattern → group(1) = phone number
@@ -383,6 +401,122 @@ AUTOMATION_TRIGGER: Pattern = _c(
 
 
 # ══════════════════════════════════════════════════════════════════
+# ASSISTANT INFO (between AUTOMATION and SEARCH)
+# ══════════════════════════════════════════════════════════════════
+
+ASSISTANT_INFO: List[Pattern] = [
+    _c(r'\b(who are you|what is your name|your name|kaun ho tum|'
+       r'tera naam kya hai|tum kaun ho|aap kaun hain)\b'),
+    _c(r'\b(who made you|who created you|tumhe kisne banaya|'
+       r'aapko kisne banaya|creator|banane wala)\b'),
+    _c(r'\b(your version|version|tumhara version)\b'),
+    _c(r'\b(about you|about jarvis|jarvis ke baare mein|'
+       r'tumhare baare mein|aapke baare mein)\b'),
+    _c(r'\b(introduce yourself|apna parichay do)\b'),
+]
+
+
+# ══════════════════════════════════════════════════════════════════
+# HELP / COMMANDS
+# ══════════════════════════════════════════════════════════════════
+
+HELP: List[Pattern] = [
+    _c(r'^(help|help me|guide|guide me)\s*$'),
+    _c(r'\b(what can you do|what all can you do|kya kar sakte ho|'
+       r'aap kya kar sakte hain|tum kya kar sakte ho)\b'),
+    _c(r'\b(commands|capabilities|features|skills|tumhari khamiyat)\b'),
+    _c(r'\b(show commands|list commands|help dikhao)\b'),
+    _c(r'\b(kaise use karein|how to use)\b'),
+]
+
+
+# ══════════════════════════════════════════════════════════════════
+# SYSTEM STATUS / DEVICE INFO
+# ══════════════════════════════════════════════════════════════════
+
+SYSTEM_STATUS: List[Pattern] = [
+    _c(r'\b(battery status|battery batao|battery check|battery level|'
+       r'battery percent|battery kitna hai|charge kitna hai)\b'),
+    _c(r'\b(network status|network check|network batao|'
+       r'mobile network|signal check|internet status)\b'),
+    _c(r'\b(phone status|phone ki halat|device info|device status|'
+       r'system info|system status|mobile info)\b'),
+    _c(r'\b(uptime|phone uptime|device uptime|kitne der se on hai)\b'),
+]
+
+
+# ══════════════════════════════════════════════════════════════════
+# SCREENSHOT
+# ══════════════════════════════════════════════════════════════════
+
+SCREENSHOT: List[Pattern] = [
+    _c(r'\b(take screenshot|screenshot lo|screenshot karo|'
+       r'screenshot le|screenshot le lo|screenshot lena hai)\b'),
+    _c(r'\b(screen capture|capture screen|screen shot)\b'),
+    _c(r'\b(screenshot banao|screenshot khicho)\b'),
+]
+
+
+# ══════════════════════════════════════════════════════════════════
+# LOCK SCREEN
+# ══════════════════════════════════════════════════════════════════
+
+LOCK_SCREEN: List[Pattern] = [
+    _c(r'\b(lock phone|lock screen|phone lock karo|'
+       r'screen lock karo|lock karo|phone band karo)\b'),
+    _c(r'\b(device lock|screen ko lock karo|tal laga do|taala laga do)\b'),
+]
+
+
+# ══════════════════════════════════════════════════════════════════
+# CALCULATOR / MATH
+# ══════════════════════════════════════════════════════════════════
+
+CALCULATOR: List[Pattern] = [
+    _c(r'\b(calculate|calculation|calculator|compute|evaluate)\b'),
+    _c(r'\b(what is|what\'s)\s+\d+.+\d+'),  # "what is 5+3" / "what's 5*10"
+    _c(r'\b(kitna hoga|kitna hota hai|kaise nikale)\s+\d+'),
+    _c(r'\b(plus|minus|multiply|divide|into|subtract|add|product|sum)\b'),
+    _c(r'\b(square root|sqrt|cube root|cube|power|mod|percentage)\b'),
+    _c(r'^[\d\s\+\-\*\/\(\)\%\.]+$'),  # pure math expression like "5+3*2"
+]
+
+
+# ══════════════════════════════════════════════════════════════════
+# JOKE
+# ══════════════════════════════════════════════════════════════════
+
+JOKE: List[Pattern] = [
+    _c(r'\b(tell me a joke|tell a joke|joke sunao|ek joke sunao|'
+       r'joke batao|kuch hasi ka kaam karo|hasao)\b'),
+    _c(r'\b(funny|make me laugh|joke do|joke kaho|kuch funny batao)\b'),
+    _c(r'\b(chutkula sunao|laugh|ha ha|hansao|mujhe hansao)\b'),
+]
+
+
+# ══════════════════════════════════════════════════════════════════
+# QUOTE / MOTIVATION
+# ══════════════════════════════════════════════════════════════════
+
+QUOTE: List[Pattern] = [
+    _c(r'\b(motivate me|motivation do|inspire me|inspiration do|'
+       r'kuch inspirational batao|kuch motivational batao)\b'),
+    _c(r'\b(quote batao|ek quote batao|quote do|quote sunao|'
+       r'motivational quote|inspirational quote)\b'),
+    _c(r'\b(prerit karo|protsahan do|himmat do|dil dhadakne do|'
+       r'positive energy|sukoon)\b'),
+]
+
+# ══════════════════════════════════════════════════════════════════
+# CALCULATOR EXPRESSION — extract math expression (catch-all for calculations)
+# ══════════════════════════════════════════════════════════════════
+
+CALC_EXPRESSION: Pattern = _c(
+    r'(?:calculate|what is|what\'s|kitna hoga|kitna hota hai)\s+(.+)$|^([\d\s\+\-\*\/\(\)\%\.]+)$'
+)
+
+
+# ══════════════════════════════════════════════════════════════════
 # PRIORITY 17 — SEARCH  (always last for device actions)
 # ══════════════════════════════════════════════════════════════════
 
@@ -425,6 +559,61 @@ GO_HOME: Pattern = _c(
 
 AIRPLANE_MODE: Pattern = _c(r'\b(airplane\s*mode|flight\s*mode|aeroplane\s*mode)\b')
 
+
+# ══════════════════════════════════════════════════════════════════
+# CONTACTS MANAGEMENT
+# ══════════════════════════════════════════════════════════════════
+
+# List all contacts
+LIST_CONTACTS: List[Pattern] = [
+    _c(r'\b(list\s+contacts|show\s+contacts|show\s+all\s+contacts|'
+       r'my\s+contacts|sabhi\s+contacts|contacts\s+dikhao|'
+       r'contacts\s+list|phonebook|contact\s+list)\b'),
+]
+
+# Add a contact → group(1)=name, group(2)=phone
+ADD_CONTACT: List[Pattern] = [
+    # "add contact name 9876543210"
+    _c(r'^add\s+contact\s+(.+?)\s+(\+?\d[\d\s\-()\+]{6,18})\s*$'),
+    # "add contact mummy" (will prompt for number)
+    _c(r'^add\s+contact\s+(.+)$'),
+    # "new contact name number"
+    _c(r'^new\s+contact\s+(.+?)\s+(\+?\d[\d\s\-()\+]{6,18})\s*$'),
+    # "contact save name number"
+    _c(r'^save\s+contact\s+(.+?)\s+(\+?\d[\d\s\-()\+]{6,18})\s*$'),
+    # Hindi: "contact add karo name number"
+    _c(r'^contact\s+add\s+karo\s+(.+?)\s+(\+?\d[\d\s\-()\+]{6,18})\s*$'),
+    # "naya contact name number"
+    _c(r'^naya\s+contact\s+(.+?)\s+(\+?\d[\d\s\-()\+]{6,18})\s*$'),
+]
+
+# Delete a contact → group(1)=name
+DELETE_CONTACT: List[Pattern] = [
+    # "delete contact name"
+    _c(r'^delete\s+contact\s+(.+)$'),
+    # "remove contact name"
+    _c(r'^remove\s+contact\s+(.+)$'),
+    # "contact delete karo name"
+    _c(r'^contact\s+delete\s+karo\s+(.+)$'),
+    # "contact hatao name"
+    _c(r'^contact\s+hatao\s+(.+)$'),
+    # "delete name from contacts"
+    _c(r'^delete\s+(.+?)\s+(?:from\s+)?contacts?$'),
+]
+
+# Search contacts → group(1)=query
+SEARCH_CONTACTS: List[Pattern] = [
+    # "search contact name"
+    _c(r'^search\s+contact\s+(.+)$'),
+    # "find contact name"
+    _c(r'^find\s+contact\s+(.+)$'),
+    # "contact dhundo name"
+    _c(r'^contact\s+dhundo\s+(.+)$'),
+    # "search for name in contacts"
+    _c(r'search\s+(?:for\s+)?(.+?)\s+(?:in\s+)?contacts', re.IGNORECASE),
+    # "find name phone number"
+    _c(r'^find\s+(.+?)\s+(?:phone|number|mobile)\s*$'),
+]
 
 # ══════════════════════════════════════════════════════════════════
 # UTILITY — Noise Words for Entity Cleaning

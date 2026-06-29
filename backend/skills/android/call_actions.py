@@ -96,6 +96,24 @@ def execute_call(
             # Name turned out to be a number
             return execute_call(number=resolved["number"])
 
+        # ── Local DB found a number directly ─────────────────────
+        if resolved.get("source") == "local_db" and resolved.get("number"):
+            clean_number = re.sub(r'[\s\-()]', '', resolved["number"])
+            contact_disp = resolved["display"]
+            return {
+                "response": f"{contact_disp} ko call kar raha hoon... 📞",
+                "action": "CALL",
+                "payload": {
+                    "action": _ACTION_CALL,
+                    "data": f"tel:{clean_number}",
+                },
+                "metadata": {
+                    "contact_name": resolved["contact_name"],
+                    "number": clean_number,
+                    "source": "local_db",
+                },
+            }
+
         if resolved.get("lookup_required"):
             # Emit CONTACTS_LOOKUP — Android resolves
             contact_disp = resolved["display"]
@@ -165,6 +183,26 @@ def execute_message(
     # ── Contact name SMS ─────────────────────────────────────────
     if effective_name:
         resolved = _resolver.resolve(effective_name)
+
+        # ── Local DB found a number directly ─────────────────────
+        if resolved and resolved.get("source") == "local_db" and resolved.get("number"):
+            clean_number = re.sub(r'[\s\-()]', '', resolved["number"])
+            contact_disp = resolved["display"]
+            return {
+                "response": f"{contact_disp} ko message bhej raha hoon... 💬",
+                "action": "SEND_SMS",
+                "payload": {
+                    "action": _ACTION_SENDTO,
+                    "data": f"sms:{clean_number}",
+                    "extra_text": message or "",
+                },
+                "metadata": {
+                    "contact_name": resolved["contact_name"],
+                    "number": clean_number,
+                    "message": message,
+                    "source": "local_db",
+                },
+            }
 
         if resolved and resolved.get("lookup_required"):
             contact_disp = resolved["display"]

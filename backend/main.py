@@ -275,6 +275,14 @@ def create_app() -> Flask:
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
     app.register_blueprint(memory_bp, url_prefix="/api/memory")
 
+    # ── Contacts Blueprint ──────────────────────────────────────
+    try:
+        from backend.services.contacts.contacts_routes import contacts_bp
+        app.register_blueprint(contacts_bp, url_prefix="/api/contacts")
+        _startup_logger.info("AND9 Contacts API registered at /api/contacts.")
+    except Exception as e:
+        _startup_logger.warning("AND9 Contacts API not available: %s", e)
+
     # ── Health check ────────────────────────────────────────────
     @app.route("/health")
     def health():

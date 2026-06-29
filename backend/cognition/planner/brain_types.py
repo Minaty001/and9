@@ -57,6 +57,7 @@ class IntentType(Enum):
     """
     EMERGENCY = "emergency"         # Priority 1 —  SOS, danger, accident
     CALL = "call"                   # Priority 2 —  Phone calls, dial
+    CONTACTS = "contacts"           # Priority 2.5 — Contact management
     MESSAGE = "message"             # Priority 3 —  SMS, text, WhatsApp message
     OPEN_APP = "open_app"           # Priority 4 —  Launch any Android app
     CAMERA = "camera"               # Priority 5 —  Open camera, take photo
@@ -84,6 +85,7 @@ class IntentType(Enum):
     HOME = "home"                   # Priority 18 — Go to home screen
     AUTOMATION = "automation"       # Priority 19 — Automation/routines
     SEARCH = "search"               # Priority 20 — Web search, lookup
+    ASSISTANT = "assistant"         # Priority 20b — Assistant info/help/calculator/joke/quote
     CHAT = "chat"                   # Priority 21 — General conversation, LLM
 
     @property
@@ -92,6 +94,7 @@ class IntentType(Enum):
         priorities = {
             IntentType.EMERGENCY: 1,
             IntentType.CALL: 2,
+            IntentType.CONTACTS: 2,
             IntentType.MESSAGE: 3,
             IntentType.OPEN_APP: 4,
             IntentType.CLOSE_APP: 4,

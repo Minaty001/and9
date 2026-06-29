@@ -61,20 +61,32 @@ def extract_entities(intent: str, query: str) -> dict:
     q = query.lower().strip()
 
     dispatchers = {
-        "call":        extract_call,
-        "message":     extract_message,
-        "send_sms":    extract_message,
-        "open_app":    extract_app,
-        "youtube":     extract_youtube,
+        "call":           extract_call,
+        "message":        extract_message,
+        "send_sms":       extract_message,
+        "open_app":       extract_app,
+        "youtube":        extract_youtube,
         "youtube_search": extract_youtube,
         "youtube_play":   extract_youtube,
-        "alarm":       extract_alarm,
-        "set_alarm":   extract_alarm,
-        "timer":       extract_timer,
-        "set_timer":   extract_timer,
-        "reminder":    extract_reminder,
-        "set_reminder": extract_reminder,
-        "search":      extract_search,
+        "alarm":          extract_alarm,
+        "set_alarm":      extract_alarm,
+        "timer":          extract_timer,
+        "set_timer":      extract_timer,
+        "reminder":       extract_reminder,
+        "set_reminder":   extract_reminder,
+        "search":         extract_search,
+        "list_contacts":  extract_list_contacts,
+        "add_contact":    extract_add_contact,
+        "delete_contact": extract_delete_contact,
+        "search_contacts": extract_search_contacts,
+        "assistant_info":   lambda q: {},
+        "help":             lambda q: {},
+        "system_status":    lambda q: {},
+        "screenshot":       lambda q: {},
+        "lock_screen":      lambda q: {},
+        "calculator":       extract_calculator,
+        "joke":             lambda q: {},
+        "quote":            lambda q: {},
     }
 
     fn = dispatchers.get(intent)
@@ -330,6 +342,84 @@ def extract_search(query: str) -> dict:
     )
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return {"query": cleaned or q}
+
+
+# ── CONTACTS MANAGEMENT ───────────────────────────────────────────
+
+def extract_list_contacts(query: str) -> dict:
+    """Extract parameters for list contacts intent."""
+    return {"action": "list"}
+
+
+def extract_add_contact(query: str) -> dict:
+    """Extract contact name and phone from an add-contact command.
+
+    Returns:
+        {
+            "contact_name": str | None,
+            "phone": str | None,
+        }
+    """
+    from backend.cognition.planner.command_dictionary import ADD_CONTACT
+    q = query.strip()
+    for pattern in ADD_CONTACT:
+        m = pattern.search(q)
+        if m:
+            name = m.group(1).strip() if m.lastindex >= 1 else ""
+            phone = m.group(2).strip() if m.lastindex >= 2 else ""
+            return {"contact_name": name, "phone": phone}
+    return {"contact_name": None, "phone": None}
+
+
+def extract_delete_contact(query: str) -> dict:
+    """Extract contact name from a delete-contact command.
+
+    Returns:
+        {"contact_name": str | None}
+    """
+    from backend.cognition.planner.command_dictionary import DELETE_CONTACT
+    q = query.strip()
+    for pattern in DELETE_CONTACT:
+        m = pattern.search(q)
+        if m and m.lastindex >= 1:
+            return {"contact_name": m.group(1).strip()}
+    return {"contact_name": None}
+
+
+def extract_search_contacts(query: str) -> dict:
+    """Extract search query from a search-contacts command.
+
+    Returns:
+        {"query": str | None}
+    """
+    from backend.cognition.planner.command_dictionary import SEARCH_CONTACTS
+    q = query.strip()
+    for pattern in SEARCH_CONTACTS:
+        m = pattern.search(q)
+        if m and m.lastindex >= 1:
+            return {"query": m.group(1).strip()}
+    return {"query": None}
+
+
+# ── CALCULATOR ────────────────────────────────────────────────────
+
+def extract_calculator(query: str) -> dict:
+    """Extract the math expression from a calculation query.
+
+    Returns:
+        {"expression": str}
+    """
+    import re
+    q = query.strip()
+    # "calculate X" / "what is X" / "kitna hoga X"
+    m = re.search(r'(?:calculate|what is|what\'s|kitna hoga|kitna hota hai)\s+(.+)$', q, re.IGNORECASE)
+    if m:
+        return {"expression": m.group(1).strip()}
+    # Pure math expression like "5+3*2"
+    m2 = re.match(r'^[\d\s\+\-\*\/\(\)\%\.]+$', q)
+    if m2:
+        return {"expression": q.strip()}
+    return {"expression": q}
 
 
 # ── Helpers ───────────────────────────────────────────────────────

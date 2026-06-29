@@ -25,6 +25,18 @@ INTENT_TRIGGERS = {
     "home": ["home", "back", "recents", "screen"],
     "time": ["time", "samay", "baje", "clock", "ghadi", "date", "tarikh", "calendar"],
     "city_time": ["time", "samay", "baje", "clock", "ghadi", "date", "tarikh", "calendar"],
+    "list_contacts": ["contacts", "phonebook", "sabhi"],
+    "add_contact": ["add", "save", "new", "naya"],
+    "delete_contact": ["delete", "remove", "hatao"],
+    "search_contacts": ["search", "find", "dhundo", "khojo"],
+    "assistant_info": ["who", "what", "name", "kaun", "tum", "version", "about", "creator", "made"],
+    "help": ["help", "guide", "commands", "capabilities", "kya kar", "features", "skills"],
+    "system_status": ["battery", "network", "status", "device", "system", "info", "uptime"],
+    "screenshot": ["screenshot", "capture", "screen shot"],
+    "lock_screen": ["lock", "taala", "band"],
+    "calculator": ["calculate", "plus", "minus", "multiply", "divide", "what is", "kitna hoga"],
+    "joke": ["joke", "funny", "hasao", "hansao", "laugh"],
+    "quote": ["motivate", "inspire", "quote", "prerit", "protsahan"],
 }
 
 def score_intent(intent: str, query: str, params: Dict[str, Any], action: str = "") -> float:
@@ -167,6 +179,35 @@ def score_intent(intent: str, query: str, params: Dict[str, Any], action: str = 
             return 0.88
         else:
             return 0.55
+
+    # ── Contacts Management ────────────────────────────────────────
+    elif intent in ("list_contacts", "add_contact", "delete_contact", "search_contacts"):
+        # These are pattern-matched specifically in the router – high confidence
+        if has_trigger_word:
+            return 0.98
+        return 0.90
+
+    # ── Assistant Features ─────────────────────────────────────────
+    elif intent in ("assistant_info", "help", "system_status", "screenshot", "lock_screen"):
+        # Pattern-matched in router – high confidence
+        if has_trigger_word:
+            return 0.98
+        return 0.90
+
+    elif intent == "calculator":
+        # Pattern-matched with math expression
+        has_expr = bool(params.get("expression"))
+        if has_expr and has_trigger_word:
+            return 0.98
+        elif has_expr:
+            return 0.92
+        return 0.85
+
+    elif intent in ("joke", "quote"):
+        # Pattern-matched – high confidence
+        if has_trigger_word:
+            return 0.98
+        return 0.90
 
     # Default fallback calculation: ratio of matched words
     query_words = set(q.split())

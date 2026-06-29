@@ -25,6 +25,7 @@ from backend.cognition.planner.command_dictionary import (
     EMERGENCY,
     CALL_CONTACT, CALL_NUMBER, IS_PHONE_NUMBER,
     MESSAGE,
+    LIST_CONTACTS, ADD_CONTACT, DELETE_CONTACT, SEARCH_CONTACTS,
     OPEN_APP_TRIGGERS, OPEN_APP_SPECIFIC,
     CAMERA,
     FLASHLIGHT, FLASHLIGHT_ON, FLASHLIGHT_OFF,
@@ -51,6 +52,15 @@ from backend.cognition.planner.command_dictionary import (
     SEARCH_TRIGGER,
     GO_HOME,
     AIRPLANE_MODE,
+    # New Assistant Features
+    ASSISTANT_INFO,
+    HELP,
+    SYSTEM_STATUS,
+    SCREENSHOT,
+    LOCK_SCREEN,
+    CALCULATOR,
+    JOKE,
+    QUOTE,
 )
 from backend.cognition.planner.entity_extractor import extract_entities
 
@@ -115,13 +125,13 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
         parameters_dict contains extracted structured entities.
 
     Priority order:
-        1. EMERGENCY   7. BLUETOOTH  13. REMINDER
-        2. CALL        8. WIFI       14. TIMER
-        3. MESSAGE     9. VOLUME     15. CITY_TIME
-        4. OPEN_APP   10. YOUTUBE    16. GOAL
-        5. CAMERA     11. MUSIC      17. AUTOMATION
-        6. FLASHLIGHT 12. ALARM      18. SEARCH
-                                                           19. CHAT
+        1. EMERGENCY     7. BLUETOOTH   13. REMINDER
+        2. CALL          8. WIFI        14. TIMER
+        2.5 CONTACTS     9. VOLUME      15. CITY_TIME
+        3. MESSAGE      10. YOUTUBE     16. GOAL
+        4. OPEN_APP     11. MUSIC       17. AUTOMATION
+        5. CAMERA       12. ALARM       18. SEARCH
+        6. FLASHLIGHT                   19. CHAT
     """
     q = query.lower().strip()
     if not q:
@@ -141,6 +151,65 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
     for pattern in CALL_CONTACT:
         if pattern.search(q):
             return 'call', ActionType.CALL.value, extract_entities('call', q)
+
+    # ── Priority 2.5: CONTACTS MANAGEMENT ─────────────────────────
+    # List contacts ("show my contacts", "contacts dikhao")
+    for pattern in LIST_CONTACTS:
+        if pattern.search(q):
+            return 'list_contacts', ActionType.LIST_CONTACTS.value, {}
+
+    # Add contact ("add contact mummy 9876543210")
+    for pattern in ADD_CONTACT:
+        m = pattern.search(q)
+        if m:
+            params = {'contact_name': '', 'phone': ''}
+            if m.lastindex and m.lastindex >= 2:
+                params['contact_name'] = m.group(1).strip()
+                params['phone'] = m.group(2).strip()
+            elif m.lastindex and m.lastindex >= 1:
+                params['contact_name'] = m.group(1).strip()
+            return 'add_contact', ActionType.ADD_CONTACT.value, params
+
+    # Delete contact ("delete contact mummy")
+    for pattern in DELETE_CONTACT:
+        m = pattern.search(q)
+        if m and m.lastindex and m.lastindex >= 1:
+            return 'delete_contact', ActionType.DELETE_CONTACT.value, {
+                'contact_name': m.group(1).strip()
+            }
+
+    # Search contacts ("search contact mummy")
+    for pattern in SEARCH_CONTACTS:
+        m = pattern.search(q)
+        if m and m.lastindex and m.lastindex >= 1:
+            return 'search_contacts', ActionType.SEARCH_CONTACTS.value, {
+                'query': m.group(1).strip()
+            }
+
+    # ── Priority 2.75: CALCULATOR ────────────────────────────────
+    for pattern in CALCULATOR:
+        if pattern.search(q):
+            exp = q
+            # Try to extract clean expression from "calculate X" or "what is X"
+            import re as _re
+            m = _re.search(r'(?:calculate|what is|what\'s|kitna hoga|kitna hota hai)\s+(.+)$', q)
+            if m:
+                exp = m.group(1).strip()
+            # Pure math expression
+            m2 = _re.match(r'^[\d\s\+\-\*\/\(\)\%\.]+$', q)
+            if m2:
+                exp = q.strip()
+            return 'calculator', ActionType.CALCULATOR.value, {'expression': exp}
+
+    # ── Priority 2.8: JOKE ───────────────────────────────────────
+    for pattern in JOKE:
+        if pattern.search(q):
+            return 'joke', ActionType.JOKE.value, {}
+
+    # ── Priority 2.85: QUOTE ─────────────────────────────────────
+    for pattern in QUOTE:
+        if pattern.search(q):
+            return 'quote', ActionType.QUOTE.value, {}
 
     # ── Priority 3: MESSAGE ──────────────────────────────────────
     if MESSAGE[0].search(q):
@@ -223,6 +292,19 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
         elif TOGGLE_OFF.search(q):
             state = False
         return 'airplane', ActionType.AIRPLANE_MODE.value, {'state': state}
+
+    # ── Priority 9.5: SYSTEM STATUS / SCREENSHOT / LOCK SCREEN ──
+    for pattern in SYSTEM_STATUS:
+        if pattern.search(q):
+            return 'system_status', ActionType.SYSTEM_STATUS.value, {}
+
+    for pattern in SCREENSHOT:
+        if pattern.search(q):
+            return 'screenshot', ActionType.SCREENSHOT.value, {}
+
+    for pattern in LOCK_SCREEN:
+        if pattern.search(q):
+            return 'lock_screen', ActionType.LOCK_SCREEN.value, {}
 
     # ── Priority 9: VOLUME ───────────────────────────────────────
     if VOLUME.search(q):
@@ -335,6 +417,16 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
                     return mapped_intent, mapped_action, extracted
         except Exception as e:
             logger.error("Error in offline Neural Brain prediction fallback: %s", e)
+
+    # ── Priority 17.5: ASSISTANT INFO ────────────────────────────
+    for pattern in ASSISTANT_INFO:
+        if pattern.search(q):
+            return 'assistant_info', ActionType.ASSISTANT_INFO.value, {}
+
+    # ── Priority 17.6: HELP ──────────────────────────────────────
+    for pattern in HELP:
+        if pattern.search(q):
+            return 'help', ActionType.HELP.value, {}
 
     # ── Priority 18: CHAT (default fallback) ─────────────────────
     return 'chat', ActionType.CHAT.value, {'query': q}

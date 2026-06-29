@@ -184,6 +184,22 @@ register_skill("volume_mute", "backend.skills.android.device_actions", "handle_v
 register_skill("volume_max", "backend.skills.android.device_actions", "handle_volume", lambda p, e: {"keyword": "max"})
 register_skill("search", "backend.skills.android.device_actions", "handle_search", lambda p, e: {"query": p.get("query", "")})
 
+# ── Contacts Management ───────────────────────────────────────────
+register_skill("list_contacts", "backend.skills.android.contacts_actions", "execute_list_contacts", lambda p, e: {})
+register_skill("add_contact", "backend.skills.android.contacts_actions", "execute_add_contact", lambda p, e: {"name": p.get("contact_name", ""), "phone": p.get("phone", "")})
+register_skill("delete_contact", "backend.skills.android.contacts_actions", "execute_delete_contact", lambda p, e: {"contact_name": p.get("contact_name", "")})
+register_skill("search_contacts", "backend.skills.android.contacts_actions", "execute_search_contacts", lambda p, e: {"query": p.get("query", "")})
+
+# ── Assistant Features ────────────────────────────────────────────
+register_skill("assistant_info", "backend.skills.android.assistant_actions", "execute_assistant_info", lambda p, e: {})
+register_skill("help", "backend.skills.android.assistant_actions", "execute_help", lambda p, e: {})
+register_skill("system_status", "backend.skills.android.assistant_actions", "execute_system_status", lambda p, e: {})
+register_skill("screenshot", "backend.skills.android.assistant_actions", "execute_screenshot", lambda p, e: {})
+register_skill("lock_screen", "backend.skills.android.assistant_actions", "execute_lock_screen", lambda p, e: {})
+register_skill("calculator", "backend.skills.android.assistant_actions", "execute_calculator", lambda p, e: {"expression": p.get("expression", "")})
+register_skill("joke", "backend.skills.android.assistant_actions", "execute_joke", lambda p, e: {})
+register_skill("quote", "backend.skills.android.assistant_actions", "execute_quote", lambda p, e: {})
+
 
 def execute_skill(action_type: str, params: dict, events_sys: Any = None) -> dict:
     """Execute a skill from the registry.

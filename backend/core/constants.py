@@ -65,6 +65,22 @@ class ActionType(str, Enum):
     # ── Emergency ──────────────────────────────────────────────
     EMERGENCY = "emergency"
 
+    # ── Contacts Management ────────────────────────────────────
+    LIST_CONTACTS = "list_contacts"
+    ADD_CONTACT = "add_contact"
+    DELETE_CONTACT = "delete_contact"
+    SEARCH_CONTACTS = "search_contacts"
+
+    # ── Assistant Features ───────────────────────────────────────
+    ASSISTANT_INFO = "assistant_info"
+    HELP = "help"
+    SYSTEM_STATUS = "system_status"
+    SCREENSHOT = "screenshot"
+    LOCK_SCREEN = "lock_screen"
+    CALCULATOR = "calculator"
+    JOKE = "joke"
+    QUOTE = "quote"
+
     # ── Fallback ───────────────────────────────────────────────
     SEARCH = "search"
     CHAT = "chat"
@@ -229,6 +245,70 @@ class ActionRegistry:
             "description": "App name not recognized",
             "requires": ["app_name"],
             "response_template": "App nahi mila '{app_name}'. Kripya sahi naam boliye! 😕",
+        },
+
+        # ── Assistant Features ─────────────────────────────────────────
+        ActionType.ASSISTANT_INFO: {
+            "description": "Tell user about Jarvis (who/creator/version)",
+            "requires": [],
+            "response_template": "Main Jarvis hoon, aapka personal assistant!",
+        },
+        ActionType.HELP: {
+            "description": "Show list of available commands and capabilities",
+            "requires": [],
+            "response_template": "Yeh rahe meri capabilities:",
+        },
+        ActionType.SYSTEM_STATUS: {
+            "description": "Show device/system status (battery, network, etc.)",
+            "requires": [],
+            "response_template": "System status check kar raha hoon... 📊",
+        },
+        ActionType.SCREENSHOT: {
+            "description": "Take a screenshot of the current screen",
+            "requires": [],
+            "response_template": "Screenshot le raha hoon... 📸",
+        },
+        ActionType.LOCK_SCREEN: {
+            "description": "Lock the device screen",
+            "requires": [],
+            "response_template": "Screen lock kar raha hoon... 🔒",
+        },
+        ActionType.CALCULATOR: {
+            "description": "Perform a mathematical calculation",
+            "requires": ["expression"],
+            "response_template": "Calculate kar raha hoon... 🧮",
+        },
+        ActionType.JOKE: {
+            "description": "Tell a funny joke in Hindi/English",
+            "requires": [],
+            "response_template": "Yeh lo ek joke:",
+        },
+        ActionType.QUOTE: {
+            "description": "Share a motivational or inspirational quote",
+            "requires": [],
+            "response_template": "Yeh lo ek motivational quote:",
+        },
+
+        # ── Contact Management ──────────────────────────────────────
+        ActionType.LIST_CONTACTS: {
+            "description": "List all saved contacts",
+            "requires": [],
+            "response_template": "Yeh rahe aapke contacts:",
+        },
+        ActionType.ADD_CONTACT: {
+            "description": "Save a new contact",
+            "requires": ["name", "phone"],
+            "response_template": "Contact '{name}' save kar diya! ✅",
+        },
+        ActionType.DELETE_CONTACT: {
+            "description": "Delete a saved contact",
+            "requires": ["name"],
+            "response_template": "Contact '{name}' delete kar diya! 🗑️",
+        },
+        ActionType.SEARCH_CONTACTS: {
+            "description": "Search saved contacts",
+            "requires": ["query"],
+            "response_template": "Yeh rahe search results:",
         },
     }
 

@@ -61,6 +61,20 @@ _REQUIRED_ACTIONS = frozenset({
     "media_prev",
     "screen_state",
     "read_notifications",
+    # ── Contacts Management ──────────────────────────────────
+    "list_contacts",
+    "add_contact",
+    "delete_contact",
+    "search_contacts",
+    # ── Assistant Features ────────────────────────────────────
+    "assistant_info",
+    "help",
+    "system_status",
+    "screenshot",
+    "lock_screen",
+    "calculator",
+    "joke",
+    "quote",
 })
 
 
@@ -344,6 +358,94 @@ REGISTRY: Dict[str, Dict[str, Any]] = {
         "android_intent": "JarvisAccessibilityService.writeClipboard",
         "description": "Write text content to system clipboard",
         "params": ["text"],
+        "whitelisted": True,
+    },
+
+    # ── Assistant Features ──────────────────────────────────────
+    "assistant_info": {
+        "handler": "actions.assistant_actions.execute_assistant_info",
+        "android_intent": None,
+        "description": "Tell user about Jarvis (who/creator/version)",
+        "params": [],
+        "whitelisted": True,
+    },
+    "help": {
+        "handler": "actions.assistant_actions.execute_help",
+        "android_intent": None,
+        "description": "Show a formatted list of all capabilities",
+        "params": [],
+        "whitelisted": True,
+    },
+    "system_status": {
+        "handler": "actions.assistant_actions.execute_system_status",
+        "android_intent": "AND9_INTERNAL",
+        "description": "Request device system status (battery, network, uptime)",
+        "params": [],
+        "whitelisted": True,
+    },
+    "screenshot": {
+        "handler": "actions.assistant_actions.execute_screenshot",
+        "android_intent": "AND9_INTERNAL",
+        "description": "Take a screenshot of the current screen via accessibility service",
+        "params": [],
+        "whitelisted": True,
+    },
+    "lock_screen": {
+        "handler": "actions.assistant_actions.execute_lock_screen",
+        "android_intent": "AND9_INTERNAL",
+        "description": "Lock the device screen",
+        "params": [],
+        "whitelisted": True,
+    },
+    "calculator": {
+        "handler": "actions.assistant_actions.execute_calculator",
+        "android_intent": None,
+        "description": "Evaluate a mathematical expression inline",
+        "params": ["expression"],
+        "whitelisted": True,
+    },
+    "joke": {
+        "handler": "actions.assistant_actions.execute_joke",
+        "android_intent": None,
+        "description": "Tell a random funny joke in Hindi/English",
+        "params": [],
+        "whitelisted": True,
+    },
+    "quote": {
+        "handler": "actions.assistant_actions.execute_quote",
+        "android_intent": None,
+        "description": "Share a motivational or inspirational quote",
+        "params": [],
+        "whitelisted": True,
+    },
+
+    # ── Contacts Management ──────────────────────────────────
+    "list_contacts": {
+        "handler": "actions.contacts_actions.execute_list_contacts",
+        "android_intent": "AND9_INTERNAL",
+        "description": "List all locally stored contacts",
+        "params": [],
+        "whitelisted": True,
+    },
+    "add_contact": {
+        "handler": "actions.contacts_actions.execute_add_contact",
+        "android_intent": "AND9_INTERNAL",
+        "description": "Add a new contact to the local database",
+        "params": ["name", "phone"],
+        "whitelisted": True,
+    },
+    "delete_contact": {
+        "handler": "actions.contacts_actions.execute_delete_contact",
+        "android_intent": "AND9_INTERNAL",
+        "description": "Delete a contact by name from the local database",
+        "params": ["contact_name"],
+        "whitelisted": False,  # Destructive — requires confirmation
+    },
+    "search_contacts": {
+        "handler": "actions.contacts_actions.execute_search_contacts",
+        "android_intent": "AND9_INTERNAL",
+        "description": "Search contacts by name or phone number",
+        "params": ["query"],
         "whitelisted": True,
     },
     "media_play_pause": {

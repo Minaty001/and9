@@ -19,6 +19,7 @@ function openPanel() {
     sideOverlay.classList.add('show');
     loadGoals();
     loadEvents();
+    loadContacts();
 }
 function closePanel() {
     sidePanel.classList.remove('open');
@@ -123,6 +124,96 @@ async function markEventDone(id) {
     showToast('Reminder dismissed ✓');
 }
 
+// ── Contacts Management ─────────────────────────────────────────
+const contactsList = document.getElementById('contactsList');
+const addContactForm = document.getElementById('addContactForm');
+const newContactNameInput = document.getElementById('newContactNameInput');
+const newContactPhoneInput = document.getElementById('newContactPhoneInput');
+
+async function loadContacts() {
+    if (!contactsList) return;
+    contactsList.innerHTML = '<div class="panel-loading">Loading...</div>';
+    try {
+        const res = await fetch('/api/contacts');
+        const data = await res.json();
+        const contacts = data.contacts || [];
+        if (!contacts.length) {
+            contactsList.innerHTML =
+                '<div class="panel-empty">No contacts yet. Say "add contact &lt;name&gt; &lt;number&gt;"</div>';
+            return;
+        }
+        contactsList.innerHTML = contacts.map(c => `
+            <div class="panel-item contact-item" data-id="${c.id}">
+                <span class="contact-icon">👤</span>
+                <span class="contact-info">
+                    <span class="contact-name">${escHtml(c.name)}</span>
+                    <small class="contact-phone">${escHtml(c.phone || '—')}</small>
+                </span>
+                <button class="call-btn" onclick="callContact('${escHtml(c.name)}')" title="Call ${escHtml(c.name)}">📞</button>
+                <button class="done-btn" onclick="deleteContact(${c.id}, '${escHtml(c.name)}')" title="Delete">✕</button>
+            </div>
+        `).join('');
+    } catch {
+        contactsList.innerHTML = '<div class="panel-empty">Could not load contacts.</div>';
+    }
+}
+
+async function deleteContact(id, name) {
+    if (!confirm(`Delete "${name}" from contacts?`)) return;
+    try {
+        const res = await fetch(`/api/contacts/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast(`Contact "${name}" deleted ✕`);
+            loadContacts();
+        } else {
+            showToast('Failed to delete contact.');
+        }
+    } catch {
+        showToast('Failed to delete contact.');
+    }
+}
+
+function callContact(name) {
+    // Fire a call command into the chat
+    const input = document.getElementById('textInput');
+    if (input) {
+        input.value = `call ${name}`;
+        document.getElementById('sendBtn')?.click();
+    }
+    closePanel();
+}
+
+// Add contact form
+if (addContactForm) {
+    addContactForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = newContactNameInput.value.trim();
+        const phone = newContactPhoneInput.value.trim();
+        if (!name || !phone) {
+            showToast('Name aur phone number dono batao!');
+            return;
+        }
+        newContactNameInput.value = '';
+        newContactPhoneInput.value = '';
+        try {
+            const res = await fetch('/api/contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, phone }),
+            });
+            if (res.ok) {
+                showToast(`Contact "${name}" added ✓`);
+                loadContacts();
+            } else {
+                const err = await res.json();
+                showToast(err.error || 'Failed to add contact.');
+            }
+        } catch {
+            showToast('Failed to add contact.');
+        }
+    });
+}
+
 // ── Quick chips ───────────────────────────────────────────────
 document.querySelectorAll('.chip').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -168,11 +259,14 @@ function escHtml(s) {
 // Expose for script.js to call after each response
 window.onJarvisResponse = function(data) {
     showAgentBadge(data.agent);
-    // Auto-refresh panel if it's open and agent is goal/reminder
+    // Auto-refresh panel if it's open and agent is goal/reminder/contact
     if (sidePanel.classList.contains('open')) {
-        if (['goal','reminder'].includes(data.agent)) {
+        if (['goal','reminder','list_contacts','add_contact','delete_contact','search_contacts'].includes(data.agent)) {
             loadGoals();
             loadEvents();
+            if (['list_contacts','add_contact','delete_contact','search_contacts'].includes(data.agent)) {
+                loadContacts();
+            }
         }
     }
 };

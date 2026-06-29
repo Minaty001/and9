@@ -67,6 +67,20 @@ _INTENT_ONLY_ACTIONS = frozenset({
     "clear_all_reminders",
     "show_completed_reminders",
     "edit_reminder",
+    # Contacts management — Python-only (local SQLite DB, no Android intent)
+    "list_contacts",
+    "add_contact",
+    "delete_contact",
+    "search_contacts",
+    # Assistant features — Python-only (inline responses, no Android intent needed)
+    "assistant_info",
+    "help",
+    "system_status",
+    "screenshot",
+    "lock_screen",
+    "calculator",
+    "joke",
+    "quote",
 })
 
 # Python actions that map to the same Kotlin handler

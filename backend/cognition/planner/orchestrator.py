@@ -456,6 +456,10 @@ class Orchestrator:
         mapping = {
             "emergency": IntentType.EMERGENCY,
             "call": IntentType.CALL,
+            "list_contacts": IntentType.CONTACTS,
+            "add_contact": IntentType.CONTACTS,
+            "delete_contact": IntentType.CONTACTS,
+            "search_contacts": IntentType.CONTACTS,
             "message": IntentType.MESSAGE,
             "open_app": IntentType.OPEN_APP,
             "camera": IntentType.CAMERA,
@@ -471,6 +475,14 @@ class Orchestrator:
             "airplane": IntentType.AIRPLANE_MODE,
             "home": IntentType.HOME,
             "search": IntentType.SEARCH,
+            "assistant_info": IntentType.ASSISTANT,
+            "help": IntentType.ASSISTANT,
+            "system_status": IntentType.ASSISTANT,
+            "screenshot": IntentType.ASSISTANT,
+            "lock_screen": IntentType.ASSISTANT,
+            "calculator": IntentType.ASSISTANT,
+            "joke": IntentType.ASSISTANT,
+            "quote": IntentType.ASSISTANT,
             "chat": IntentType.CHAT,
         }
         return mapping.get(name)

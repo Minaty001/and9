@@ -67,4 +67,33 @@ def validate_intent(intent_name: str, params: dict, action_type: str = "") -> Tu
         if not params.get("query"):
             return False, "Kya search karna hai? Topic bataiye. 🔍"
 
+    elif intent_name == "add_contact":
+        # Add contact needs at least a name
+        if not params.get("contact_name"):
+            return False, "Contact ka naam batao, jaise 'add contact mummy 9876543210' 📞"
+
+    elif intent_name == "delete_contact":
+        # Delete contact needs a name
+        if not params.get("contact_name"):
+            return False, "Kaunsa contact delete karna hai? Naam bataiye. ✕"
+
+    elif intent_name == "search_contacts":
+        # Search contacts needs a query
+        if not params.get("query"):
+            return False, "Kaunsa contact dhundhna hai? Naam ya number bataiye. 🔍"
+
+    elif intent_name == "list_contacts":
+        # List contacts — always valid
+        return True, ""
+
+    elif intent_name == "calculator":
+        # Calculator needs an expression
+        if not params.get("expression"):
+            return False, "Kya calculate karna hai? Jaise '5 + 3' batao. 🧮"
+
+    elif intent_name in ("assistant_info", "help", "joke", "quote",
+                         "system_status", "screenshot", "lock_screen"):
+        # These intents always have valid parameters
+        return True, ""
+
     return True, ""
