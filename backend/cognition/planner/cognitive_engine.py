@@ -484,7 +484,7 @@ class CognitiveEngine:
                         importance=0.8 if ctx.processing_level.value == "neural" else 0.4,
                         topics=[ctx.topic or ctx.detected_intent or "general"],
                         entities=ctx.parameters or {},
-                        source="user" if ctx.processing_level.value != "reasoning" else "assistant"
+                        source="user"
                     )
 
                 # Learn from outcome
@@ -553,7 +553,7 @@ class CognitiveEngine:
         try:
             if hasattr(self.memory, 'add_episode'):
                 self.memory.add_episode(
-                    role="user" if ctx.processing_level != ProcessingLevel.NEURAL else "assistant",
+                    role="user",
                     content=ctx.raw_input[:500],
                     topic=ctx.topic or ctx.detected_intent or "general",
                     emotion=ctx.emotion or "neutral",

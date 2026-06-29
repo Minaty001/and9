@@ -71,7 +71,7 @@ MICRO_BRAIN_INTENT_MAP = {
     "OPEN_APP": ("open_app", ActionType.LAUNCH_APP.value),
     "CLOSE_APP": ("close_app", ActionType.CLOSE_APP.value),
     "PLAY_MUSIC": ("youtube", ActionType.YOUTUBE_PLAY.value),
-    "PAUSE_MUSIC": ("youtube", ActionType.CLOSE_APP.value),
+    "PAUSE_MUSIC": ("youtube", "media_play_pause"),
     "SEARCH_WEB": ("search", ActionType.SEARCH.value),
     "WEATHER": ("search", ActionType.SEARCH.value),
     "TIME": ("time", ActionType.GET_TIME.value),

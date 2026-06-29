@@ -44,8 +44,8 @@ CALL_CONTACT: List[Pattern] = [
     _c(r'^(.+?)\s+ko\s+phone\s+lagao$'),
     # "dial mummy"
     _c(r'^dial\s+(?!\+?\d)(.+)$'),
-    # "phone mummy" (short form)
-    _c(r'^phone\s+(?!\+?\d)(.+)$'),
+    # "phone mummy" (short form) — but NOT "phone lock karo" / "phone screen" / "phone band"
+    _c(r'^phone\s+(?!(?:lock|screen|band)\b)(?!\+?\d)(.+)$'),
     # "mummy ko call kar"
     _c(r'^(.+?)\s+ko\s+call\s+kar$'),
     # "mummy se baat karo"

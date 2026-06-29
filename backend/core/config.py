@@ -30,7 +30,8 @@ NEWS_API_KEY    = _str_env("NEWS_API_KEY")
 WEATHER_API_KEY = _str_env("WEATHER_API_KEY")
 
 # ── MongoDB (optional; for persistent chat & output logging) ───
-MONGO_URI = _str_env("MONGO_URI", "mongodb+srv://1209saifaliansari_db_user:xJWzNzyg5O6lfPXy@cluster0.jvqzf7k.mongodb.net/?appName=Cluster0")
+# Set MONGO_URI in environment or .env to enable MongoDB logging.
+MONGO_URI = _str_env("MONGO_URI")
 
 # ── Neural Bridge ──────────────────────────────────────────────
 NEURAL_MODEL_PATH = _str_env("NEURAL_MODEL_PATH", "")
