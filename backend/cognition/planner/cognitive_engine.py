@@ -111,37 +111,38 @@ class ReflexProcessor:
             "playstore": "com.android.vending",
         }
         for name, pkg in apps.items():
+            handler_key = f"open_{name}"
             keywords = [
                 f"open {name}", f"launch {name}", f"start {name}",
                 f"{name} kholo", f"{name} open karo", f"{name} chalao",
             ]
             for kw in keywords:
-                self._intent_map[kw] = "open_app"
-            self._handlers[f"open_{name}"] = lambda q, p=pkg: {
-                "action": "LAUNCH_APP",
+                self._intent_map[kw] = handler_key  # maps to handler key, not generic intent
+            self._handlers[handler_key] = lambda q, p=pkg: {
+                "action": "open_app",
                 "payload": {"package": p, "action": "android.intent.action.VIEW"},
                 "response": f"{pkg.split('.')[-1]} khol raha hoon! 📱",
             }
 
         # Media controls
         media_actions = {
-            "play music": ("PLAY_MUSIC", "Music chala raha hoon! 🎵"),
-            "play song": ("PLAY_MUSIC", "Song chala raha hoon! 🎵"),
-            "gaana chalao": ("PLAY_MUSIC", "Gaana chala raha hoon! 🎵"),
-            "bajao kuch": ("PLAY_MUSIC", "Baja raha hoon! 🎵"),
-            "pause music": ("PAUSE_MUSIC", "Music rok diya! ⏸️"),
-            "stop music": ("PAUSE_MUSIC", "Music band kar diya! ⏹️"),
-            "music rok do": ("PAUSE_MUSIC", "Rok diya! ⏸️"),
-            "next song": ("NEXT_TRACK", "Agla song! ⏭️"),
-            "previous song": ("PREV_TRACK", "Pichla song! ⏮️"),
-            "volume up": ("VOLUME_UP", "Volume badha diya! 🔊"),
-            "volume down": ("VOLUME_DOWN", "Volume kam kar diya! 🔉"),
-            "volume increase": ("VOLUME_UP", "Volume badha diya! 🔊"),
-            "volume decrease": ("VOLUME_DOWN", "Volume kam kar diya! 🔉"),
-            "aawaz badhao": ("VOLUME_UP", "Aawaz badha di! 🔊"),
-            "aawaz kam karo": ("VOLUME_DOWN", "Aawaz kam kar di! 🔉"),
-            "silent mode": ("VOLUME_MUTE", "Silent kar diya! 🔇"),
-            "mute karo": ("VOLUME_MUTE", "Mute kar diya! 🔇"),
+            "play music": ("youtube_play", "Music chala raha hoon! 🎵"),
+            "play song": ("youtube_play", "Song chala raha hoon! 🎵"),
+            "gaana chalao": ("youtube_play", "Gaana chala raha hoon! 🎵"),
+            "bajao kuch": ("youtube_play", "Baja raha hoon! 🎵"),
+            "pause music": ("media_play_pause", "Music rok diya! ⏸️"),
+            "stop music": ("media_play_pause", "Music band kar diya! ⏹️"),
+            "music rok do": ("media_play_pause", "Rok diya! ⏸️"),
+            "next song": ("next_track", "Agla song! ⏭️"),
+            "previous song": ("previous_track", "Pichla song! ⏮️"),
+            "volume up": ("volume_up", "Volume badha diya! 🔊"),
+            "volume down": ("volume_down", "Volume kam kar diya! 🔉"),
+            "volume increase": ("volume_up", "Volume badha diya! 🔊"),
+            "volume decrease": ("volume_down", "Volume kam kar diya! 🔉"),
+            "aawaz badhao": ("volume_up", "Aawaz badha di! 🔊"),
+            "aawaz kam karo": ("volume_down", "Aawaz kam kar di! 🔉"),
+            "silent mode": ("volume_mute", "Silent kar diya! 🔇"),
+            "mute karo": ("volume_mute", "Mute kar diya! 🔇"),
         }
         for phrase, (action, resp) in media_actions.items():
             self._intent_map[phrase] = action.lower()
@@ -151,23 +152,23 @@ class ReflexProcessor:
 
         # Device controls
         device_actions = {
-            "flashlight on": ("FLASHLIGHT_ON", "Flashlight on kar diya! 💡"),
-            "flashlight off": ("FLASHLIGHT_OFF", "Flashlight off kar diya! 💡"),
-            "torch on": ("FLASHLIGHT_ON", "Torch on kar diya! 💡"),
-            "torch off": ("FLASHLIGHT_OFF", "Torch off kar diya! 💡"),
-            "flashlight chalu karo": ("FLASHLIGHT_ON", "Flashlight chalu! 💡"),
-            "flashlight band karo": ("FLASHLIGHT_OFF", "Flashlight band! 💡"),
-            "go home": ("GO_HOME", "Home screen! 🏠"),
-            "home screen": ("GO_HOME", "Home screen! 🏠"),
-            "go back": ("GO_BACK", "Back! ↩️"),
-            "wifi on": ("WIFI_ON", "WiFi on! 🌐"),
-            "wifi off": ("WIFI_OFF", "WiFi off! 🌐"),
-            "bluetooth on": ("BLUETOOTH_ON", "Bluetooth on! 🔵"),
-            "bluetooth off": ("BLUETOOTH_OFF", "Bluetooth off! 🔵"),
-            "screenshot lo": ("SCREENSHOT", "Screenshot! 📸"),
-            "take screenshot": ("SCREENSHOT", "Screenshot! 📸"),
-            "open camera": ("OPEN_CAMERA", "Camera khol raha hoon! 📸"),
-            "camera kholo": ("OPEN_CAMERA", "Camera khol raha hoon! 📸"),
+            "flashlight on": ("flashlight_on", "Flashlight on kar diya! 💡"),
+            "flashlight off": ("flashlight_off", "Flashlight off kar diya! 💡"),
+            "torch on": ("flashlight_on", "Torch on kar diya! 💡"),
+            "torch off": ("flashlight_off", "Torch off kar diya! 💡"),
+            "flashlight chalu karo": ("flashlight_on", "Flashlight chalu! 💡"),
+            "flashlight band karo": ("flashlight_off", "Flashlight band! 💡"),
+            "go home": ("go_home", "Home screen! 🏠"),
+            "home screen": ("go_home", "Home screen! 🏠"),
+            "go back": ("close_app", "Back! ↩️"),
+            "wifi on": ("wifi", "WiFi on! 🌐"),
+            "wifi off": ("wifi", "WiFi off! 🌐"),
+            "bluetooth on": ("bluetooth", "Bluetooth on! 🔵"),
+            "bluetooth off": ("bluetooth", "Bluetooth off! 🔵"),
+            "screenshot lo": ("screenshot", "Screenshot! 📸"),
+            "take screenshot": ("screenshot", "Screenshot! 📸"),
+            "open camera": ("open_camera", "Camera khol raha hoon! 📸"),
+            "camera kholo": ("open_camera", "Camera khol raha hoon! 📸"),
         }
         for phrase, (action, resp) in device_actions.items():
             self._intent_map[phrase] = action.lower()
@@ -185,50 +186,52 @@ class ReflexProcessor:
 
         # Direct keyword match (fastest path)
         if q in self._intent_map:
-            intent = self._intent_map[q]
-            handler = self._handlers.get(intent)
+            handler_key = self._intent_map[q]
+            handler = self._handlers.get(handler_key)
             if handler:
                 result = handler(q)
-                ctx.detected_intent = intent
-                ctx.detected_action = result.get("action", intent.upper())
+                action = result.get("action", handler_key)
+                ctx.detected_intent = action
+                ctx.detected_action = action
                 ctx.response = result.get("response", "Done! ✅")
                 ctx.payload = result.get("payload", {})
                 ctx.processing_level = ProcessingLevel.REFLEX
                 ctx.confidence = 1.0
                 ctx.execution_time_ms = ctx.elapsed_ms()
-                logger.info(f"Reflex: Direct match '{q}' → {intent} in {ctx.execution_time_ms:.1f}ms")
+                logger.info(f"Reflex: Direct match '{q}' → {action} in {ctx.execution_time_ms:.1f}ms")
                 return True
 
         # Substring matching (slightly slower but catches variations)
         # Check cache first — avoids O(n) scan for repeated queries
         cached = self._match_cache.get(q)
         if cached is not None:
-            best_match, best_score = cached
+            best_handler_key, best_score = cached
         else:
-            best_match = None
+            best_handler_key = None
             best_score = 0.0
-            for phrase, intent in self._intent_map.items():
+            for phrase, handler_key in self._intent_map.items():
                 if phrase in q:
                     score = len(phrase) / len(q) if len(q) > 0 else 0
                     if score > best_score:
                         best_score = score
-                        best_match = intent
+                        best_handler_key = handler_key
             # Cache result (cache is bounded by number of unique queries seen)
             if len(self._match_cache) < 256:
-                self._match_cache[q] = (best_match, best_score)
+                self._match_cache[q] = (best_handler_key, best_score)
 
-        if best_match and best_score > 0.3:
-            handler = self._handlers.get(best_match)
+        if best_handler_key and best_score > 0.3:
+            handler = self._handlers.get(best_handler_key)
             if handler:
                 result = handler(q)
-                ctx.detected_intent = best_match
-                ctx.detected_action = result.get("action", best_match.upper())
+                action = result.get("action", best_handler_key)
+                ctx.detected_intent = action
+                ctx.detected_action = action
                 ctx.response = result.get("response", "Done! ✅")
                 ctx.payload = result.get("payload", {})
                 ctx.processing_level = ProcessingLevel.REFLEX
                 ctx.confidence = best_score
                 ctx.execution_time_ms = ctx.elapsed_ms()
-                logger.info(f"Reflex: Substring match '{q}' → {best_match} ({best_score:.2f})")
+                logger.info(f"Reflex: Substring match '{q}' → {action} ({best_score:.2f})")
                 return True
 
         return False
