@@ -114,6 +114,7 @@ class IntentDatasetGenerator:
             (self._gen_general_knowledge, "GENERAL_KNOWLEDGE", 6000),
             (self._gen_medicine_knowledge, "MEDICINE_KNOWLEDGE", 3000),
             (self._gen_movie_knowledge, "MOVIE_KNOWLEDGE", 3000),
+            (self._gen_chat, "CHAT", 1200),
             (self._gen_unknown, "UNKNOWN", 800),
         ]
 
@@ -945,44 +946,49 @@ class IntentDatasetGenerator:
             ])
         return texts[:count]
 
-    def _gen_unknown(self, count: int) -> list:
-        """Generate out-of-scope / unknown examples, including math equations."""
-        unknown_phrases = [
+    def _gen_chat(self, count: int) -> list:
+        """Generate friendly chit-chat / greetings / Hinglish talk."""
+        chat_phrases = [
             "hello", "hi", "hey", "how are you", "kaise ho",
             "good morning", "good night", "thank you",
             "shukriya", "dhanyavaad", "bye",
-            "tum kaun ho", "who are you", "what can you do",
-            "tum kya kar sakte ho", "tell me a joke",
-            "chutkula sunao", "sing a song", "gaana gaao",
-            "dance", "naach", "kya ho tum",
-            "will you be my friend", "i love you",
-            "main tumse pyaar karta hoon", "what is love",
-            "meaning of life", "life kya hai",
-            "who created you", "tumhe kisne banaya",
-            "what's your name", "tumhara naam kya hai",
-            "how old are you", "tere kitne saal hai",
-            "you are great", "you are smart",
-            "tum bahut achhe ho", "good morning sir",
+            "tum kaun ho", "who are you",
             "hello ji", "namaste", "pranam",
             "let's chat", "baat karein", "kya kar rahe ho",
-            # Conversational greetings & chat
             "wassup bro", "yo what's up", "hey there", "namaste jarvis",
             "radhe radhe", "salaam", "adaab", "hello bot", "aur sunao",
             "kya chal raha hai", "kaisa chal raha hai sab", "sab badhiya?",
             "aur batao", "kuch naya batao", "how was your day", "din kaisa raha",
             "aaj tumne kya kiya", "kya kar rhe ho yaar",
-            # Small talk & compliments
             "you are awesome", "you are very helpful", "thank you so much",
             "dhanyawad dost", "thanks a lot", "dil jeet liya tune",
             "bahut badiya kaam kiya", "very good job", "proud of you",
             "tum bahut samajhdar ho", "you are so smart", "gazab",
+        ]
+        texts = []
+        for p in chat_phrases:
+            texts.extend(self._variations(p))
+        random.shuffle(texts)
+        return texts[:count]
+
+    def _gen_unknown(self, count: int) -> list:
+        """Generate out-of-scope / unknown examples, including math equations."""
+        unknown_phrases = [
+            "tell me a joke",
+            "chutkula sunao", "sing a song", "gaana gaao",
+            "dance", "naach", "kya ho tum",
+            "will you be my friend", "i love you",
+            "main tumse pyaar karta hoon", "what is love",
+            "meaning of life", "life kya hai",
+            "how old are you", "tere kitne saal hai",
+            "you are great", "you are smart",
+            "tum bahut achhe ho", "good morning sir",
             # Philosophy, knowledge & LLM prompts
             "explain photosynthesis", "tell me about quantum computing",
             "write a code to print prime numbers", "help me draft an email",
             "what is the capital of India", "who is the prime minister",
             "calculate 25 * 40", "maths equation solve karo",
             "should I buy a house or rent", "give me relationship advice",
-            "mujhe tension ho rahi hai", "career guidelines do",
             "how to cook biryani", "recipe for chicken tikka", "chai kaise banate hain",
             "who wrote the play hamlet", "tell me a fun fact", "history of space travel",
             "write a poem about stars", "create a story of a brave knight",
@@ -1582,7 +1588,7 @@ class IntentDatasetGenerator:
             self._gen_home, self._gen_back,
             self._gen_setting, self._gen_python_coding, self._gen_ai_news_models, self._gen_capabilities,
             self._gen_web_coding, self._gen_general_knowledge, self._gen_medicine_knowledge, self._gen_movie_knowledge,
-            self._gen_unknown,
+            self._gen_chat, self._gen_unknown,
         ]
         intent_map = {name: idx for idx, name in enumerate(INTENTS)}
         intent_names = list(intent_map.keys())
@@ -1630,6 +1636,6 @@ class IntentDatasetGenerator:
 
 if __name__ == "__main__":
     generator = IntentDatasetGenerator()
-    examples = generator.generate(target=5000)
+    examples = generator.generate(target=50000)
     path = generator.save("intents.json")
     generator.get_split()

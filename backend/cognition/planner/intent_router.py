@@ -77,6 +77,7 @@ MICRO_BRAIN_INTENT_MAP = {
     "HOME": ("home", ActionType.GO_HOME.value),
     "BACK": ("home", ActionType.CLOSE_APP.value),
     "SETTING": ("open_app", ActionType.LAUNCH_APP.value),
+    "CHAT": ("chat", ActionType.CHAT.value),
 }
 
 _NEURAL_BRAIN = None
