@@ -211,6 +211,18 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
         if pattern.search(q):
             return 'quote', ActionType.QUOTE.value, {}
 
+    # ── Priority 2.9: ASSISTANT INFO ──────────────────────────────
+    # Checked early (before MESSAGE/OPEN_APP) because queries about the
+    # assistant itself should never be confused with device actions.
+    for pattern in ASSISTANT_INFO:
+        if pattern.search(q):
+            return 'assistant_info', ActionType.ASSISTANT_INFO.value, {}
+
+    # ── Priority 2.95: HELP ──────────────────────────────────────
+    for pattern in HELP:
+        if pattern.search(q):
+            return 'help', ActionType.HELP.value, {}
+
     # ── Priority 3: MESSAGE ──────────────────────────────────────
     if MESSAGE[0].search(q):
         return 'message', ActionType.SEND_SMS.value, extract_entities('message', q)
@@ -417,16 +429,6 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
                     return mapped_intent, mapped_action, extracted
         except Exception as e:
             logger.error("Error in offline Neural Brain prediction fallback: %s", e)
-
-    # ── Priority 17.5: ASSISTANT INFO ────────────────────────────
-    for pattern in ASSISTANT_INFO:
-        if pattern.search(q):
-            return 'assistant_info', ActionType.ASSISTANT_INFO.value, {}
-
-    # ── Priority 17.6: HELP ──────────────────────────────────────
-    for pattern in HELP:
-        if pattern.search(q):
-            return 'help', ActionType.HELP.value, {}
 
     # ── Priority 18: CHAT (default fallback) ─────────────────────
     return 'chat', ActionType.CHAT.value, {'query': q}

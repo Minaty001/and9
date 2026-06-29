@@ -413,6 +413,11 @@ ASSISTANT_INFO: List[Pattern] = [
     _c(r'\b(about you|about jarvis|jarvis ke baare mein|'
        r'tumhare baare mein|aapke baare mein)\b'),
     _c(r'\b(introduce yourself|apna parichay do)\b'),
+    # "what is calculator" / "calculator kya hai" — feature info queries
+    _c(r'\b(what is|what\'s)\s+(calculator|screenshot|flashlight|'
+       r'reminder|alarm|timer|goal|automation)\b'),
+    _c(r'\b(calculator|screenshot|flashlight|reminder|alarm|timer|'
+       r'goal|automation)\s+kya\s+hai\b'),
 ]
 
 
@@ -473,7 +478,7 @@ LOCK_SCREEN: List[Pattern] = [
 # ══════════════════════════════════════════════════════════════════
 
 CALCULATOR: List[Pattern] = [
-    _c(r'\b(calculate|calculation|calculator|compute|evaluate)\b'),
+    _c(r'\b(calculate|calculation|compute|evaluate)\b'),  # NOT 'calculator' alone — that can be "what is calculator" (assistant_info) or "calculator kholo" (open_app)
     _c(r'\b(what is|what\'s)\s+\d+.+\d+'),  # "what is 5+3" / "what's 5*10"
     _c(r'\b(kitna hoga|kitna hota hai|kaise nikale)\s+\d+'),
     _c(r'\b(plus|minus|multiply|divide|into|subtract|add|product|sum)\b'),
