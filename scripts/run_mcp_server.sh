@@ -19,10 +19,10 @@ PORT="${2:-8001}"
 
 case "$MODE" in
   stdio|--stdio)
-    exec python -m backend.mcp.server
+    exec python -m app.mcp.server
     ;;
   sse|--sse)
-    exec python -m backend.mcp.server --transport sse --port "$PORT"
+    exec python -m app.mcp.server --transport sse --port "$PORT"
     ;;
   *)
     echo "Usage: $0 [stdio|sse] [port]"

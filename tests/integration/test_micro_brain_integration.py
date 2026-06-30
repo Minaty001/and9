@@ -6,7 +6,7 @@ import pytest
 # Ensure app package is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from backend.cognition.planner.intent_router import detect_intent_with_confidence
+from app.cognition.planner.intent_router import detect_intent_with_confidence
 
 def test_micro_brain_fallback():
     """Verify that queries classified by Micro Neural Brain are successfully routed."""

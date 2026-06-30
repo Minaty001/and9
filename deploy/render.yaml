@@ -5,7 +5,7 @@ services:
     region: oregon
     plan: free
     buildCommand: chmod +x scripts/build.sh && ./scripts/build.sh
-    startCommand: gunicorn backend.main:app --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
+    startCommand: gunicorn app.main:app --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION

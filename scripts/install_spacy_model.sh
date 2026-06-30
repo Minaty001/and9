@@ -56,7 +56,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    from backend.core.nlp_pipeline import NLPPipeline
+    from app.core.nlp_pipeline import NLPPipeline
     pipeline = NLPPipeline()
     test_cases = [
         "Set an alarm for 7am tomorrow",

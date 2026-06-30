@@ -1,5 +1,5 @@
 import json
-from backend.main import create_app
+from app.main import create_app
 
 def run_tests():
     app = create_app()

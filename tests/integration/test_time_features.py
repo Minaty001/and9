@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from backend.cognition.planner.entity_extractor import extract_reminder
-from backend.utils.time_parser import parse_time
+from app.cognition.planner.entity_extractor import extract_reminder
+from app.utils.time_parser import parse_time
 from ai.micro_brain.utils.timezone_utils import get_time_in_city
 
 

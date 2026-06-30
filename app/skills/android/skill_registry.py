@@ -1,0 +1,235 @@
+"""
+AND9 — Skill Registry System (Priority 10).
+
+Replaces the hardcoded if/elif chains in android_executor.py.
+Dynamically routes Android actions to their specific handler arguments.
+"""
+import logging
+from typing import Callable, Dict, Any, Tuple
+
+logger = logging.getLogger(__name__)
+
+# Action Type -> (Module Path, Function Name, Arg Mapper)
+# Arg Mapper takes (params, events_sys) and returns kwargs dict
+_SKILL_REGISTRY: Dict[str, Tuple[str, str, Callable]] = {}
+
+def register_skill(action_type: str, module_path: str, func_name: str, arg_mapper: Callable):
+    """Register a skill handler and its argument mapper."""
+    _SKILL_REGISTRY[action_type] = (module_path, func_name, arg_mapper)
+
+def _default_mapper(params: dict, events_sys: Any) -> dict:
+    """Default argument mapper: passes parameters through unchanged.
+
+    Args:
+        params: Input parameters dict.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        The params dict unchanged.
+    """
+    return params
+
+def _alarm_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for set_alarm skill.
+
+    Args:
+        params: Parameters dict with optional keys hour, minute, label.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with hour, minute, and label keys for alarm execution.
+    """
+    return {
+        "hour": params.get("hour", 7),
+        "minute": params.get("minute", 0),
+        "label": params.get("label"),
+    }
+
+def _timer_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for set_timer skill.
+
+    Args:
+        params: Parameters dict with optional keys duration_seconds, label.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with duration_seconds and label keys for timer execution.
+    """
+    return {
+        "duration_seconds": params.get("duration_seconds", 60),
+        "label": params.get("label", "AND9 Timer"),
+    }
+
+def _reminder_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for set_reminder skill, forwarding the events system.
+
+    Args:
+        params: Parameters dict with optional keys trigger_at, label.
+        events_sys: EventSystem reference passed through for reminder scheduling.
+
+    Returns:
+        Dict with trigger_at, label, and events_sys keys.
+    """
+    return {
+        "trigger_at": params.get("trigger_at", {}),
+        "label": params.get("label", "AND9 Reminder"),
+        "repeat_rule": params.get("repeat_rule", ""),
+        "repeat_days": params.get("repeat_days"),
+        "repeat_end": params.get("repeat_end"),
+        "events_sys": events_sys,
+    }
+
+def _call_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for call skill.
+
+    Args:
+        params: Parameters dict with optional keys contact_name, number, action_type.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with contact_name, number, and action_type keys for call execution.
+    """
+    return {
+        "contact_name": params.get("contact_name"),
+        "number": params.get("number"),
+        "action_type": params.get("action_type", "contact"),
+    }
+
+def _sms_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for send_sms skill.
+
+    Args:
+        params: Parameters dict with optional keys contact_name, number, message.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with contact_name, number, and message keys for SMS execution.
+    """
+    return {
+        "contact_name": params.get("contact_name"),
+        "number": params.get("number"),
+        "message": params.get("message", ""),
+    }
+
+def _app_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for open_app skill.
+
+    Args:
+        params: Parameters dict with optional key app_name.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with app_name key for app launch execution.
+    """
+    return {
+        "app_name": params.get("app_name", "")
+    }
+
+def _youtube_search_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for youtube_search / youtube_play skills.
+
+    Args:
+        params: Parameters dict with optional key query.
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with query key for YouTube search execution.
+    """
+    return {"query": params.get("query", "")}
+
+def _device_toggle_mapper(params: dict, events_sys: Any) -> dict:
+    """Map parameters for device toggle actions (wifi/bluetooth/airplane_mode).
+
+    Converts boolean state to 'on'/'off' string, or empty string if state is None.
+
+    Args:
+        params: Parameters dict with optional key state (bool or None).
+        events_sys: EventSystem reference (unused).
+
+    Returns:
+        Dict with a 'q' key containing the toggle command string.
+    """
+    state = params.get("state")
+    return {"q": "on" if state is True else "off" if state is False else ""}
+
+# Registering skills
+register_skill("set_alarm", "app.skills.android.alarm_actions", "execute_set_alarm", _alarm_mapper)
+register_skill("set_timer", "app.skills.android.timer_actions", "execute_set_timer", _timer_mapper)
+register_skill("get_time", "app.skills.android.time_actions", "handle_get_time", lambda p, e: {})
+register_skill("set_reminder", "app.skills.android.reminder_actions", "execute_set_reminder", _reminder_mapper)
+register_skill("list_reminders", "app.skills.android.reminder_actions", "execute_list_reminders", lambda p, e: {})
+register_skill("delete_reminder", "app.skills.android.reminder_actions", "execute_delete_reminder", lambda p, e: {"reminder_id": p.get("reminder_id")})
+register_skill("pause_reminder", "app.skills.android.reminder_actions", "execute_pause_reminder", lambda p, e: {"reminder_id": p.get("reminder_id")})
+register_skill("resume_reminder", "app.skills.android.reminder_actions", "execute_resume_reminder", lambda p, e: {"reminder_id": p.get("reminder_id")})
+register_skill("snooze_reminder", "app.skills.android.reminder_actions", "execute_snooze_reminder", lambda p, e: {"reminder_id": p.get("reminder_id"), "minutes": int(p.get("minutes", 5)) if p.get("minutes") else 5})
+register_skill("clear_all_reminders", "app.skills.android.reminder_actions", "execute_clear_all_reminders", lambda p, e: {})
+register_skill("show_completed_reminders", "app.skills.android.reminder_actions", "execute_show_completed", lambda p, e: {})
+register_skill("call", "app.skills.android.call_actions", "execute_call", _call_mapper)
+register_skill("send_sms", "app.skills.android.call_actions", "execute_message", _sms_mapper)
+register_skill("open_app", "app.skills.android.app_actions", "execute_open_app", _app_mapper)
+register_skill("close_app", "app.skills.android.app_actions", "execute_close_app", lambda p, e: {})
+register_skill("youtube_search", "app.skills.android.youtube_actions", "execute_youtube_search", _youtube_search_mapper)
+register_skill("youtube_play", "app.skills.android.youtube_actions", "execute_youtube_play", _youtube_search_mapper)
+register_skill("flashlight", "app.skills.android.device_actions", "handle_flashlight", lambda p, e: {"q": f"flashlight {'on' if p.get('state') is True else 'off' if p.get('state') is False else ''}"})
+register_skill("flashlight_on", "app.skills.android.device_actions", "handle_flashlight", lambda p, e: {"q": "flashlight on"})
+register_skill("flashlight_off", "app.skills.android.device_actions", "handle_flashlight", lambda p, e: {"q": "flashlight off"})
+register_skill("wifi", "app.skills.android.device_actions", "handle_wifi", lambda p, e: {"q": f"wifi {'on' if p.get('state') is True else 'off' if p.get('state') is False else ''}"})
+register_skill("bluetooth", "app.skills.android.device_actions", "handle_bluetooth", lambda p, e: {"q": f"bluetooth {'on' if p.get('state') is True else 'off' if p.get('state') is False else ''}"})
+register_skill("airplane_mode", "app.skills.android.device_actions", "handle_airplane_mode", lambda p, e: {"q": f"airplane_mode {'on' if p.get('state') is True else 'off' if p.get('state') is False else ''}"})
+register_skill("open_camera", "app.skills.android.device_actions", "handle_camera", lambda p, e: {})
+register_skill("go_home", "app.skills.android.device_actions", "handle_home", lambda p, e: {})
+register_skill("volume_up", "app.skills.android.device_actions", "handle_volume", lambda p, e: {"keyword": "up"})
+register_skill("volume_down", "app.skills.android.device_actions", "handle_volume", lambda p, e: {"keyword": "down"})
+register_skill("volume_mute", "app.skills.android.device_actions", "handle_volume", lambda p, e: {"keyword": "mute"})
+register_skill("volume_max", "app.skills.android.device_actions", "handle_volume", lambda p, e: {"keyword": "max"})
+register_skill("search", "app.skills.android.device_actions", "handle_search", lambda p, e: {"query": p.get("query", "")})
+
+# ── Contacts Management ───────────────────────────────────────────
+register_skill("list_contacts", "app.skills.android.contacts_actions", "execute_list_contacts", lambda p, e: {})
+register_skill("add_contact", "app.skills.android.contacts_actions", "execute_add_contact", lambda p, e: {"name": p.get("contact_name", ""), "phone": p.get("phone", "")})
+register_skill("delete_contact", "app.skills.android.contacts_actions", "execute_delete_contact", lambda p, e: {"contact_name": p.get("contact_name", "")})
+register_skill("search_contacts", "app.skills.android.contacts_actions", "execute_search_contacts", lambda p, e: {"query": p.get("query", "")})
+
+# ── Assistant Features ────────────────────────────────────────────
+register_skill("assistant_info", "app.skills.android.assistant_actions", "execute_assistant_info", lambda p, e: {})
+register_skill("help", "app.skills.android.assistant_actions", "execute_help", lambda p, e: {})
+register_skill("system_status", "app.skills.android.assistant_actions", "execute_system_status", lambda p, e: {})
+register_skill("screenshot", "app.skills.android.assistant_actions", "execute_screenshot", lambda p, e: {})
+register_skill("lock_screen", "app.skills.android.assistant_actions", "execute_lock_screen", lambda p, e: {})
+register_skill("calculator", "app.skills.android.assistant_actions", "execute_calculator", lambda p, e: {"expression": p.get("expression", "")})
+register_skill("joke", "app.skills.android.assistant_actions", "execute_joke", lambda p, e: {})
+register_skill("quote", "app.skills.android.assistant_actions", "execute_quote", lambda p, e: {})
+
+
+def execute_skill(action_type: str, params: dict, events_sys: Any = None) -> dict:
+    """Execute a skill from the registry.
+
+    Args:
+        action_type: Action type string.
+        params: Parameters from the router.
+        events_sys: EventSystem reference.
+
+    Returns:
+        Handler response dict.
+    """
+    if action_type not in _SKILL_REGISTRY:
+        # Fallback for generic actions
+        logger.warning("Action %s not in Skill Registry, falling back to dynamic import.", action_type)
+        return {}
+
+    module_path, func_name, arg_mapper = _SKILL_REGISTRY[action_type]
+    
+    import importlib
+    module = importlib.import_module(module_path)
+    handler = getattr(module, func_name)
+    
+    kwargs = arg_mapper(params, events_sys)
+    return handler(**kwargs)
+
+def get_registered_skills():
+    """Return a list of all registered action type keys.
+
+    Returns:
+        List of action type strings registered in the skill registry.
+    """
+    return list(_SKILL_REGISTRY.keys())

@@ -3,8 +3,8 @@ import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from backend.services.reminder import storage
-from backend.services.reminder.worker import start_worker, stop_worker, register_callback
+from app.services.reminder import storage
+from app.services.reminder.worker import start_worker, stop_worker, register_callback
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger("verify_loop")

@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 # ════════════════════════════════════════════════════════════════
 
 def test_core_config():
-    from backend.core.config import NEURAL_MODEL_PATH
+    from app.core.config import NEURAL_MODEL_PATH
     assert isinstance(NEURAL_MODEL_PATH, str)
 
 
@@ -20,7 +20,7 @@ def test_core_config():
 # ════════════════════════════════════════════════════════════════
 
 def test_core_memory():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.add("user", "hello")
     m.add("assistant", "hi")
@@ -31,7 +31,7 @@ def test_core_memory():
 
 
 def test_memory_delete_fact():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.learn_fact("name", "Alice")
     assert m.get_facts()["name"] == "Alice"
@@ -42,7 +42,7 @@ def test_memory_delete_fact():
 
 
 def test_memory_search_facts():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.learn_fact("favorite_color", "blue")
     m.learn_fact("favorite_food", "pizza")
@@ -56,7 +56,7 @@ def test_memory_search_facts():
 
 
 def test_memory_chat_count_and_clear():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     assert m.get_chat_count() == 0
     m.add("user", "hello")
@@ -71,7 +71,7 @@ def test_memory_chat_count_and_clear():
 # ════════════════════════════════════════════════════════════════
 
 def test_session_creation():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     sid = m.get_or_create_session()
     assert sid is not None
@@ -80,7 +80,7 @@ def test_session_creation():
 
 
 def test_session_end():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     sid = m.get_or_create_session()
     m.end_session(sid, summary="Test session")
@@ -90,7 +90,7 @@ def test_session_end():
 
 
 def test_session_history():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     # add_episode auto-creates a session
     m.add_episode("user", "hello", topic="greeting")
@@ -112,7 +112,7 @@ def test_session_history():
 # ════════════════════════════════════════════════════════════════
 
 def test_episodic_memory():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     eid = m.add_episode("user", "I love coding", topic="coding", emotion="happy", importance=3)
     assert isinstance(eid, int)
@@ -122,7 +122,7 @@ def test_episodic_memory():
 
 
 def test_recent_episodes():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.add_episode("user", "msg1", topic="coding")
     m.add_episode("assistant", "resp1", topic="coding")
@@ -134,7 +134,7 @@ def test_recent_episodes():
 
 
 def test_relevant_episodes():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.add_episode("user", "python bug fix", topic="coding")
     m.add_episode("user", "trip to goa", topic="travel")
@@ -149,7 +149,7 @@ def test_relevant_episodes():
 # ════════════════════════════════════════════════════════════════
 
 def test_semantic_memory_store():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.store_fact("identity", "name", "Saif", confidence=1.0)
     m.store_fact("location", "city", "Delhi", confidence=1.0)
@@ -162,7 +162,7 @@ def test_semantic_memory_store():
 
 
 def test_semantic_memory_upsert():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.store_fact("identity", "name", "Saif", confidence=1.0)
     m.store_fact("identity", "name", "Saif Khan", confidence=1.0)  # Update
@@ -171,7 +171,7 @@ def test_semantic_memory_upsert():
 
 
 def test_semantic_facts_by_category():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.store_fact("preference", "color", "blue", confidence=1.0)
     m.store_fact("preference", "food", "biryani", confidence=1.0)
@@ -183,7 +183,7 @@ def test_semantic_facts_by_category():
 
 
 def test_semantic_forget_fact():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.store_fact("identity", "name", "Saif", confidence=1.0)
     assert m.forget_fact("identity", "name") is True
@@ -197,7 +197,7 @@ def test_semantic_forget_fact():
 # ════════════════════════════════════════════════════════════════
 
 def test_emotional_memory():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.record_emotion("coding", "excited", intensity=4)
     m.record_emotion("deadline", "stressed", intensity=5)
@@ -207,7 +207,7 @@ def test_emotional_memory():
 
 
 def test_emotional_context():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.record_emotion("coding", "excited", intensity=4)
     m.record_emotion("coding", "frustrated", intensity=3)  # Override latest
@@ -219,7 +219,7 @@ def test_emotional_context():
 
 
 def test_dominant_emotion():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.record_emotion("coding", "happy")
     m.record_emotion("coding", "happy")
@@ -233,7 +233,7 @@ def test_dominant_emotion():
 # ════════════════════════════════════════════════════════════════
 
 def test_build_memory_context():
-    from backend.memory.episodic.memory import Memory
+    from app.memory.episodic.memory import Memory
     m = Memory(db_path=":memory:")
     m.store_fact("identity", "name", "Saif", confidence=1.0)
     m.add_episode("user", "test message", topic="coding")
@@ -251,7 +251,7 @@ def test_build_memory_context():
 # ════════════════════════════════════════════════════════════════
 
 def test_intent_greeting():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     assert ue.detect_intent("hello") == "greeting"
     assert ue.detect_intent("kya haal hai") == "greeting"
@@ -259,14 +259,14 @@ def test_intent_greeting():
 
 
 def test_intent_farewell():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     assert ue.detect_intent("bye bye") == "farewell"
     assert ue.detect_intent("good night") == "farewell"
 
 
 def test_intent_memory_store():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     assert ue.detect_intent("yaad rakh mera naam Saif hai") == "memory_store"
     assert ue.detect_intent("remember this: I live in Delhi") == "memory_store"
@@ -274,35 +274,35 @@ def test_intent_memory_store():
 
 
 def test_intent_memory_recall():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     assert ue.detect_intent("yaad hai tune kya kaha tha?") == "memory_recall"
     assert ue.detect_intent("do you remember what I said?") == "memory_recall"
 
 
 def test_intent_emotional():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     assert ue.detect_intent("bahut frustrated hoon aaj") == "emotional"
     assert ue.detect_intent("I feel so stressed") == "emotional"
 
 
 def test_intent_question():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     assert ue.detect_intent("what is machine learning?") == "question"
     assert ue.detect_intent("kaise kaam karta hai yeh?") == "question"
 
 
 def test_intent_command():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     assert ue.detect_intent("create a new file") == "command"
     assert ue.detect_intent("ek function bana do") == "command"
 
 
 def test_intent_casual():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     assert ue.detect_intent("aaj mausam accha hai") == "casual"
 
@@ -312,7 +312,7 @@ def test_intent_casual():
 # ════════════════════════════════════════════════════════════════
 
 def test_emotion_happy():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     emotion, intensity = ue.detect_emotion("bahut khush hoon aaj!")
     assert emotion == "happy"
@@ -320,28 +320,28 @@ def test_emotion_happy():
 
 
 def test_emotion_sad():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     emotion, intensity = ue.detect_emotion("feeling very sad today")
     assert emotion == "sad"
 
 
 def test_emotion_angry():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     emotion, intensity = ue.detect_emotion("bahut gussa aa raha hai")
     assert emotion == "angry"
 
 
 def test_emotion_neutral():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     emotion, intensity = ue.detect_emotion("tell me about the weather")
     assert emotion == "neutral"
 
 
 def test_emotion_intensity_amplifiers():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     _, high = ue.detect_emotion("BAHUT ZYADA KHUSH HOON!!!")
     _, low = ue.detect_emotion("thoda happy hoon")
@@ -353,7 +353,7 @@ def test_emotion_intensity_amplifiers():
 # ════════════════════════════════════════════════════════════════
 
 def test_extract_name():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     entities = ue.extract_entities("mera naam Saif hai")
     assert "name" in entities
@@ -361,14 +361,14 @@ def test_extract_name():
 
 
 def test_extract_name_english():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     entities = ue.extract_entities("my name is John")
     assert "name" in entities
 
 
 def test_extract_location():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     entities = ue.extract_entities("I live in Delhi")
     assert "location" in entities
@@ -376,7 +376,7 @@ def test_extract_location():
 
 
 def test_extract_age():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     entities = ue.extract_entities("I am 25 years old")
     assert "age" in entities
@@ -384,7 +384,7 @@ def test_extract_age():
 
 
 def test_extract_multiple():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     entities = ue.extract_entities("mera naam Saif hai aur meri age 22 hai")
     assert "name" in entities
@@ -396,20 +396,20 @@ def test_extract_multiple():
 # ════════════════════════════════════════════════════════════════
 
 def test_topic_coding():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     topic = ue.detect_topic("python bug in my code")
     assert "coding" in topic  # May return 'coding' or 'coding/programming'
 
 
 def test_topic_travel():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     assert ue.detect_topic("planning a trip to Goa") == "travel"
 
 
 def test_topic_general():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     # Simple message without topic keyword signals defaults to general
     topic = ue.detect_topic("hello ji namaste")
@@ -421,7 +421,7 @@ def test_topic_general():
 # ════════════════════════════════════════════════════════════════
 
 def test_full_analysis():
-    from backend.core.understanding import UnderstandingEngine, MessageAnalysis
+    from app.core.understanding import UnderstandingEngine, MessageAnalysis
     ue = UnderstandingEngine()
     result = ue.analyze("mera naam Saif hai")
     assert isinstance(result, MessageAnalysis)
@@ -432,7 +432,7 @@ def test_full_analysis():
 
 
 def test_analysis_memory_flags():
-    from backend.core.understanding import UnderstandingEngine
+    from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
     store = ue.analyze("yaad rakh mera naam Saif hai")
     assert store.is_memory_store is True
@@ -445,13 +445,13 @@ def test_analysis_memory_flags():
 # ════════════════════════════════════════════════════════════════
 
 def test_personality_prompt():
-    from backend.core.personality import SYSTEM_PROMPT, build_personality_prompt
+    from app.core.personality import SYSTEM_PROMPT, build_personality_prompt
     assert "JARVIS" in SYSTEM_PROMPT
     assert "Hinglish" in SYSTEM_PROMPT
 
 
 def test_build_personality_with_profile():
-    from backend.core.personality import build_personality_prompt
+    from app.core.personality import build_personality_prompt
     prompt = build_personality_prompt(
         user_profile={"name": "Saif", "city": "Delhi"},
         emotional_context={"coding": "excited"},
@@ -468,8 +468,8 @@ def test_build_personality_with_profile():
 # ════════════════════════════════════════════════════════════════
 
 def test_context_builder_full():
-    from backend.core.context_builder import ContextBuilder
-    from backend.core.understanding import MessageAnalysis
+    from app.core.context_builder import ContextBuilder
+    from app.core.understanding import MessageAnalysis
     cb = ContextBuilder()
     ctx = cb.build(
         user_profile={"identity": {"name": "Saif"}},
@@ -493,7 +493,7 @@ def test_context_builder_full():
 
 
 def test_context_builder_minimal():
-    from backend.core.context_builder import ContextBuilder
+    from app.core.context_builder import ContextBuilder
     cb = ContextBuilder()
     ctx = cb.build_minimal(user_profile={"name": "Saif"})
     assert "JARVIS" in ctx
@@ -505,7 +505,7 @@ def test_context_builder_minimal():
 # ════════════════════════════════════════════════════════════════
 
 def test_orchestrator_routing():
-    from backend.core.intent_router import IntentRouter
+    from app.core.intent_router import IntentRouter
     router = IntentRouter()
     assert router.route("search for python tutorials") == "search"
     assert router.route("calculate 15% of 3500") == "chat"
@@ -518,12 +518,12 @@ def test_orchestrator_routing():
 # ════════════════════════════════════════════════════════════════
 
 def test_agents_import():
-    from backend.agents import AGENT_REGISTRY
+    from app.agents import AGENT_REGISTRY
     assert "research" in AGENT_REGISTRY
 
 
 def test_research_agent():
-    from backend.agents.research.research_agent import ResearchAgent
+    from app.agents.research.research_agent import ResearchAgent
     agent = ResearchAgent()
     assert agent.name == "ResearchAgent"
 
@@ -533,7 +533,7 @@ def test_research_agent():
 # ════════════════════════════════════════════════════════════════
 
 def test_skills_import():
-    from backend.skills.android.tasks import get_time, get_system_info
+    from app.skills.android.tasks import get_time, get_system_info
     t = get_time()
     assert t is not None
     assert "202" in t  # year
@@ -544,7 +544,7 @@ def test_skills_import():
 # ════════════════════════════════════════════════════════════════
 
 def test_app_factory():
-    from backend.main import create_app
+    from app.main import create_app
     app = create_app()
     assert app is not None
     client = app.test_client()
@@ -554,7 +554,7 @@ def test_app_factory():
 
 
 def test_api_health():
-    from backend.main import create_app
+    from app.main import create_app
     app = create_app()
     client = app.test_client()
     resp = client.get("/api/health")
@@ -562,7 +562,7 @@ def test_api_health():
 
 
 def test_api_agents():
-    from backend.main import create_app
+    from app.main import create_app
     app = create_app()
     client = app.test_client()
     resp = client.get("/api/agents")
@@ -572,7 +572,7 @@ def test_api_agents():
 
 
 def test_api_delete_fact():
-    from backend.main import create_app
+    from app.main import create_app
     app = create_app()
     client = app.test_client()
     resp = client.post("/api/memory/learn", json={"key": "test_key", "value": "test_value"})
@@ -585,7 +585,7 @@ def test_api_delete_fact():
 
 
 def test_api_search_facts():
-    from backend.main import create_app
+    from app.main import create_app
     app = create_app()
     client = app.test_client()
     client.post("/api/memory/learn", json={"key": "city", "value": "Mumbai"})
@@ -597,7 +597,7 @@ def test_api_search_facts():
 
 
 def test_api_brain_profile():
-    from backend.main import create_app
+    from app.main import create_app
     app = create_app()
     client = app.test_client()
     resp = client.get("/api/brain/profile")
@@ -606,7 +606,7 @@ def test_api_brain_profile():
 
 
 def test_api_brain_emotions():
-    from backend.main import create_app
+    from app.main import create_app
     app = create_app()
     client = app.test_client()
     resp = client.get("/api/brain/emotions")
@@ -615,7 +615,7 @@ def test_api_brain_emotions():
 
 
 def test_api_brain_sessions():
-    from backend.main import create_app
+    from app.main import create_app
     app = create_app()
     client = app.test_client()
     resp = client.get("/api/brain/sessions")
@@ -624,7 +624,7 @@ def test_api_brain_sessions():
 
 
 def test_api_memory_endpoints():
-    from backend.main import create_app
+    from app.main import create_app
     app = create_app()
     client = app.test_client()
 
@@ -650,7 +650,7 @@ def test_api_memory_endpoints():
 
 
 def test_admin_auth_fallback():
-    from backend.main import create_app
+    from app.main import create_app
     app = create_app()
     client = app.test_client()
 
@@ -665,7 +665,7 @@ def test_admin_auth_fallback():
 
 
 def test_api_understanding_analyze():
-    from backend.main import create_app
+    from app.main import create_app
     app = create_app()
     client = app.test_client()
 

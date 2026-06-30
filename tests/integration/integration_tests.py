@@ -8,9 +8,9 @@ Run with:
     pytest tests/integration_tests.py -v
 """
 import pytest
-from backend.cognition.planner import AND9
-from backend.core.constants import ActionType
-from backend.cognition.planner.brain_types import IntentType
+from app.cognition.planner import AND9
+from app.core.constants import ActionType
+from app.cognition.planner.brain_types import IntentType
 
 @pytest.fixture
 def and9():
