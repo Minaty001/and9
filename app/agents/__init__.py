@@ -1,14 +1,20 @@
 """
 app/agents/__init__.py — Agent registry.
 
-Only ResearchAgent remains; coding and assistant agents were removed
-(LLM-dependent). Device actions are handled directly by the conscious
-brain pipeline via NeuralBridge.
+Only 3 agent classes exist. Everything else is routed through internal methods or tools.
 """
-from app.agents.research.research_agent import ResearchAgent
+from app.agents.coding_agent import CodingAgent
+from app.agents.research_agent import ResearchAgent
+from app.agents.assistant_agent import AssistantAgent
 
+# Registry: agents are loaded by name
 AGENT_REGISTRY = {
+    "coding": CodingAgent,
     "research": ResearchAgent,
+    "search": AssistantAgent,     # search is a tool, not a separate agent
+    "image": AssistantAgent,       # image is a tool, not a separate agent
+    "chat": AssistantAgent,
+    "device": AssistantAgent,
 }
 
-__all__ = ["AGENT_REGISTRY", "ResearchAgent"]
+__all__ = ["AGENT_REGISTRY", "CodingAgent", "ResearchAgent", "AssistantAgent"]

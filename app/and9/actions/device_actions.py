@@ -1,0 +1,105 @@
+"""
+AND9 — Device Control Actions (Phase 16 of Refactor).
+
+Stateless handler functions for Android device features.
+Each function returns a uniform dict with response text,
+action type, and Android Intent payload.
+
+Supported controls:
+    - Flashlight (on/off/toggle)
+    - Volume (up/down/mute/max)
+    - WiFi (on/off/toggle)
+    - Bluetooth (on/off/toggle)
+    - Airplane mode (on/off/toggle)
+    - Home screen
+    - Camera
+"""
+import logging
+import re
+
+logger = logging.getLogger(__name__)
+
+
+def handle_flashlight(query: str) -> dict:
+    """Toggle flashlight on/off based on query context."""
+    q = query.lower()
+    has_on = bool(re.search(r'\b(on|enable|kholo|chalu)\b', q))
+    has_off = bool(re.search(r'\b(off|disable|band|bnd)\b', q))
+
+    if has_on and not has_off:
+        return {"response": "Flashlight on kar diya! 💡", "action": "FLASHLIGHT", "payload": {"state": True}}
+    elif has_off and not has_on:
+        return {"response": "Flashlight off kar diya! 🌙", "action": "FLASHLIGHT", "payload": {"state": False}}
+    else:
+        return {"response": "Flashlight toggle kar diya! 💡", "action": "FLASHLIGHT", "payload": {"state": "toggle"}}
+
+
+def handle_volume(query: str) -> dict:
+    """Adjust volume based on query context."""
+    q = query.lower()
+    if any(kw in q for kw in ["mute", "silent", "zero", "0"]):
+        return {"response": "Phone mute kar diya! 🔇", "action": "VOLUME_MUTE", "payload": {"level": 0}}
+    if any(kw in q for kw in ["unmute", "sound on"]):
+        return {"response": "Sound wapas on kar diya! 🔊", "action": "VOLUME_UNMUTE", "payload": {"level": 7}}
+    if any(kw in q for kw in ["max", "full", "100", "highest"]):
+        return {"response": "Volume full kar diya! 🔊📢", "action": "VOLUME_MAX", "payload": {"level": 15}}
+    if any(kw in q for kw in ["up", "badhao", "higher", "louder", "increase"]):
+        return {"response": "Volume badha diya! 🔊", "action": "VOLUME_UP", "payload": {"delta": 2}}
+    if any(kw in q for kw in ["down", "kam", "lower", "decrease", "less"]):
+        return {"response": "Volume kam kar diya! 🔉", "action": "VOLUME_DOWN", "payload": {"delta": 2}}
+    return {"response": "Volume badha diya! 🔊", "action": "VOLUME_UP", "payload": {"delta": 2}}
+
+
+def handle_wifi(query: str) -> dict:
+    """Toggle WiFi on/off."""
+    q = query.lower()
+    has_on = bool(re.search(r'\b(on|enable|chalu)\b', q))
+    has_off = bool(re.search(r'\b(off|disable|band|bnd)\b', q))
+    if has_on and not has_off:
+        return {"response": "WiFi on kar diya! 🌐", "action": "WIFI", "payload": {"state": True}}
+    elif has_off and not has_on:
+        return {"response": "WiFi off kar diya! 📶", "action": "WIFI", "payload": {"state": False}}
+    return {"response": "WiFi toggle kar diya! 🌐", "action": "WIFI", "payload": {"state": "toggle"}}
+
+
+def handle_bluetooth(query: str) -> dict:
+    """Toggle Bluetooth on/off."""
+    q = query.lower()
+    has_on = bool(re.search(r'\b(on|enable|chalu)\b', q))
+    has_off = bool(re.search(r'\b(off|disable|band|bnd)\b', q))
+    if has_on and not has_off:
+        return {"response": "Bluetooth on kar diya! 🔵", "action": "BLUETOOTH", "payload": {"state": True}}
+    elif has_off and not has_on:
+        return {"response": "Bluetooth off kar diya! 🔘", "action": "BLUETOOTH", "payload": {"state": False}}
+    return {"response": "Bluetooth toggle kar diya! 🔵", "action": "BLUETOOTH", "payload": {"state": "toggle"}}
+
+
+def handle_airplane_mode(query: str) -> dict:
+    """Toggle airplane mode on/off."""
+    q = query.lower()
+    has_on = bool(re.search(r'\b(on|enable)\b', q))
+    has_off = bool(re.search(r'\b(off|disable)\b', q))
+    if has_on and not has_off:
+        return {"response": "Flight mode on kar diya! ✈️", "action": "AIRPLANE_MODE", "payload": {"state": True}}
+    elif has_off and not has_on:
+        return {"response": "Flight mode off kar diya! 📱", "action": "AIRPLANE_MODE", "payload": {"state": False}}
+    return {"response": "Flight mode toggle kar diya! ✈️", "action": "AIRPLANE_MODE", "payload": {"state": "toggle"}}
+
+
+def handle_home() -> dict:
+    """Go to home screen."""
+    return {"response": "Home screen pe ja rahe hain! 🏠", "action": "GO_HOME", "payload": {}}
+
+
+def handle_camera() -> dict:
+    """Open the camera app."""
+    return {
+        "response": "Camera khol raha hoon! 📸",
+        "action": "OPEN_CAMERA",
+        "payload": {
+            "action": "android.intent.action.MAIN",
+            "package": "com.android.camera2",
+            "component": "com.android.camera2/.CameraActivity",
+            "category": "android.intent.category.LAUNCHER",
+        },
+    }

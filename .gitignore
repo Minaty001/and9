@@ -69,12 +69,3 @@ activities/
 *.swp
 *.swo
 *~
-
-# Temporary and dataset files
-test.md
-micro_brain/datasets/intents.json
-micro_brain/metrics_history.json
-
-# Maintenance and test outputs
-maintenance_data/
-test_reports/

@@ -2,27 +2,15 @@
 Understanding Engine for JARVIS Neural Engine v4.
 
 Analyzes user messages to extract intent, emotion, entities,
-topic, and expertise level.  Combines two complementary approaches:
-
-1. **Regex/keyword engine** — fast, Hinglish-aware, always available.
-2. **spaCy + SciPy NLP pipeline** — deep linguistic analysis (NER, POS,
-   dependency parsing, TF-IDF intent scoring, SciPy complexity stats).
-
-The NLP pipeline result is merged into MessageAnalysis; its intent
-overrides the regex result only when confidence exceeds NLP_CONFIDENCE_THRESHOLD.
+topic, and expertise level using keyword and regex pattern matching.
 Supports both English and Hinglish (Hindi-English) input.
 """
 
 import re
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 logger = logging.getLogger(__name__)
-
-# Minimum cosine-similarity confidence required for the NLP pipeline's
-# intent classification to override the regex-based result.
-NLP_CONFIDENCE_THRESHOLD = 0.35
 
 
 @dataclass
@@ -38,12 +26,6 @@ class MessageAnalysis:
         is_memory_recall: Whether the user wants to recall information.
         topic: Detected conversation topic.
         expertise_level: Estimated user expertise level.
-        nlp_result: Rich NLPResult from the spaCy+SciPy pipeline (None if
-            pipeline unavailable or disabled). Contains NER entities,
-            POS tags, noun chunks, intent confidence scores, sentiment,
-            and sentence complexity.
-        nlp_confidence: Cosine-similarity confidence of the NLP pipeline's
-            best-intent prediction (0.0 when pipeline inactive).
     """
 
     intent: str = 'casual'
@@ -54,21 +36,14 @@ class MessageAnalysis:
     is_memory_recall: bool = False
     topic: str = 'general'
     expertise_level: str = 'intermediate'
-    nlp_result: Optional[object] = None   # NLPResult — Optional to avoid circular import
-    nlp_confidence: float = 0.0
 
 
 class UnderstandingEngine:
     """Analyzes user messages to understand intent, emotion, entities, and context.
 
-    Combines a fast regex/keyword engine (always active, Hinglish-aware) with
-    the :class:`~app.core.nlp_pipeline.NLPPipeline` (spaCy + SciPy) for deep
-    linguistic analysis.  When the NLP pipeline is available and confident
-    (cosine similarity ≥ NLP_CONFIDENCE_THRESHOLD), its intent classification
-    overrides the regex result.  NER entities from spaCy are always merged
-    into the final entity dict regardless of intent confidence.
-
-    All matching is case-insensitive and supports both English and Hinglish.
+    Uses keyword and regex-based pattern matching to classify messages
+    across multiple dimensions. All matching is case-insensitive and
+    supports both English and Hinglish input.
     """
 
     # --- Intent patterns (order matters for priority) ---
@@ -463,35 +438,12 @@ class UnderstandingEngine:
 
         return 'intermediate'
 
-    def _init_nlp_pipeline(self) -> None:
-        """Lazy-import and initialise the NLPPipeline singleton.
-
-        Wrapped in a try/except so that missing spaCy/SciPy dependencies
-        never crash the UnderstandingEngine — the regex engine takes over.
-        """
-        try:
-            from app.core.nlp_pipeline import get_pipeline
-            self._nlp_pipeline = get_pipeline()
-            logger.info("UnderstandingEngine: NLPPipeline attached (spaCy+SciPy active).")
-        except Exception as exc:  # noqa: BLE001
-            self._nlp_pipeline = None
-            logger.warning("UnderstandingEngine: NLPPipeline unavailable (%s). Regex-only mode.", exc)
-
     def analyze(self, message: str, user_profile: dict = None) -> MessageAnalysis:
         """Analyze a user message across all dimensions.
 
-        This is the main entry point.  Runs the spaCy + SciPy NLP pipeline
-        first (if available), then the regex/keyword engine.  Results are
-        merged so that both sources contribute to the final analysis:
-
-        - **Intent**: NLP result wins when confidence ≥ NLP_CONFIDENCE_THRESHOLD;
-          otherwise regex result is used.
-        - **Entities**: spaCy NER entities are *merged into* the regex entity dict
-          under label-based keys (e.g. ``'nlp_PERSON'``, ``'nlp_GPE'``).
-        - **Expertise**: SciPy-based estimation is used when NLP pipeline is active;
-          otherwise the existing profile/jargon heuristic applies.
-        - **nlp_result**: The full :class:`~app.core.nlp_models.NLPResult` is
-          attached to the analysis for downstream consumers.
+        This is the main entry point. Runs intent detection, emotion
+        detection, entity extraction, topic detection, and expertise
+        estimation, then returns a consolidated MessageAnalysis.
 
         Args:
             message: The user's input message.
@@ -499,93 +451,31 @@ class UnderstandingEngine:
                 (e.g. expertise_level). Defaults to an empty dict.
 
         Returns:
-            A fully populated :class:`MessageAnalysis` instance.
+            A fully populated MessageAnalysis dataclass instance.
         """
-        if user_profile is None:
-            user_profile = {}
-
         logger.info("Analyzing message: %.80s...", message)
 
-        # ── Stage A: spaCy + SciPy NLP pipeline ───────────────────────────
-        nlp_result = None
-        nlp_intent: Optional[str] = None
-        nlp_confidence: float = 0.0
-        nlp_expertise: Optional[str] = None
-
-        if not hasattr(self, '_nlp_pipeline'):
-            self._init_nlp_pipeline()
-
-        if self._nlp_pipeline is not None:
-            try:
-                nlp_result = self._nlp_pipeline.process(message)
-                nlp_confidence = nlp_result.intent_confidence
-
-                # Override intent only when NLP is confident enough
-                if nlp_confidence >= NLP_CONFIDENCE_THRESHOLD:
-                    nlp_intent = nlp_result.best_intent
-                    logger.debug(
-                        "NLP pipeline intent '%s' accepted (confidence=%.3f >= %.2f)",
-                        nlp_intent, nlp_confidence, NLP_CONFIDENCE_THRESHOLD,
-                    )
-                else:
-                    logger.debug(
-                        "NLP pipeline intent '%s' rejected (confidence=%.3f < %.2f), using regex.",
-                        nlp_result.best_intent, nlp_confidence, NLP_CONFIDENCE_THRESHOLD,
-                    )
-
-                # Use SciPy expertise estimation when pipeline ran successfully
-                if nlp_result.pipeline_active:
-                    nlp_expertise = nlp_result.expertise_level
-
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("NLPPipeline.process() failed: %s — falling back to regex.", exc)
-                nlp_result = None
-
-        # ── Stage B: Regex / keyword engine (always runs) ─────────────────
-        regex_intent = self.detect_intent(message)
+        intent = self.detect_intent(message)
         emotion, intensity = self.detect_emotion(message)
         entities = self.extract_entities(message)
         topic = self.detect_topic(message)
-        regex_expertise = self.detect_expertise(message, user_profile)
-
-        # ── Stage C: Merge results ─────────────────────────────────────────
-        # Intent: NLP wins when confident, otherwise regex
-        final_intent = nlp_intent if nlp_intent is not None else regex_intent
-
-        # Expertise: prefer SciPy-based estimate when available
-        final_expertise = nlp_expertise if nlp_expertise is not None else regex_expertise
-
-        # Entities: merge spaCy NER into the regex entity dict
-        if nlp_result is not None and nlp_result.entities:
-            entity_dict = nlp_result.entity_dict()  # {label: [text, ...]}
-            for label, texts in entity_dict.items():
-                key = f"nlp_{label}"  # e.g. "nlp_PERSON", "nlp_GPE", "nlp_DATE"
-                entities[key] = texts[0] if len(texts) == 1 else texts
-            logger.debug(
-                "Merged %d spaCy NER entities into entity dict.",
-                len(nlp_result.entities),
-            )
+        expertise = self.detect_expertise(message, user_profile or {})
 
         analysis = MessageAnalysis(
-            intent=final_intent,
+            intent=intent,
             emotion=emotion,
             emotion_intensity=intensity,
             entities=entities,
-            is_memory_store=(final_intent == 'memory_store'),
-            is_memory_recall=(final_intent == 'memory_recall'),
+            is_memory_store=(intent == 'memory_store'),
+            is_memory_recall=(intent == 'memory_recall'),
             topic=topic,
-            expertise_level=final_expertise,
-            nlp_result=nlp_result,
-            nlp_confidence=nlp_confidence,
+            expertise_level=expertise,
         )
 
         logger.info(
-            "Analysis complete — intent=%s(nlp_conf=%.2f), emotion=%s(%d), "
-            "topic=%s, expertise=%s, spacy_entities=%d",
-            analysis.intent, analysis.nlp_confidence,
-            analysis.emotion, analysis.emotion_intensity,
+            "Analysis complete — intent=%s, emotion=%s(%d), topic=%s, expertise=%s",
+            analysis.intent, analysis.emotion, analysis.emotion_intensity,
             analysis.topic, analysis.expertise_level,
-            len(nlp_result.entities) if nlp_result else 0,
         )
 
         return analysis

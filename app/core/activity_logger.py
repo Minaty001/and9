@@ -15,20 +15,12 @@ ACTIVITIES_DIR = os.path.abspath(
 
 
 class ActivityLogger:
-    """Logs user queries and JARVIS responses to daily text files."""
 
     def __init__(self):
-        """Initialise the logger and ensure the activities directory exists."""
         os.makedirs(ACTIVITIES_DIR, exist_ok=True)
         self._lock = Lock()
 
     def log(self, query: str, response: str):
-        """Append a user query and JARVIS response to today's activity file.
-
-        Args:
-            query: The user's input message.
-            response: The assistant's reply.
-        """
         today = datetime.now().strftime("%Y-%m-%d")
         filepath = os.path.join(ACTIVITIES_DIR, f"{today}.txt")
         timestamp = datetime.now().strftime("%H:%M:%S")
@@ -46,11 +38,6 @@ class ActivityLogger:
                 f.write(entry)
 
     def list_files(self) -> list:
-        """Return metadata for all daily activity files sorted by date descending.
-
-        Returns:
-            List of dicts with keys: date, name, size, entries, modified.
-        """
         files = []
         with self._lock:
             for name in os.listdir(ACTIVITIES_DIR):
@@ -68,14 +55,6 @@ class ActivityLogger:
         return files
 
     def read_file(self, date_str: str) -> str | None:
-        """Read the full content of a daily activity file.
-
-        Args:
-            date_str: Date in YYYY-MM-DD format.
-
-        Returns:
-            File contents as a string, or None if the file does not exist.
-        """
         filepath = os.path.join(ACTIVITIES_DIR, f"{date_str}.txt")
         with self._lock:
             if not os.path.exists(filepath):
@@ -84,15 +63,6 @@ class ActivityLogger:
                 return f.read()
 
     def write_file(self, date_str: str, content: str) -> bool:
-        """Overwrite a daily activity file with new content.
-
-        Args:
-            date_str: Date in YYYY-MM-DD format.
-            content: Full text content to write.
-
-        Returns:
-            True after successful write.
-        """
         filepath = os.path.join(ACTIVITIES_DIR, f"{date_str}.txt")
         with self._lock:
             with open(filepath, "w", encoding="utf-8") as f:
@@ -101,14 +71,6 @@ class ActivityLogger:
 
     @staticmethod
     def _count_entries(path: str) -> int:
-        """Count the number of USER: entries in a given activity file.
-
-        Args:
-            path: Absolute path to the activity file.
-
-        Returns:
-            Number of user message entries found.
-        """
         count = 0
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
@@ -120,7 +82,6 @@ class ActivityLogger:
 _instance = None
 
 def get_activity_logger() -> ActivityLogger:
-    """Return the module-level ActivityLogger singleton (lazy initialisation)."""
     global _instance
     if _instance is None:
         _instance = ActivityLogger()

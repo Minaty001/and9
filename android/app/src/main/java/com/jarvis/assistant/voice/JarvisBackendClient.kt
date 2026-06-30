@@ -41,17 +41,6 @@ class JarvisBackendClient(private val context: Context) {
         get() = prefs.getString("backend_url", BuildConfig.JARVIS_BASE_URL)
             ?: BuildConfig.JARVIS_BASE_URL
 
-    private val apiKey: String?
-        get() = prefs.getString("backend_api_key", null)
-
-    private fun Request.Builder.addAuthHeader(): Request.Builder {
-        val key = apiKey
-        if (!key.isNullOrEmpty()) {
-            this.header("X-API-Key", key)
-        }
-        return this
-    }
-
     /**
      * Send [text] to the backend server for processing.
      * All AI/LLM logic happens server-side through the orchestrator pipeline.
@@ -74,7 +63,6 @@ class JarvisBackendClient(private val context: Context) {
         val request = Request.Builder()
             .url(url)
             .post(body)
-            .addAuthHeader()
             .build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -105,7 +93,7 @@ class JarvisBackendClient(private val context: Context) {
     fun syncApps(appsJson: JSONObject) {
         val url = if (baseUrl.endsWith("/")) "${baseUrl}and9/apps" else "$baseUrl/and9/apps"
         val body = appsJson.toString().toRequestBody("application/json".toMediaType())
-        val request = Request.Builder().url(url).post(body).addAuthHeader().build()
+        val request = Request.Builder().url(url).post(body).build()
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -116,51 +104,6 @@ class JarvisBackendClient(private val context: Context) {
                 response.close()
             }
         })
-    }
-
-    /**
-     * Listen to the pipeline-status SSE endpoint.
-     * Invokes [onStatus] callback on the background thread whenever a new message arrives.
-     * Returns the Call object so it can be cancelled when the overlay is dismissed.
-     */
-    fun listenToPipelineStatus(onStatus: (String) -> Unit): Call {
-        val url = if (baseUrl.endsWith("/")) "${baseUrl}and9/pipeline-status" else "$baseUrl/and9/pipeline-status"
-        val request = Request.Builder()
-            .url(url)
-            .header("Accept", "text/event-stream")
-            .addAuthHeader()
-            .build()
-
-        val call = client.newCall(request)
-        call.enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.w(TAG, "Pipeline status SSE stream failure: ${e.message}")
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                if (!response.isSuccessful) {
-                    Log.w(TAG, "Pipeline status SSE status code: ${response.code}")
-                    response.close()
-                    return
-                }
-                try {
-                    val reader = response.body?.charStream()?.buffered() ?: return
-                    var line: String?
-                    while (reader.readLine().also { line = it } != null) {
-                        val currentLine = line ?: break
-                        if (currentLine.startsWith("data:")) {
-                            val data = currentLine.substring(5).trim()
-                            onStatus(data)
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.d(TAG, "Pipeline status SSE stream closed/error: ${e.message}")
-                } finally {
-                    response.close()
-                }
-            }
-        })
-        return call
     }
 
     // ── REMOVED (Constitution V3 Rule 5/6) ─────────────────────────

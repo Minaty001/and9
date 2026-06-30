@@ -9,7 +9,7 @@ Supabase table: events
 """
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -32,14 +32,6 @@ _REMINDER_KEYWORDS = [
 
 
 def is_event_request(text: str) -> bool:
-    """Check if user text contains reminder or event-related keywords.
-
-    Args:
-        text: The user's input string to check.
-
-    Returns:
-        True if any reminder/event keyword is found in the text, False otherwise.
-    """
     t = text.lower()
     return any(kw in t for kw in _REMINDER_KEYWORDS)
 
@@ -48,38 +40,14 @@ class EventSystem:
     """Manages reminders and scheduled events."""
 
     def __init__(self, memory):
-        """Initialize the EventSystem with a shared Memory instance.
-
-        Args:
-            memory: The Memory instance providing Supabase client access
-                    and in-memory fallback storage.
-        """
         self._mem = memory
 
     def _q(self, table):
-        """Get a Supabase table query builder if the connection is available.
-
-        Args:
-            table: The name of the Supabase table to query.
-
-        Returns:
-            A Supabase table query builder, or None if the database
-            connection is not ready.
-        """
         if not self._mem._ok:
             return None
         return self._mem._sb.table(table)
 
     def _safe(self, fn, default=None):
-        """Execute a callable with exception safety and logging.
-
-        Args:
-            fn: The callable to execute.
-            default: Value to return if the callable raises an exception.
-
-        Returns:
-            The result of fn() on success, or the default value on failure.
-        """
         try:
             return fn()
         except Exception as e:
@@ -105,7 +73,7 @@ class EventSystem:
             e = {"id": len(self._mem._mem.get("events", [])) + 1,
                  "title": title, "event_time": event_time,
                  "notes": notes, "repeat": repeat, "done": False,
-                 "created_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}
+                 "created_at": datetime.utcnow().isoformat()}
             self._mem._mem.setdefault("events", []).append(e)
             return e
         res = self._safe(lambda: q.insert({
@@ -116,7 +84,7 @@ class EventSystem:
 
     def get_upcoming_events(self, hours_ahead: int = 24) -> list:
         """Return events due in the next N hours."""
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        now = datetime.utcnow()
         cutoff = (now + timedelta(hours=hours_ahead)).isoformat()
         now_str = now.isoformat()
 
@@ -137,7 +105,7 @@ class EventSystem:
 
     def get_due_events(self) -> list:
         """Return events that are due NOW (past event_time, not done)."""
-        now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+        now = datetime.utcnow().isoformat()
         q = self._q("events")
         if q is None:
             evs = self._mem._mem.get("events", [])
@@ -151,14 +119,6 @@ class EventSystem:
         return res.data if res and res.data else []
 
     def mark_done(self, event_id: int) -> bool:
-        """Mark an event as completed by its ID.
-
-        Args:
-            event_id: The unique identifier of the event to mark as done.
-
-        Returns:
-            True if the event was found and marked done, False otherwise.
-        """
         q = self._q("events")
         if q is None:
             for e in self._mem._mem.get("events", []):
@@ -171,11 +131,6 @@ class EventSystem:
         return bool(res and res.data)
 
     def get_all_events(self) -> list:
-        """Retrieve all events ordered by event time (ascending).
-
-        Returns:
-            A list of all event records, or an empty list if none exist.
-        """
         q = self._q("events")
         if q is None:
             return self._mem._mem.get("events", [])
@@ -200,14 +155,14 @@ class EventSystem:
             n   = int(rel.group(1))
             unit = rel.group(2)
             if unit in ("minute", "min"):
-                dt = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=n)
+                dt = datetime.utcnow() + timedelta(minutes=n)
             elif unit in ("ghante", "hour"):
-                dt = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=n)
+                dt = datetime.utcnow() + timedelta(hours=n)
             else:
-                dt = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=n)
+                dt = datetime.utcnow() + timedelta(days=n)
             event_time = dt.isoformat()
         elif "kal" in t:
-            dt = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=1)
+            dt = datetime.utcnow() + timedelta(days=1)
             # Try to extract hour
             hr = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(baje|am|pm)?", t)
             if hr:
@@ -218,7 +173,7 @@ class EventSystem:
                 dt = dt.replace(hour=h, minute=m, second=0, microsecond=0)
             event_time = dt.isoformat()
         elif "aaj" in t:
-            dt = datetime.now(timezone.utc).replace(tzinfo=None)
+            dt = datetime.utcnow()
             # Try to extract hour
             hr = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(baje|am|pm)?", t)
             if hr:

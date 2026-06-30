@@ -27,10 +27,6 @@ class JarvisVoiceInteractionService : VoiceInteractionService() {
 
     companion object {
         private const val TAG = "JarvisVoice"
-        
-        @JvmStatic
-        @Volatile
-        var activeInstance: JarvisVoiceInteractionService? = null
 
         /**
          * Check if JARVIS is set as the system default assistant.
@@ -47,14 +43,6 @@ class JarvisVoiceInteractionService : VoiceInteractionService() {
 
     override fun onReady() {
         super.onReady()
-        activeInstance = this
         Log.i(TAG, "JARVIS assistant service registered and ready")
-    }
-
-    override fun onDestroy() {
-        if (activeInstance === this) {
-            activeInstance = null
-        }
-        super.onDestroy()
     }
 }

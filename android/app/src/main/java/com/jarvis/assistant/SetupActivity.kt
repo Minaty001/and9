@@ -17,7 +17,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.jarvis.assistant.services.JarvisVoiceInteractionService
-import com.jarvis.assistant.services.ContinuousListeningService
 import com.jarvis.assistant.voice.DebugLogger
 import android.os.Environment
 import android.content.pm.PackageManager
@@ -200,10 +199,6 @@ class SetupActivity : AppCompatActivity() {
             Environment.isExternalStorageManager()
         } else {
             ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-        }
-
-        if (hasMic) {
-            ContinuousListeningService.start(this)
         }
 
         updateItem(statusCamera, btnCamera, hasCamera, "Camera permission")

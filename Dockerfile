@@ -11,7 +11,6 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
-RUN python -m spacy download en_core_web_sm
 
 # ── Runtime stage ───────────────────────────────────────────────────
 FROM python:3.11-slim
@@ -27,8 +26,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy app code
 COPY app/ app/
-COPY frontend/ frontend/
-COPY ai/ ai/
 COPY requirements.txt .
 
 # Create data directory (reminders DB, traces DB, installed_apps.json)
@@ -41,7 +38,6 @@ EXPOSE 8000
 ENV FLASK_ENV=production
 ENV RENDER=true
 ENV AND9_REMINDERS_DB=/app/.jarvis_data/reminders.db
-ENV AND9_REMINDERS_STORAGE_DB=/app/.jarvis_data/reminders_engine.db
 ENV AND9_TRACES_DB=/app/.jarvis_data/intent_traces.db
 ENV AND9_INSTALLED_APPS_PATH=/app/.jarvis_data/installed_apps.json
 
