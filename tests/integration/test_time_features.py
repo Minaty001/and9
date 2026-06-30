@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from app.cognition.planner.entity_extractor import extract_reminder
+from app.brain.planner.entity_extractor import extract_reminder
 from app.utils.time_parser import parse_time
-from ai.micro_brain.utils.timezone_utils import get_time_in_city
+from app.utils.timezone_utils import get_time_in_city
 
 
 IST = ZoneInfo("Asia/Kolkata")

@@ -34,14 +34,14 @@ requires_spacy = pytest.mark.skipif(not SPACY_INSTALLED, reason="spaCy not insta
 @pytest.fixture(scope="module")
 def pipeline():
     """Shared NLPPipeline instance for all tests (loaded once per module)."""
-    from backend.core.nlp_pipeline import NLPPipeline
+    from app.core.nlp_pipeline import NLPPipeline
     return NLPPipeline()
 
 
 @pytest.fixture(scope="module")
 def spacy_pipeline():
     """NLPPipeline with spaCy model verified loaded."""
-    from backend.core.nlp_pipeline import NLPPipeline
+    from app.core.nlp_pipeline import NLPPipeline
     p = NLPPipeline()
     if not p._load_spacy():
         pytest.skip(
@@ -228,7 +228,7 @@ class TestNLPResult:
     """Tests for the NLPResult dataclass helpers."""
 
     def test_entities_by_label(self):
-        from backend.core.nlp_models import NLPResult, EntitySpan
+        from app.core.nlp_models import NLPResult, EntitySpan
         result = NLPResult(entities=[
             EntitySpan("Delhi", "GPE", 0, 1),
             EntitySpan("Saif", "PERSON", 2, 3),
@@ -245,7 +245,7 @@ class TestNLPResult:
         assert confidences == sorted(confidences, reverse=True)
 
     def test_entity_dict_grouping(self):
-        from backend.core.nlp_models import NLPResult, EntitySpan
+        from app.core.nlp_models import NLPResult, EntitySpan
         result = NLPResult(entities=[
             EntitySpan("London", "GPE", 0, 1),
             EntitySpan("Paris", "GPE", 2, 3),
@@ -272,11 +272,11 @@ class TestUnderstandingIntegration:
     @pytest.fixture(scope="class")
     @classmethod
     def engine(cls):
-        from backend.core.understanding import UnderstandingEngine
+        from app.core.understanding import UnderstandingEngine
         return UnderstandingEngine()
 
     def test_analyze_returns_message_analysis(self, engine):
-        from backend.core.understanding import MessageAnalysis
+        from app.core.understanding import MessageAnalysis
         result = engine.analyze("Set an alarm for 7am")
         assert isinstance(result, MessageAnalysis)
 

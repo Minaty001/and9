@@ -8,13 +8,14 @@ Run with:
     pytest tests/integration_tests.py -v
 """
 import pytest
-from app.cognition.planner import AND9
+from app.brain.planner.and9 import AND9
 from app.core.constants import ActionType
-from app.cognition.planner.brain_types import IntentType
+from app.brain.planner.brain_types import IntentType
 
 @pytest.fixture
-def and9():
+def and9(monkeypatch):
     """Returns a fresh instance of the AND9 brain."""
+    monkeypatch.setenv("AND9_CONTACTS_DB", ":memory:")
     return AND9(enable_patterns=False)
 
 def test_alarm_intent(and9):

@@ -236,21 +236,31 @@ def get_rag_response(intent: str, query: str,
     Returns:
         Augmented response string.
     """
+    placeholders = rag_ctx.placeholders if rag_ctx else {}
+
+    # Define default values for placeholders to prevent raw braces from leaking
+    defaults = {
+        "name": "bhai",
+        "coding_language": "Python",
+        "preferred_stack": "React",
+    }
+
+    filled = default_response
+    # Apply retrieved RAG values
+    for key, val in placeholders.items():
+        placeholder = "{" + key + "}"
+        if placeholder in filled:
+            filled = filled.replace(placeholder, val)
+
+    # Apply default fallbacks for any remaining placeholders
+    for key, val in defaults.items():
+        placeholder = "{" + key + "}"
+        if placeholder in filled:
+            filled = filled.replace(placeholder, val)
+
     priority = RAG_PRIORITY.get(intent, "NONE")
-    if priority == "NONE" or not rag_ctx.has_context:
-        return default_response
-
-    placeholders = rag_ctx.placeholders
-
-    # Step 1: Try to fill {placeholders} in the default template
-    if placeholders:
-        filled = default_response
-        for key, val in placeholders.items():
-            placeholder = "{" + key + "}"
-            if placeholder in filled:
-                filled = filled.replace(placeholder, val)
-        if filled != default_response:
-            return filled
+    if priority == "NONE" or not rag_ctx or not rag_ctx.has_context:
+        return filled
 
     # Step 2: For HIGH priority, append a personalized sentence
     if priority == "HIGH":

@@ -22,6 +22,17 @@ from app.brain.neural.rag import RAGEngine, get_rag_response
 logger = logging.getLogger(__name__)
 
 
+class ReflexStub:
+    def match_intent(self, query: str):
+        return None, 0.0, None
+
+
+class NeuralBrainHolder:
+    def __init__(self):
+        from app.brain.neural.neural import NeuralBrain
+        self.neural = NeuralBrain()
+
+
 class NeuralBridge:
     """Bridge between the main cognitive pipeline and micro_brain neural network.
 
@@ -34,18 +45,21 @@ class NeuralBridge:
 
     def __init__(self):
         self._brain = None
-        self._reflex = None
+        self._reflex = ReflexStub()
         self._rag = None
         self._loaded = False
 
     def _ensure_loaded(self):
-        """Lazy-load (micro_brain was removed — stub)."""
+        """Lazy-load NeuralBrain."""
         if self._loaded:
             return True
 
-        logger.warning("NeuralBridge: micro_brain module removed, using stub")
-        self._loaded = True
-        return True
+        try:
+            self._brain = NeuralBrainHolder()
+            self._loaded = True
+            return True
+        except Exception as e:
+            logger.error("NeuralBridge: Failed to load neural brain: %s", e)
             return False
 
     def process(self, query: str) -> Dict[str, Any]:
