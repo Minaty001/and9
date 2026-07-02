@@ -186,6 +186,11 @@ and9/
   │    │         ├── constants.py
   │    │         └── config.py
   │    │
+  │    │    ├── orchestrator/           ← Agent Orchestrator (Phase 4)
+  │    │    │    ├── __init__.py         (Public API — TaskQueue, AgentOrchestrator)
+  │    │    │    ├── task_queue.py       (Priority-ordered thread-safe task queue)
+  │    │    │    └── orchestrator.py     (Full pipeline: analyze→decompose→execute→validate→retry→merge)
+  │    │    │
   │    │    ├── agents/                 ← Multi-Agent System (Phase 3)
   │    │    │    ├── __init__.py         (Public API, factory, 20 agent classes)
   │    │    │    ├── base.py             (AgentBase abstract class, AgentMemory, AgentMetrics)
@@ -214,7 +219,7 @@ and9/
   │    ├── skills/           (command actions — no LLM command parsing)
   │    └── templates/        (control dashboard frontend)
   ├── scripts/               (automated APK patching utilities)
-  ├── tests/                 (80+ tests — core modules + dialogue + dependency graph)
+  ├── tests/                 (264 tests — core, dialogue, dep graph, multi-agent, orchestrator)
   ├── COMMANDS_REFERENCE.md  (extensive usage command catalog)
   ├── AUDIT.md               (system design audit & structural findings)
   └── ROADMAP.md             (15-phase JARVIS AI OS roadmap)
@@ -614,6 +619,120 @@ for agent_info in registry.list_agents():
 
 ---
 
+## 🏗️ AND9 Agent Orchestrator — Phase 4
+
+The **Agent Orchestrator** (`app/and9/orchestrator/`) is the central coordination engine for the multi-agent system. It receives user goals, analyzes them, decomposes complex tasks, executes them in parallel, validates results, retries failures, and merges outputs into a coherent final response. This is the "CEO" of the agent system.
+
+### Architecture — 3 Components
+
+| # | Module | Responsibility |
+|---|--------|---------------|
+| 1 | `task_queue.py` | Priority-ordered thread-safe task queue with dependency tracking |
+| 2 | `orchestrator.py` | Full execution pipeline: analyze → decompose → plan → execute → validate → retry → merge |
+
+### Execution Pipeline
+
+```
+User Request
+  |
+  +-- 1. analyze(request) → TaskGraph        — Detect intents, estimate complexity
+  +-- 2. decompose(request) → list[SubTask]  — Break into single-domain units
+  +-- 3. plan(subtasks) → task_ids           — Enqueue with dependency ordering
+  +-- 4. execute(tasks) → dict[Result]       — ThreadPoolExecutor for parallelism
+  +-- 5. validate(results) → (passed, failed) — Separate successes from failures
+  +-- 6. retry(failed) → dict[Result]        — Re-execute up to max_retries
+  +-- 7. merge(results) → AgentResult        — Combine into coherent response
+  |
+  v
+Final Response
+```
+
+### Key Capabilities
+
+**Priority-Ordered Queue** — Tasks are ordered by priority (HIGH, MEDIUM, LOW) within a thread-safe queue. Higher-priority tasks always execute first.
+
+**Dependency Tracking** — Tasks can declare dependencies on other tasks. The orchestrator automatically defers execution until dependencies are met, preventing deadlocks.
+
+**Parallel Execution** — Independent tasks execute concurrently via `ThreadPoolExecutor`, maximizing throughput for multi-domain requests.
+
+**Automatic Retry** — Failed tasks are retried up to `max_retries` times with configurable timeout per task.
+
+**Result Validation** — Results are classified as passed or failed. Only failed tasks are retried; successful results are preserved.
+
+**Coherent Merging** — Results from multiple agents are merged into a single, well-structured response with task counts and failure summaries.
+
+### Complexity Detection
+
+The orchestrator automatically determines task complexity:
+
+| Complexity | Criteria | Execution Strategy |
+|-----------|----------|-------------------|
+| `SIMPLE` | Single domain intent | Fast path — direct agent delegation |
+| `MODERATE` | 2-3 domains | Full pipeline with parallel execution |
+| `COMPLEX` | 4+ domains | Full pipeline with retry and validation |
+
+### Integration with Executive Agent
+
+The Executive Agent delegates complex tasks to the orchestrator:
+
+```python
+from app.and9.agents import create_agent_system
+
+# create_agent_system() automatically creates and links the orchestrator
+registry = create_agent_system()
+
+# Simple tasks route directly to specialist agents (fast path)
+result = registry.route("Write a Python function")
+# → routes directly to CodingAgent
+
+# Complex tasks go through the orchestrator pipeline
+result = registry.route("Research machine learning and write implementation")
+# → analyze → decompose → execute_parallel → validate → retry → merge
+```
+
+### Usage Examples
+
+```python
+from app.and9.orchestrator import AgentOrchestrator
+from app.and9.agents import create_agent_system
+
+# Create system and orchestrator
+registry = create_agent_system()
+orchestrator = AgentOrchestrator(registry)
+
+# Run a simple request (fast path)
+result = orchestrator.run("Write a hello world function")
+print(result.response)
+
+# Run a complex multi-domain request
+result = orchestrator.run(
+    "Research quantum computing, write a simulator, and document the code"
+)
+print(f"Success: {result.success}")
+print(f"Tasks: {result.data['task_count']}")
+print(f"Completed: {result.data['success_count']}/{result.data['task_count']}")
+
+# Check orchestrator status
+status = orchestrator.get_status()
+print(f"Queue: {status['queue']}")
+print(f"History: {status['history_count']} executions")
+
+# View execution history
+for entry in orchestrator.get_history(5):
+    print(f"{entry['timestamp']}: {entry['request'][:50]}... "
+          f"success={entry['success']} ({entry['latency_ms']}ms)")
+```
+
+### Test Coverage
+
+41 tests across 4 test classes:
+- `TestTaskQueue` (14 tests) — enqueue, dequeue, priority, cancel, dependencies
+- `TestAgentOrchestrator` (20 tests) — analyze, decompose, plan, execute, validate, retry, merge, full pipeline
+- `TestExecutiveOrchestratorIntegration` (3 tests) — executive→orchestrator wiring
+- `TestOrchestratorEdgeCases` (4 tests) — empty registry, deadlock handling, unknown agents
+
+---
+
 ## 🔍 Dependency Graph MCP Server — Code Analysis Engine
 
 The **Dependency Graph** (`app/and9/dependency_graph/`) is a pure-Python code analysis engine that parses Python source code using the built-in `ast` module and builds a directed dependency graph. It exposes analysis capabilities via an MCP (Model Context Protocol) server over stdio and REST API endpoints.
@@ -748,7 +867,7 @@ Then send JSON-RPC requests on stdin:
 ## 🧪 Running Tests
 
 ```bash
-# Run all tests (core + dialogue + dep graph + multi-agent = 223+ tests)
+# Run all tests (264 tests: core + dialogue + dep graph + multi-agent + orchestrator)
 pytest tests/ -v
 
 # Run dialogue manager tests only (58 tests)
@@ -760,11 +879,18 @@ pytest tests/test_dependency_graph.py -v
 # Run multi-agent system tests only (72 tests)
 pytest tests/test_multi_agent_system.py -v
 
+# Run agent orchestrator tests only (41 tests)
+pytest tests/test_orchestrator.py -v
+
 # Run multi-agent system sub-groups
 pytest tests/test_multi_agent_system.py::TestAgentBase -v
 pytest tests/test_multi_agent_system.py::TestAgentRegistry -v
 pytest tests/test_multi_agent_system.py::TestAgentSystem -v
 pytest tests/test_multi_agent_system.py::TestEdgeCases -v
+
+# Run orchestrator sub-groups
+pytest tests/test_orchestrator.py::TestTaskQueue -v          (14 tests)
+pytest tests/test_orchestrator.py::TestAgentOrchestrator -v  (20 tests)
 
 # Run specific test categories
 pytest tests/test_dialogue_manager.py -k "TestSlotFilling" -v
@@ -786,7 +912,7 @@ See [`ROADMAP.md`](ROADMAP.md) for the complete 15-phase vision:
 | 1 | Human Brain Architecture | ✅ **Done** — Reflex, Subconscious, Conscious, Reflection brains |
 | 2 | Memory System | ✅ **Done** — Working, Short-Term, Long-Term, Episodic memory |
 | 3 | Multi-Agent System | ✅ **Done** — 20 agents, registry, routing, delegation |
-| 4 | Agent Orchestrator | ⏳ In Progress |
+| 4 | Agent Orchestrator | ✅ **Done** — Priority task queue, parallel execution, retry, merge pipeline |
 | 5 | Workflow Engine | 🔜 Planned |
 | 6 | Background Task Engine | ✅ **Done** — Timers, reminders, async workers |
 | 7 | Long-Term Planning | 🔜 Planned |

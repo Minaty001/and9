@@ -22,6 +22,7 @@ Architecture:
 
 import logging
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Optional
 
@@ -398,22 +399,42 @@ class AgentRegistry:
             )
 
     def delegate_parallel(self, assignments: list[tuple[str, str]],
-                          context: Optional[dict] = None) -> dict[str, AgentResult]:
-        """Delegate multiple subtasks sequentially.
+                          context: Optional[dict] = None,
+                          max_workers: int = 5) -> dict[str, AgentResult]:
+        """Delegate multiple subtasks in parallel using threads.
 
-        Despite the name, this currently executes delegations sequentially.
-        For true parallelism, use threading/asyncio in a future version.
+        Uses ThreadPoolExecutor to execute independent subtasks
+        concurrently for maximum throughput.
 
         Args:
             assignments: List of (agent_name, subtask) tuples.
             context: Optional shared context.
+            max_workers: Maximum parallel threads (default 5).
 
         Returns:
             Dict of agent_name → AgentResult.
         """
         results = {}
-        for agent_name, subtask in assignments:
-            results[agent_name] = self.delegate(agent_name, subtask, context)
+        if not assignments:
+            return results
+
+        with ThreadPoolExecutor(max_workers=min(max_workers, len(assignments))) as executor:
+            future_map = {
+                executor.submit(
+                    self.delegate, agent_name, subtask, context
+                ): agent_name
+                for agent_name, subtask in assignments
+            }
+            for future in as_completed(future_map):
+                agent_name = future_map[future]
+                try:
+                    results[agent_name] = future.result()
+                except Exception as e:
+                    results[agent_name] = AgentResult(
+                        success=False,
+                        agent_name=agent_name,
+                        error=str(e),
+                    )
         return results
 
     # ── Health & Monitoring ───────────────────────────────────────

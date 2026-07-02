@@ -78,15 +78,19 @@ logger = logging.getLogger(__name__)
 
 
 def create_agent_system(registry: Optional[AgentRegistry] = None,
-                        auto_init: bool = True) -> AgentRegistry:
+                        auto_init: bool = True,
+                        create_orchestrator: bool = True) -> AgentRegistry:
     """Create and register all agents in the system.
 
     This factory function instantiates all 20 agents, links them
-    to the registry, and optionally initializes them.
+    to the registry, optionally creates the orchestrator, and
+    initializes all components.
 
     Args:
         registry: Optional existing registry. Creates a new one if None.
         auto_init: If True, call initialize() on all agents.
+        create_orchestrator: If True, create AgentOrchestrator and
+            link it to the Executive agent for complex task handling.
 
     Returns:
         Configured AgentRegistry with all agents registered.
@@ -137,6 +141,17 @@ def create_agent_system(registry: Optional[AgentRegistry] = None,
         "Agent system created with %d agents",
         registry.count(),
     )
+
+    # ── Create Orchestrator ─────────────────────────────────────────
+    if create_orchestrator:
+        from app.and9.orchestrator import AgentOrchestrator
+
+        orchestrator = AgentOrchestrator(registry)
+        # Link orchestrator to executive agent
+        executive.set_orchestrator(orchestrator)
+        logger.info("Orchestrator created and linked to executive agent")
+    else:
+        orchestrator = None
 
     # Auto-initialize if requested
     if auto_init:

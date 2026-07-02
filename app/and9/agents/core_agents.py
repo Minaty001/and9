@@ -6,9 +6,12 @@ handle natural conversation, and decompose complex tasks.
 """
 
 import logging
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from app.and9.agents.base import AgentBase, AgentResult
+
+if TYPE_CHECKING:
+    from app.and9.orchestrator import AgentOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +48,17 @@ class ExecutiveAgent(AgentBase):
                 "require_verification": True,
             },
         )
-        # Will be set by the registry after registration
+        # Will be set by the registry/orchestrator after registration
         self._registry = None
+        self._orchestrator = None
 
     def set_registry(self, registry: 'AgentRegistry') -> None:
         """Set reference to the agent registry for delegation."""
         self._registry = registry
+
+    def set_orchestrator(self, orchestrator: 'AgentOrchestrator') -> None:
+        """Set reference to the orchestrator for complex tasks."""
+        self._orchestrator = orchestrator
 
     def _get_system_prompt(self) -> str:
         return (
@@ -71,8 +79,9 @@ class ExecutiveAgent(AgentBase):
         """Process a user request by orchestrating the agent swarm.
 
         Routes simple requests to the appropriate specialist agent.
-        For complex requests involving multiple domains, decomposes
-        and delegates to multiple specialist agents in parallel.
+        For complex requests involving multiple domains, delegates
+        to the orchestrator for full pipeline execution (decompose →
+        parallel execute → validate → retry → merge).
         """
         task = str(input_data) if not isinstance(input_data, str) else input_data
         task_lower = task.lower().strip()
@@ -88,10 +97,39 @@ class ExecutiveAgent(AgentBase):
                 agent_name=self.name,
                 needs_followup=True,
                 followup_agent="conversation",
-            )
+        )
 
-        # Simple check: if the task is a straightforward command,
-        # route directly rather than decomposing
+        # If orchestrator is available, use it for all non-trivial tasks
+        if self._orchestrator:
+            # Simple single-keyword tasks route directly for speed
+            simple_routes = {
+                "code": "coding",
+                "write": "coding",
+                "program": "coding",
+                "debug": "debug",
+                "fix": "debug",
+                "research": "research",
+                "search": "research",
+                "remember": "memory",
+                "plan": "planning",
+                "schedule": "scheduler",
+                "automate": "automation",
+            }
+            keywords_found = [k for k in simple_routes if k in task_lower]
+            is_simple = len(keywords_found) <= 1
+
+            if is_simple and keywords_found:
+                agent_name = simple_routes[keywords_found[0]]
+                if agent_name in self._registry.agents:
+                    logger.info("Executive fast-path '%s' -> '%s'",
+                                task[:40], agent_name)
+                    return self._registry.delegate(agent_name, task, context)
+
+            # Compound/complex → orchestrator
+            logger.info("Executive delegating to orchestrator: %s", task[:60])
+            return self._orchestrator.run(task, context)
+
+        # Fallback: no orchestrator — route directly for simple tasks
         simple_routes = {
             "code": "coding",
             "write": "coding",
@@ -108,15 +146,9 @@ class ExecutiveAgent(AgentBase):
 
         for keyword, agent_name in simple_routes.items():
             if keyword in task_lower and agent_name in self._registry.agents:
-                logger.info("Executive routing '%s' -> '%s'", task[:40], agent_name)
+                logger.info("Executive routing '%s' -> '%s' (no orchestrator)",
+                            task[:40], agent_name)
                 return self._registry.delegate(agent_name, task, context)
-
-        # For complex tasks, attempt multi-agent decomposition
-        # Check if multiple keywords indicate a compound task
-        keywords_found = [k for k in simple_routes if k in task_lower]
-        if len(keywords_found) >= 2 and len(self._registry.agents) >= 2:
-            logger.info("Compound task detected: %s", keywords_found)
-            return self._handle_compound_task(task, keywords_found, context)
 
         # Default: delegate to conversation agent for general chat
         if "conversation" in self._registry.agents:
@@ -125,75 +157,6 @@ class ExecutiveAgent(AgentBase):
         return AgentResult(
             success=True,
             response=task,
-            agent_name=self.name,
-        )
-
-    def _handle_compound_task(self, task: str, keywords: list[str],
-                              context: Optional[dict]) -> AgentResult:
-        """Handle a compound task that requires multiple agents."""
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-
-        # Build assignments
-        assignments = []
-        for kw in keywords[:self.config.get("max_parallel_tasks", 5)]:
-            agent_map = {
-                "code": "coding", "write": "coding", "program": "coding",
-                "debug": "debug", "fix": "debug",
-                "research": "research", "search": "research",
-                "plan": "planning",
-                "remember": "memory",
-            }
-            agent_name = agent_map.get(kw)
-            if agent_name and agent_name in self._registry.agents:
-                assignments.append((agent_name, task))
-
-        # Deduplicate
-        seen = set()
-        unique_assignments = []
-        for a, t in assignments:
-            if a not in seen:
-                seen.add(a)
-                unique_assignments.append((a, t))
-
-        if not unique_assignments:
-            return AgentResult(
-                success=False,
-                response="Could not find suitable agents for this compound task.",
-                agent_name=self.name,
-                error="no_agents_for_compound_task",
-            )
-
-        # Execute in parallel using threads
-        results = {}
-        with ThreadPoolExecutor(max_workers=len(unique_assignments)) as executor:
-            future_map = {
-                executor.submit(self._registry.delegate, agent, task, context): agent
-                for agent, task in unique_assignments
-            }
-            for future in as_completed(future_map):
-                agent_name = future_map[future]
-                try:
-                    results[agent_name] = future.result()
-                except Exception as e:
-                    results[agent_name] = AgentResult(
-                        success=False, agent_name=agent_name, error=str(e),
-                    )
-
-        # Merge results
-        merged_parts = []
-        all_success = True
-        for agent_name, result in results.items():
-            if result.success:
-                merged_parts.append(f"[{agent_name.title()}]: {result.response}")
-            else:
-                merged_parts.append(f"[{agent_name.title()}]: Failed — {result.error}")
-                all_success = False
-
-        merged = "\n".join(merged_parts)
-        return AgentResult(
-            success=all_success,
-            response=merged,
-            data={agent: r.to_dict() for agent, r in results.items()},
             agent_name=self.name,
         )
 
