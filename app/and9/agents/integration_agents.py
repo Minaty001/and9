@@ -7,7 +7,7 @@ and complex workflow execution.
 
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from app.and9.agents.base import AgentBase, AgentResult
 
@@ -105,7 +105,7 @@ class ToolAgent(AgentBase):
             agent_name=self.name,
         )
 
-    def register_tool(self, name: str, description: str, handler: callable):
+    def register_tool(self, name: str, description: str, handler: Callable):
         """Register a tool programmatically."""
         self._tools[name] = {
             "description": description,

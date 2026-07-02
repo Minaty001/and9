@@ -6,7 +6,7 @@ and debugging analysis.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from app.and9.agents.base import AgentBase, AgentResult
 
@@ -40,12 +40,12 @@ class ResearchAgent(AgentBase):
         self._search_tool = None
         self._fetch_tool = None
 
-    def bind_search(self, search_func: callable):
+    def bind_search(self, search_func: Callable):
         """Bind a web search function."""
         self._search_tool = search_func
         self.bind_tool("web_search", search_func)
 
-    def bind_fetch(self, fetch_func: callable):
+    def bind_fetch(self, fetch_func: Callable):
         """Bind a URL fetch function."""
         self._fetch_tool = fetch_func
         self.bind_tool("fetch_url", fetch_func)

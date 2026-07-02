@@ -48,7 +48,7 @@ class ExecutiveAgent(AgentBase):
         # Will be set by the registry after registration
         self._registry = None
 
-    def set_registry(self, registry):
+    def set_registry(self, registry: 'AgentRegistry') -> None:
         """Set reference to the agent registry for delegation."""
         self._registry = registry
 
@@ -70,8 +70,9 @@ class ExecutiveAgent(AgentBase):
                 context: Optional[dict] = None) -> AgentResult:
         """Process a user request by orchestrating the agent swarm.
 
-        For simple requests, handles directly. For complex requests,
-        decomposes and delegates to specialist agents.
+        Routes simple requests to the appropriate specialist agent.
+        For complex requests involving multiple domains, decomposes
+        and delegates to multiple specialist agents in parallel.
         """
         task = str(input_data) if not isinstance(input_data, str) else input_data
         task_lower = task.lower().strip()

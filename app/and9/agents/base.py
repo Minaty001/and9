@@ -36,7 +36,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -88,9 +88,10 @@ class AgentMemory:
         self.short_term.pop(key, None)
 
     def clear(self):
-        """Clear all memory."""
+        """Clear all memory including persistent data."""
         self.short_term.clear()
         self.working_data.clear()
+        self.persistent.clear()
 
 
 @dataclass
@@ -105,8 +106,8 @@ class AgentMetrics:
     failed_invocations: int = 0
     total_latency_ms: float = 0.0
     last_invocation_time: Optional[str] = None
-    errors: dict = field(default_factory=dict)
-    tool_usage: dict = field(default_factory=dict)
+    errors: dict[str, int] = field(default_factory=dict)
+    tool_usage: dict[str, int] = field(default_factory=dict)
 
     @property
     def avg_latency_ms(self) -> float:
@@ -186,7 +187,7 @@ class AgentResult:
                  error: Optional[str] = None):
         self.success = success
         self.response = response
-        self.data = data or {}
+        self.data = data if data is not None else {}
         self.confidence = confidence
         self.agent_name = agent_name
         self.latency_ms = latency_ms
@@ -269,7 +270,7 @@ class AgentBase(ABC):
         self.metrics = AgentMetrics()
         self.logs: list[AgentLog] = []
         self.status = AgentStatus.STARTING
-        self.tools: dict[str, callable] = {}
+        self.tools: dict[str, Callable] = {}
         self._max_logs = 100
         self._initialized = False
 
@@ -323,6 +324,11 @@ class AgentBase(ABC):
         self.status = AgentStatus.DISABLED
         logger.info("Agent '%s' shut down", self.name)
 
+    @property
+    def is_initialized(self) -> bool:
+        """Return whether this agent has been initialized."""
+        return self._initialized
+
     def health_check(self) -> dict:
         """Perform a health check and return status.
 
@@ -343,7 +349,7 @@ class AgentBase(ABC):
 
     # ── Tool Management ───────────────────────────────────────────
 
-    def bind_tool(self, name: str, func: callable):
+    def bind_tool(self, name: str, func: Callable):
         """Register a tool that this agent can use.
 
         Args:
@@ -447,6 +453,13 @@ class AgentBase(ABC):
                 self.initialize()
 
             result = self.process(input_data, context)
+            # Guard: ensure process() returned an AgentResult
+            if not isinstance(result, AgentResult):
+                result = AgentResult(
+                    success=True,
+                    response=str(result) if result is not None else "",
+                    agent_name=self.name,
+                )
             latency = (time.perf_counter() - start) * 1000
             result.agent_name = self.name
             result.latency_ms = latency

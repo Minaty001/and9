@@ -21,10 +21,9 @@ Architecture:
 """
 
 import logging
-import time
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from app.and9.agents.base import AgentBase, AgentResult, AgentStatus
 
@@ -47,10 +46,57 @@ class AgentRegistry:
         health_cache: Cached health check results.
     """
 
-    def __init__(self):
+    # Routing keyword map — class-level constant
+    ROUTING_KEYWORDS: dict[str, str] = {
+        "code": "coding",
+        "program": "coding",
+        "write": "coding",
+        "debug": "debug",
+        "fix": "debug",
+        "bug": "debug",
+        "research": "research",
+        "search": "research",
+        "look up": "research",
+        "find": "research",
+        "plan": "planning",
+        "schedule": "scheduler",
+        "remind": "scheduler",
+        "alarm": "scheduler",
+        "timer": "scheduler",
+        "remember": "memory",
+        "save": "memory",
+        "learn": "learning",
+        "android": "android",
+        "phone": "android",
+        "device": "android",
+        "app": "android",
+        "browser": "browser",
+        "web": "browser",
+        "internet": "browser",
+        "notify": "notification",
+        "alert": "notification",
+        "health": "health",
+        "status": "health",
+        "monitor": "health",
+        "security": "security",
+        "safe": "security",
+        "permission": "security",
+        "voice": "voice",
+        "speak": "voice",
+        "talk": "voice",
+        "workflow": "workflow",
+        "automate": "automation",
+        "routine": "automation",
+        "integration": "integration",
+        "connect": "integration",
+        "reflect": "reflection",
+        "improve": "learning",
+        "update": "learning",
+    }
+
+    def __init__(self) -> None:
         self.agents: dict[str, AgentBase] = {}
         self._capability_index: dict[str, set[str]] = defaultdict(set)
-        self._role_index: dict[str, str] = {}
         self._registration_order: list[str] = []
         self._initialized = False
         logger.info("AgentRegistry created")
@@ -76,7 +122,6 @@ class AgentRegistry:
             )
 
         self.agents[agent.name] = agent
-        self._role_index[agent.name] = agent.role
         self._registration_order.append(agent.name)
 
         # Index capabilities from tools
@@ -102,7 +147,6 @@ class AgentRegistry:
         agent.shutdown()
 
         del self.agents[name]
-        del self._role_index[name]
         # Remove from capability index
         for cap_set in self._capability_index.values():
             cap_set.discard(name)
@@ -134,6 +178,8 @@ class AgentRegistry:
         Returns:
             List of matching agents.
         """
+        if not role_keyword:
+            return []
         keyword = role_keyword.lower()
         return [
             a for a in self.agents.values()
@@ -163,7 +209,7 @@ class AgentRegistry:
                 "name": a.name,
                 "role": a.role,
                 "status": a.status.value,
-                "initialized": a._initialized,
+                "initialized": a.is_initialized,
                 "invocations": a.metrics.total_invocations,
                 "success_rate": round(a.metrics.success_rate, 3),
                 "avg_latency_ms": round(a.metrics.avg_latency_ms, 2),
@@ -177,7 +223,7 @@ class AgentRegistry:
 
     # ── Lifecycle ─────────────────────────────────────────────────
 
-    def initialize_all(self):
+    def initialize_all(self) -> None:
         """Initialize all registered agents.
 
         Calls initialize() on each agent. Agents that fail to initialize
@@ -202,7 +248,7 @@ class AgentRegistry:
         else:
             logger.info("All agents initialized successfully")
 
-    def shutdown_all(self):
+    def shutdown_all(self) -> None:
         """Shut down all agents gracefully."""
         logger.info("Shutting down all agents...")
         for name in reversed(self._registration_order):
@@ -232,82 +278,66 @@ class AgentRegistry:
         Returns:
             AgentResult from the selected agent.
         """
-        task_lower = task.lower().strip()
+        if not task:
+            return AgentResult(
+                success=False,
+                response="No task provided for routing.",
+                agent_name="registry",
+                error="empty_task",
+            )
+        task_lower = task.lower().strip() if isinstance(task, str) else str(task).lower().strip()
 
         # 1. Preferred agent
         if preferred_agent and preferred_agent in self.agents:
             logger.info("Routing to preferred agent '%s'", preferred_agent)
-            return self.agents[preferred_agent](task, context)
+            try:
+                return self.agents[preferred_agent](task, context)
+            except Exception as e:
+                logger.error("Preferred agent '%s' failed: %s", preferred_agent, e)
+                return AgentResult(
+                    success=False, agent_name=preferred_agent, error=str(e),
+                )
 
-        # 2. Keyword-based routing
-        agent_map = {
-            "code": "coding",
-            "program": "coding",
-            "write": "coding",
-            "debug": "debug",
-            "fix": "debug",
-            "bug": "debug",
-            "research": "research",
-            "search": "research",
-            "look up": "research",
-            "find": "research",
-            "plan": "planning",
-            "schedule": "scheduler",
-            "remind": "scheduler",
-            "alarm": "scheduler",
-            "timer": "scheduler",
-            "remember": "memory",
-            "save": "memory",
-            "learn": "learning",
-            "android": "android",
-            "phone": "android",
-            "device": "android",
-            "app": "android",
-            "browser": "browser",
-            "web": "browser",
-            "internet": "browser",
-            "notify": "notification",
-            "alert": "notification",
-            "health": "health",
-            "status": "health",
-            "monitor": "health",
-            "security": "security",
-            "safe": "security",
-            "permission": "security",
-            "voice": "voice",
-            "speak": "voice",
-            "talk": "voice",
-            "workflow": "workflow",
-            "automate": "automation",
-            "routine": "automation",
-            "integration": "integration",
-            "connect": "integration",
-            "reflect": "reflection",
-            "improve": "learning",
-            "update": "learning",
-        }
-
-        for keyword, agent_name in agent_map.items():
+        # 2. Keyword-based routing using class-level constant
+        for keyword, agent_name in self.ROUTING_KEYWORDS.items():
             if keyword in task_lower and agent_name in self.agents:
                 logger.info("Routing task '%s' to agent '%s' (keyword='%s')",
                             task[:50], agent_name, keyword)
-                return self.agents[agent_name](task, context)
+                try:
+                    return self.agents[agent_name](task, context)
+                except Exception as e:
+                    logger.error("Agent '%s' failed for task: %s", agent_name, e)
+                    return AgentResult(
+                        success=False, agent_name=agent_name, error=str(e),
+                    )
 
         # 3. Executive agent (if available)
         if "executive" in self.agents:
             logger.info("Routing general task to executive agent")
-            return self.agents["executive"](task, context)
+            try:
+                return self.agents["executive"](task, context)
+            except Exception as e:
+                logger.error("Executive agent failed: %s", e)
+                return AgentResult(
+                    success=False, agent_name="executive", error=str(e),
+                )
 
         # 4. Fallback to conversation agent
         if "conversation" in self.agents:
             logger.info("Routing fallback to conversation agent")
-            return self.agents["conversation"](task, context)
+            try:
+                return self.agents["conversation"](task, context)
+            except Exception as e:
+                logger.error("Conversation agent failed: %s", e)
+                return AgentResult(
+                    success=False, agent_name="conversation", error=str(e),
+                )
 
         # 5. No suitable agent
         logger.warning("No suitable agent found for task: %s", task[:50])
         return AgentResult(
             success=False,
-            response="Koi suitable agent nahi mila is task ke liye.",
+            response="No suitable agent found for this task.",
             error="no_suitable_agent",
         )
 
@@ -357,14 +387,22 @@ class AgentRegistry:
                 agent_name="registry",
                 error=f"agent_not_found:{agent_name}",
             )
-        return self.agents[agent_name](subtask, context)
+        try:
+            return self.agents[agent_name](subtask, context)
+        except Exception as e:
+            logger.error("Delegate to '%s' failed: %s", agent_name, e)
+            return AgentResult(
+                success=False,
+                agent_name=agent_name,
+                error=str(e),
+            )
 
     def delegate_parallel(self, assignments: list[tuple[str, str]],
                           context: Optional[dict] = None) -> dict[str, AgentResult]:
-        """Delegate multiple subtasks in parallel.
+        """Delegate multiple subtasks sequentially.
 
-        Note: In the current implementation, delegation is sequential.
-        For true parallelism, this would use threading/asyncio.
+        Despite the name, this currently executes delegations sequentially.
+        For true parallelism, use threading/asyncio in a future version.
 
         Args:
             assignments: List of (agent_name, subtask) tuples.
@@ -401,8 +439,10 @@ class AgentRegistry:
             overall = "error"
         elif degraded > 0:
             overall = "degraded"
-        elif healthy == total:
+        elif healthy == total and total > 0:
             overall = "healthy"
+        elif disabled == total and total > 0:
+            overall = "disabled"
         else:
             overall = "starting"
 
@@ -422,7 +462,7 @@ class AgentRegistry:
 
     # ── Event Broadcasting ────────────────────────────────────────
 
-    def broadcast(self, event: str, data: Optional[dict] = None):
+    def broadcast(self, event: str, data: Optional[dict] = None) -> None:
         """Broadcast an event to all agents that have relevant capabilities.
 
         Args:
@@ -432,8 +472,9 @@ class AgentRegistry:
         logger.debug("Broadcasting event '%s' to all agents", event)
         for agent in self.agents.values():
             try:
-                if hasattr(agent, 'on_event'):
-                    agent.on_event(event, data or {})
+                handler = getattr(agent, 'on_event', None)
+                if callable(handler):
+                    handler(event, data or {})
             except Exception as e:
                 logger.warning("Agent '%s' failed to handle event '%s': %s",
                                agent.name, event, e)

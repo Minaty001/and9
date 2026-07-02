@@ -6,7 +6,7 @@ voice I/O, and browser automation.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from app.and9.agents.base import AgentBase, AgentResult
 
@@ -38,7 +38,7 @@ class AndroidAgent(AgentBase):
         )
         self._executor = None
 
-    def bind_executor(self, executor_func: callable):
+    def bind_executor(self, executor_func: Callable):
         """Bind the AND9 android executor."""
         self._executor = executor_func
         self.bind_tool("android_executor", executor_func)
