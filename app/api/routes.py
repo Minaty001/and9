@@ -4,6 +4,7 @@ app/api/routes.py — JSON API endpoints for the chat interface.
 import io
 import asyncio
 import logging
+import threading
 from flask import Blueprint, request, jsonify, Response
 
 from app.core.orchestrator import Orchestrator
@@ -667,5 +668,165 @@ def and9_stats():
         return jsonify(stats)
     except Exception as e:
         logger.exception("AND9 stats error")
+        return jsonify({"error": str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════
+# Dialogue Manager API — Multi-Turn Conversation
+# ═══════════════════════════════════════════════════════════════
+
+_dialogue_manager = None
+_dialogue_lock = threading.Lock()
+
+
+def get_dialogue_manager():
+    """Lazy-init singleton DialogueManager instance."""
+    global _dialogue_manager
+    if _dialogue_manager is None:
+        with _dialogue_lock:
+            if _dialogue_manager is None:
+                from app.and9.dialogue_manager import DialogueManager, DialogueConfig
+                import os
+                config = DialogueConfig(
+                    persist_path=os.path.join(
+                        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                        "data", "dialogue_state.json",
+                    ),
+                )
+                # Wrap AND9's process for action execution
+                and9 = get_and9()
+                _dialogue_manager = DialogueManager(
+                    config=config,
+                    and9_orchestrator=and9.orchestrator._execute,
+                )
+    return _dialogue_manager
+
+
+@api_bp.route("/dialogue", methods=["POST"])
+def dialogue_process():
+    """POST /api/dialogue — Process a message through the Dialogue Manager.
+
+    Body JSON:
+        message (str) — User input (required).
+
+    Returns JSON with dialogue state and response.
+    """
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+
+    if not message:
+        return jsonify({
+            "response": "Kya karna hai? Kuch batao na!",
+            "intent": None,
+            "status": "error",
+            "error": "empty_message",
+        }), 400
+
+    try:
+        dm = get_dialogue_manager()
+        result = dm.process(message)
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("Dialogue endpoint error")
+        return jsonify({
+            "response": f"Dialogue error: {e}",
+            "intent": None,
+            "status": "error",
+            "error": str(e),
+        }), 500
+
+
+@api_bp.route("/dialogue/state", methods=["GET"])
+def dialogue_state():
+    """GET /api/dialogue/state — Get full dialogue manager state.
+
+    Returns active tasks, paused tasks, stats, and memory info.
+    """
+    try:
+        dm = get_dialogue_manager()
+        state = dm.get_state()
+        return jsonify(state)
+    except Exception as e:
+        logger.exception("Dialogue state error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/dialogue/tasks", methods=["GET"])
+def dialogue_tasks():
+    """GET /api/dialogue/tasks — List all active dialogue tasks.
+
+    Query params:
+        all (bool) — If true, also show completed/cancelled tasks.
+    """
+    try:
+        dm = get_dialogue_manager()
+        all_tasks = request.args.get("all", "").lower() in ("true", "1", "yes")
+        tasks = dm.get_tasks(active_only=not all_tasks)
+        return jsonify({
+            "tasks": tasks,
+            "count": len(tasks),
+        })
+    except Exception as e:
+        logger.exception("Dialogue tasks error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/dialogue/tasks/<task_id>", methods=["GET"])
+def dialogue_task_detail(task_id):
+    """GET /api/dialogue/tasks/<id> — Get a specific task's state."""
+    try:
+        dm = get_dialogue_manager()
+        task = dm.get_task(task_id)
+        if task:
+            return jsonify(task)
+        return jsonify({"error": "task_not_found", "task_id": task_id}), 404
+    except Exception as e:
+        logger.exception("Dialogue task detail error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/dialogue/tasks/<task_id>", methods=["DELETE"])
+def dialogue_task_cancel(task_id):
+    """DELETE /api/dialogue/tasks/<id> — Cancel a specific task."""
+    try:
+        dm = get_dialogue_manager()
+        ok = dm.cancel_task(task_id)
+        if ok:
+            return jsonify({"status": "cancelled", "task_id": task_id})
+        return jsonify({"error": "task_not_found", "task_id": task_id}), 404
+    except Exception as e:
+        logger.exception("Dialogue task cancel error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/dialogue/history", methods=["GET"])
+def dialogue_history():
+    """GET /api/dialogue/history[?n=20] — Recent conversation history.
+
+    Query params:
+        n (int) — Number of recent turns to return (max 100).
+    """
+    try:
+        dm = get_dialogue_manager()
+        n = min(int(request.args.get("n", 20)), 100)
+        history = dm.get_conversation_history(n)
+        return jsonify({
+            "history": history,
+            "count": len(history),
+        })
+    except Exception as e:
+        logger.exception("Dialogue history error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/dialogue/reset", methods=["POST"])
+def dialogue_reset():
+    """POST /api/dialogue/reset — Reset all dialogue state."""
+    try:
+        dm = get_dialogue_manager()
+        dm.reset()
+        return jsonify({"status": "reset"})
+    except Exception as e:
+        logger.exception("Dialogue reset error")
         return jsonify({"error": str(e)}), 500
 

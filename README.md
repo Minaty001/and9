@@ -126,6 +126,19 @@ and9/
   │    │    │    ├── normalizer.py       (Hindi → English regex normalization)
   │    │    │    └── intent_router.py    (13-category priority-ordered detection)
   │    │    │
+  │    │    ├── dialogue_manager/        ← Multi-turn dialogue engine
+  │    │    │    ├── __init__.py         (Public API — DialogueManager, config)
+  │    │    │    ├── dialogue_manager.py (Orchestrator — 11-step pipeline)
+  │    │    │    ├── intent_definitions.py (Slot definitions per intent)
+  │    │    │    ├── slot_filler.py      (Slot filling engine with classifiers)
+  │    │    │    ├── state_manager.py    (Dialogue State Tracker — DST)
+  │    │    │    ├── task_manager.py     (Multi-task lifecycle orchestration)
+  │    │    │    ├── working_memory.py   (Short-term, active, and working memory)
+  │    │    │    ├── context_manager.py  (Interruption & context tracking)
+  │    │    │    ├── reference_resolver.py (Pronoun & anaphora resolution)
+  │    │    │    ├── action_planner.py   (Execution validation & planning)
+  │    │    │    └── routes.py           (API endpoints for dialogue)
+  │    │    │
   │    │    ├── intents/                 ← Intent parsers (delegate to router)
   │    │    │    ├── call_intents.py
   │    │    │    ├── alarm_intents.py
@@ -262,6 +275,12 @@ User Query → Normalize (Hindi→English) → Detect Intent (13 categories) →
 |--------|----------|---------|
 | `POST` | `/api/and9` | `{"query": "..."}` → Full AND9 processing result |
 | `GET` | `/api/and9/stats` | Pattern learning statistics and history |
+| `POST` | `/api/dialogue/process` | `{"message": "..."}` → Multi-turn dialogue processing |
+| `GET` | `/api/dialogue/state` | Current dialogue state (active/paused tasks, memory) |
+| `GET` | `/api/dialogue/tasks` | List active tasks |
+| `POST` | `/api/dialogue/cancel` | `{"task_id": "..."}` → Cancel a specific task |
+| `GET` | `/api/dialogue/history` | Recent conversation history |
+| `POST` | `/api/dialogue/reset` | Reset all dialogue state |
 
 ### Example Usage
 
@@ -293,16 +312,137 @@ curl -X POST http://localhost:8000/api/and9 \
 
 ---
 
+## 🗣️ AND9 Dialogue Manager — Multi-Turn Conversation Engine
+
+The **Dialogue Manager** (`app/and9/dialogue_manager/`) is a production-quality, stateful multi-turn dialogue engine that gives JARVIS human-like conversation memory. It sits on top of the AND9 intent router and adds slot filling, interruption handling, reference resolution, and multi-task management.
+
+### Architecture — 10 Core Modules
+
+| # | Module | Responsibility |
+|---|--------|---------------|
+| 1 | `intent_definitions.py` | Declares required/optional slots, questions, and success messages per intent |
+| 2 | `slot_filler.py` | Fills one slot at a time with typed classifiers (time, contact, app name, content type) |
+| 3 | `state_manager.py` | Dialogue State Tracker — task lifecycle (pending -> waiting -> ready -> executing -> completed) |
+| 4 | `task_manager.py` | Multi-task orchestration — create, pause, resume, cancel; priority ordering |
+| 5 | `working_memory.py` | Three memory layers: WorkingMemory (turn buffer), ShortTermMemory (TTL entities), ActiveTaskMemory |
+| 6 | `context_manager.py` | Interruption detection, context summary, conversation history |
+| 7 | `reference_resolver.py` | Resolves "it", "that", "this", "them", "continue", "cancel" from context |
+| 8 | `action_planner.py` | Validates filled slots, builds execution plans with success/failure messages |
+| 9 | `dialogue_manager.py` | Main orchestrator — 11-step pipeline tying all modules together |
+| 10 | `routes.py` | FastAPI/Flask endpoints exposing the dialogue engine |
+
+### Processing Pipeline
+
+```
+User Message
+  |
+  +-- 1. Reference Resolution — Resolve "it", "that", "continue", "cancel"
+  +-- 2. Cancel Detection — Handle "stop", "cancel", "don't" requests
+  +-- 3. Resume Detection — Detect "continue", "resume" for paused tasks
+  +-- 4. Intent Detection — AND9 router (with fallback for reconstructed refs)
+  +-- 5. Slot Definitions — Load required/optional slots for detected intent
+  +-- 6. Active Task Check — Continue existing task or create new one
+  +-- 7. Interruption Check — Detect topic switches, pause current task
+  +-- 8. Task Management — Create/reuse tasks, track state
+  +-- 9. Slot Filling — Fill slots from message + detected params
+  +-- 10. Action Planning — Validate slots, build execution plan
+  +-- 11. Execute or Ask — Run action or generate next question
+  |
+  v
+Response + State Update
+```
+
+### Key Capabilities
+
+**Slot Filling** — Each intent defines required and optional slots. The assistant asks for exactly one missing slot at a time with natural, context-aware questions:
+
+```
+User:  Play a song
+Agent: Which song would you like to hear?
+
+User:  Tum Hi Ho
+Agent: Playing "Tum Hi Ho" on YouTube.
+```
+
+**Interruption Handling** — If the user switches topics mid-task, the original task is paused and automatically resumed when they return:
+
+```
+User:  Play a song
+Agent: Which song?
+
+User:  What's the weather today?
+Agent: (Answers weather.)
+
+User:  Now continue
+Agent: Continuing youtube! Which song would you like to hear?
+```
+
+**Reference Resolution** — Pronouns and deictic references are resolved using ShortTermMemory:
+
+- "Play it" -> resolves *it* to the last mentioned song/video
+- "Play that again" -> resolves *that* and reuses slots from the completed task
+- "Call them" -> resolves *them* to the last mentioned contact
+- "Continue" / "Resume" -> reactivates the most recently paused task
+
+**Multi-Task Management** — Multiple active tasks are tracked independently with their own state, slots, and lifecycle:
+
+```
+Task 1: youtube (WAITING_FOR_INFO - waiting for search_query)
+Task 2: alarm (PAUSED - was setting alarm for 7 AM)
+Task 3: call (COMPLETED - called Mummy)
+```
+
+**Cancellation** — "Cancel the music", "Stop", "Don't play music" cleanly cancels the active task and offers the next pending task.
+
+**Never Asks Twice** — If a slot value was already provided, it is never asked for again. The system remembers across interruptions.
+
+### Example Usage
+
+```bash
+# Multi-turn dialogue
+curl -X POST http://localhost:8000/api/dialogue/process \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Play a song"}'
+# -> {"response":"Which song?","intent":"youtube","status":"waiting_for_info",...}
+
+curl -X POST http://localhost:8000/api/dialogue/process \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Tum Hi Ho"}'
+# -> {"response":"Playing Tum Hi Ho on YouTube","intent":"youtube","status":"completed",...}
+
+# Interruption + resume
+curl -X POST http://localhost:8000/api/dialogue/process \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Now continue that"}'
+# -> {"response":"Chaliye, youtube jaari rakhte hain! ...","status":"waiting_for_info",...}
+
+# Reference resolution
+curl -X POST http://localhost:8000/api/dialogue/process \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Play that again"}'
+# -> {"response":"Playing Tum Hi Ho on YouTube","intent":"youtube","status":"completed",...}
+```
+
 ## 🧪 Running Tests
 
 ```bash
-# Run all core module tests
+# Run all tests (core modules + dialogue manager)
 pytest tests/ -v
+
+# Run dialogue manager tests only
+pytest tests/test_dialogue_manager.py -v
 
 # Run specific test categories
 pytest tests/ -k "semantic" -v    # Memory semantic tests
 pytest tests/ -k "intent" -v       # Intent detection tests
 pytest tests/ -k "emotion" -v      # Emotion detection tests
+
+# Dialogue manager test groups
+pytest tests/test_dialogue_manager.py -k "TestSlotFilling" -v
+pytest tests/test_dialogue_manager.py -k "TestInterruptionHandling" -v
+pytest tests/test_dialogue_manager.py -k "TestReferenceResolution" -v
+pytest tests/test_dialogue_manager.py -k "TestCancellation" -v
+pytest tests/test_dialogue_manager.py -k "TestFullConversations" -v
 ```
 
 ---

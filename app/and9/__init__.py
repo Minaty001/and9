@@ -14,15 +14,28 @@ Refactored structure:
   - media/                 → YouTube handler
   - alarms/timers/reminders/ → Time-based action managers
   - core/                  → Logger, config, constants
+  - dialogue_manager/      → Multi-turn dialogue state, slot filling, context
 
 Public API:
-    AND9           → Main entry point (process, get_stats)
-    BrainType      → REFLEX, SUBCONSCIOUS, CONSCIOUS
-    IntentType     → 20 intent categories
-    BrainResult    → Universal result dataclass
+    AND9              → Main entry point (process, get_stats)
+    BrainType         → REFLEX, SUBCONSCIOUS, CONSCIOUS
+    IntentType        → 20 intent categories
+    BrainResult       → Universal result dataclass
+    DialogueManager   → Multi-turn dialogue processing engine
 """
 
 from app.and9.and9 import AND9
 from app.and9.brain_types import BrainType, IntentType, BrainResult
 
-__all__ = ["AND9", "BrainType", "IntentType", "BrainResult"]
+# Import DialogueManager (lazy import handled internally)
+# Explicit import for direct access
+from app.and9.dialogue_manager import DialogueManager, DialogueConfig
+
+__all__ = [
+    "AND9",
+    "BrainType",
+    "IntentType",
+    "BrainResult",
+    "DialogueManager",
+    "DialogueConfig",
+]
