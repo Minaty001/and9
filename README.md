@@ -1,6 +1,6 @@
 # 🧠 JARVIS PCOS (Personal Cognitive Operating System) — Definitive Repository
 
-Welcome to the official production repository for **JARVIS PCOS (Neural Engine v4)**. This project contains the high-performance Flask AI orchestrator, dynamic intent execution engines, and local custom Android client wrappers.
+Welcome to the official production repository for **JARVIS PCOS (Neural Engine v4)**. This project contains the high-performance Flask AI orchestrator, dynamic intent execution engines, local custom Android client wrappers, an advanced multi-turn dialogue manager, and a code dependency graph analyzer.
 
 > [!IMPORTANT]
 > **Use the `and9` repository (`/root/and9`) always** for backend developments, intent executor tasks, custom permission overlays, and Android app updates.
@@ -139,8 +139,14 @@ and9/
   │    │    │    ├── action_planner.py   (Execution validation & planning)
   │    │    │    └── routes.py           (API endpoints for dialogue)
   │    │    │
+  │    │    ├── dependency_graph/        ← Code Dependency Analysis MCP
+  │    │    │    ├── graph.py            (Pure-Python directed graph with PageRank)
+  │    │    │    ├── analyzer.py         (AST-based Python code parser)
+  │    │    │    ├── mcp_server.py       (MCP JSON-RPC 2.0 server over stdio)
+  │    │    │    └── routes.py           (FastAPI/Flask-compatible API routes)
+  │    │    │
   │    │    ├── intents/                 ← Intent parsers (delegate to router)
-  │    │    │    ├── call_intents.py
+  │    │    │    ├── call_intents.py     (Call/SMS parameter extraction)
   │    │    │    ├── alarm_intents.py
   │    │    │    ├── timer_intents.py
   │    │    │    ├── reminder_intents.py
@@ -149,7 +155,7 @@ and9/
   │    │    │    └── search_intents.py
   │    │    │
   │    │    ├── actions/                 ← Action executors
-  │    │    │    ├── call_actions.py     (Call/SMS with contact resolution)
+  │    │    │    ├── call_actions.py     (Call/SMS with Android contact resolution)
   │    │    │    ├── alarm_actions.py
   │    │    │    ├── timer_actions.py
   │    │    │    ├── reminder_actions.py
@@ -162,7 +168,7 @@ and9/
   │    │    │    └── android_executor.py (Single entry point for all actions)
   │    │    │
   │    │    ├── contacts/
-  │    │    │    └── resolver.py         (20+ Hindi contacts, fuzzy matching)
+  │    │    │    └── resolver.py         (Contact name → Android ContactsContract lookup)
   │    │    ├── apps/
   │    │    │    └── package_resolver.py (40+ apps, 50+ aliases)
   │    │    ├── media/
@@ -197,9 +203,10 @@ and9/
   │    ├── skills/           (command actions — no LLM command parsing)
   │    └── templates/        (control dashboard frontend)
   ├── scripts/               (automated APK patching utilities)
-  ├── tests/                 (50+ tests — core modules)
+  ├── tests/                 (80+ tests — core modules + dialogue + dependency graph)
   ├── COMMANDS_REFERENCE.md  (extensive usage command catalog)
-  └── AUDIT.md               (system design audit & structural findings)
+  ├── AUDIT.md               (system design audit & structural findings)
+  └── ROADMAP.md             (15-phase JARVIS AI OS roadmap)
 ```
 
 ### Core Module Roles
@@ -269,46 +276,63 @@ User Query → Normalize (Hindi→English) → Detect Intent (13 categories) →
 
 7. **Smart Brain Delegation**: Emergency/call/sms intents bypass LLM entirely — only CHAT and SEARCH intents reach the conscious brain. This keeps response times under 5ms for reflex actions vs 1-5s for LLM responses.
 
-### API Endpoints
+---
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| `POST` | `/api/and9` | `{"query": "..."}` → Full AND9 processing result |
-| `GET` | `/api/and9/stats` | Pattern learning statistics and history |
-| `POST` | `/api/dialogue/process` | `{"message": "..."}` → Multi-turn dialogue processing |
-| `GET` | `/api/dialogue/state` | Current dialogue state (active/paused tasks, memory) |
-| `GET` | `/api/dialogue/tasks` | List active tasks |
-| `POST` | `/api/dialogue/cancel` | `{"task_id": "..."}` → Cancel a specific task |
-| `GET` | `/api/dialogue/history` | Recent conversation history |
-| `POST` | `/api/dialogue/reset` | Reset all dialogue state |
+## 📞 Making Calls — Multi-Turn Phone Call System
 
-### Example Usage
+The system supports making phone calls through a multi-turn dialogue flow that collects required information before executing.
 
-```bash
-# Reflex: App launch
-curl -X POST http://localhost:8000/api/and9 \
-  -H "Content-Type: application/json" \
-  -d '{"query":"youtube kholo"}'
-# → {"response":"Youtube khol raha hoon... 📱","action":"LAUNCH_APP","brain":"reflex","time_ms":3.2,...}
+### Call Intent (`app/and9/dialogue_manager/intent_definitions.py`)
 
-# Reflex: Device control
-curl -X POST http://localhost:8000/api/and9 \
-  -H "Content-Type: application/json" \
-  -d '{"query":"torch on karo"}'
-# → {"response":"Flashlight on kar diya! 💡","action":"FLASHLIGHT","brain":"reflex","time_ms":1.8,...}
+Defined in the dialogue manager with proper slot definitions:
 
-# Reflex: Call with contact
-curl -X POST http://localhost:8000/api/and9 \
-  -H "Content-Type: application/json" \
-  -d '{"query":"call mummy"}'
-# → {"response":"Call kar raha hoon Mummy ko... 📞","action":"CALL","brain":"reflex","time_ms":2.1,...}
+- **Required Slots**: `contact_name` — who to call
+- **Optional Slots**: `number` — phone number (if contact name not found in address book)
+- **Validation**: `_validate_not_empty` ensures a name/number is provided
+- **Action Mapping**: Maps to `execute_call()` in `app/and9/actions/call_actions.py`
 
-# Conscious: LLM chat
-curl -X POST http://localhost:8000/api/and9 \
-  -H "Content-Type: application/json" \
-  -d '{"query":"hello kaise ho"}'
-# → {"response":"...","brain":"conscious","time_ms":1250,...}
+### Call Processing Flow
+
 ```
+User: "Call someone"
+  → Dialogue Manager detects "call" intent
+  → Asks: "Kise call karna chahte ho?" (Who do you want to call?)
+
+User: "Mummy"
+  → Slot filler fills "contact_name" = "Mummy"
+  → Action Planner validates all slots filled
+  → execute_call(contact_name="Mummy")
+    → ContactsResolver.resolve("Mummy")
+      → Returns lookup_required=True → Android ContactsContract query
+    → Android dials the number
+  → Response: "Call kar raha hoon Mummy ko... 📞"
+```
+
+### Direct Number Dialing
+
+If the user provides a phone number instead of a name, `ContactsResolver.is_number()` detects it and routes directly:
+
+```
+User: "Call 9876543210"
+  → Intent: call, params: {contact_name: "9876543210"}
+  → ContactsResolver detects it's a number
+  → Direct dial via android.intent.action.CALL with tel:9876543210
+```
+
+### Contact Resolution Architecture
+
+`app/and9/contacts/resolver.py` uses a privacy-first approach:
+- The Python backend does **NOT** store any phone numbers or contact data
+- Contact names are validated and passed to Android
+- Android resolves via `ContactsContract.CommonDataKinds.Phone` API
+- Direct numbers are dialed immediately without contact lookup
+
+### SMS Messaging
+
+The same system supports sending SMS messages:
+- Required slots: `contact_name`, `message_text`
+- Maps to `execute_message()` → `android.intent.action.SENDTO` with `sms:` URI
+- Also supports ContactsContract lookup for named recipients
 
 ---
 
@@ -400,50 +424,223 @@ Task 3: call (COMPLETED - called Mummy)
 
 ```bash
 # Multi-turn dialogue
-curl -X POST http://localhost:8000/api/dialogue/process \
+curl -X POST http://localhost:8000/api/dialogue \
   -H "Content-Type: application/json" \
   -d '{"message":"Play a song"}'
 # -> {"response":"Which song?","intent":"youtube","status":"waiting_for_info",...}
 
-curl -X POST http://localhost:8000/api/dialogue/process \
+curl -X POST http://localhost:8000/api/dialogue \
   -H "Content-Type: application/json" \
   -d '{"message":"Tum Hi Ho"}'
 # -> {"response":"Playing Tum Hi Ho on YouTube","intent":"youtube","status":"completed",...}
 
+# Making a call
+curl -X POST http://localhost:8000/api/dialogue \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Call someone"}'
+# -> {"response":"Kise call karna chahte ho?","intent":"call","status":"waiting_for_info",...}
+
+curl -X POST http://localhost:8000/api/dialogue \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Mummy"}'
+# -> {"response":"Call kar raha hoon Mummy ko...","intent":"call","status":"completed",...}
+
 # Interruption + resume
-curl -X POST http://localhost:8000/api/dialogue/process \
+curl -X POST http://localhost:8000/api/dialogue \
   -H "Content-Type: application/json" \
   -d '{"message":"Now continue that"}'
 # -> {"response":"Chaliye, youtube jaari rakhte hain! ...","status":"waiting_for_info",...}
 
 # Reference resolution
-curl -X POST http://localhost:8000/api/dialogue/process \
+curl -X POST http://localhost:8000/api/dialogue \
   -H "Content-Type: application/json" \
   -d '{"message":"Play that again"}'
 # -> {"response":"Playing Tum Hi Ho on YouTube","intent":"youtube","status":"completed",...}
+
+# Cancel a task
+curl -X POST http://localhost:8000/api/dialogue \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Cancel the music"}'
+# -> {"response":"OK, music cancel kar diya!","status":"cancelled",...}
 ```
+
+---
+
+## 🔍 Dependency Graph MCP Server — Code Analysis Engine
+
+The **Dependency Graph** (`app/and9/dependency_graph/`) is a pure-Python code analysis engine that parses Python source code using the built-in `ast` module and builds a directed dependency graph. It exposes analysis capabilities via an MCP (Model Context Protocol) server over stdio and REST API endpoints.
+
+### Architecture — 4 Modules
+
+| # | Module | Responsibility |
+|---|--------|---------------|
+| 1 | `graph.py` | Pure-Python directed graph with PageRank, BFS shortest path, transitive closure, Mermaid/D3 export. Zero dependencies. |
+| 2 | `analyzer.py` | AST-based Python file parser. `FileVisitor` extracts imports, functions, classes, calls, inheritance. `DependencyAnalyzer` walks projects with `ThreadPoolExecutor`. |
+| 3 | `mcp_server.py` | JSON-RPC 2.0 MCP server over stdio. 10 tools for dependency analysis. Caches analyzed graph. |
+| 4 | `routes.py` | FastAPI router + Flask Blueprint-compatible endpoints for HTTP access. |
+
+### Key Features
+
+- **Zero External Dependencies** — Pure Python 3.11+ using only built-in modules (`ast`, `concurrent.futures`, `pathlib`, `collections`)
+- **Termux Compatible** — Works on Android Termux with no additional packages
+- **Parallel Analysis** — Uses `ThreadPoolExecutor` for fast project-wide parsing
+- **Caching** — Analyzed graph is cached; `reanalyze=True` forces refresh
+
+### MCP Server Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_dependency_graph` | Full project dependency graph as JSON |
+| `get_callers` | Which files import/call a given file |
+| `get_callees` | What a given file imports/calls |
+| `impact_analysis` | Transitive dependents (change impact) |
+| `find_orphans` | Files with no dependents |
+| `find_leaves` | Files with no dependencies |
+| `pagerank` | PageRank centrality scores |
+| `export_mermaid` | Mermaid.js flowchart syntax |
+| `export_d3` | D3.js force-directed graph JSON |
+| `module_info` | Detailed module information |
+
+### REST API Endpoints
+
+All endpoints are available under `GET /api/depgraph/`:
+
+```bash
+# Analyze the project
+curl http://localhost:8000/api/depgraph/analyze
+
+# Get the full graph
+curl http://localhost:8000/api/depgraph/graph
+
+# Find callers of a file
+curl -X POST http://localhost:8000/api/depgraph/callers \
+  -H "Content-Type: application/json" \
+  -d '{"filepath": "app/and9/dialogue_manager/dialogue_manager.py"}'
+
+# Impact analysis (who breaks if this file changes)
+curl -X POST http://localhost:8000/api/depgraph/impact \
+  -H "Content-Type: application/json" \
+  -d '{"filepath": "app/and9/state_manager.py", "max_depth": 5}'
+
+# Find orphan files (no dependents)
+curl http://localhost:8000/api/depgraph/orphans
+
+# PageRank scores
+curl http://localhost:8000/api/depgraph/pagerank?top_n=10
+
+# Export as Mermaid.js flowchart
+curl http://localhost:8000/api/depgraph/mermaid
+
+# Module info
+curl -X POST http://localhost:8000/api/depgraph/module \
+  -H "Content-Type: application/json" \
+  -d '{"filepath": "app/and9/dialogue_manager/intent_definitions.py"}'
+```
+
+### Running as MCP Server (CLI)
+
+```bash
+# Start the MCP server over stdio
+python3 -c "
+from app.and9.dependency_graph.mcp_server import DependencyGraphMCPServer
+server = DependencyGraphMCPServer('.')
+server.run()
+"
+```
+
+Then send JSON-RPC requests on stdin:
+```json
+{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"find_orphans","arguments":{}}}
+```
+
+---
+
+## 🌐 API Endpoints — Complete Reference
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/api/and9` | `{"query": "..."}` → Full AND9 processing result |
+| `GET` | `/api/and9/stats` | Pattern learning statistics and history |
+| `POST` | `/api/and9/apps` | Sync installed apps from Android |
+| `POST` | `/api/dialogue` | `{"message": "..."}` → Multi-turn dialogue processing |
+| `GET` | `/api/dialogue/state` | Current dialogue state (active/paused tasks, memory) |
+| `GET` | `/api/dialogue/tasks` | List active tasks |
+| `GET` | `/api/dialogue/tasks/<id>` | Get specific task state |
+| `DELETE` | `/api/dialogue/tasks/<id>` | Cancel a specific task |
+| `GET` | `/api/dialogue/history` | Recent conversation history |
+| `POST` | `/api/dialogue/reset` | Reset all dialogue state |
+| `GET` | `/api/depgraph/analyze` | Build/rebuild dependency graph |
+| `GET` | `/api/depgraph/graph` | Get full dependency graph |
+| `POST` | `/api/depgraph/callers` | Get callers of a file |
+| `POST` | `/api/depgraph/callees` | Get callees of a file |
+| `POST` | `/api/depgraph/impact` | Impact analysis |
+| `GET` | `/api/depgraph/orphans` | Find orphan files |
+| `GET` | `/api/depgraph/leaves` | Find leaf files |
+| `GET` | `/api/depgraph/pagerank` | PageRank scores |
+| `GET` | `/api/depgraph/mermaid` | Export as Mermaid.js |
+| `GET` | `/api/depgraph/d3` | Export as D3.js JSON |
+| `POST` | `/api/depgraph/module` | Module detail info |
+| `POST` | `/api/chat` | Send message to conscious brain |
+| `GET` | `/api/history` | Recent chat history |
+| `GET` | `/api/memory/facts` | Get stored facts |
+| `POST` | `/api/memory/learn` | Learn a new fact |
+| `GET` | `/api/memory/recall` | Fast cross-session recall |
+| `GET` | `/api/goals` | List goals |
+| `POST` | `/api/goals` | Create a new goal |
+| `GET` | `/api/events` | List upcoming events |
+| `POST` | `/api/events` | Create an event/reminder |
+| `GET` | `/api/reflect` | Session or daily reflection |
+| `GET` | `/api/proactive/briefing` | Time-aware greeting + suggestions |
+| `POST` | `/api/tts` | Text-to-Speech via Edge TTS |
+| `GET` | `/api/health` | Health check |
+
+---
 
 ## 🧪 Running Tests
 
 ```bash
-# Run all tests (core modules + dialogue manager)
+# Run all tests (core modules + dialogue manager + dependency graph)
 pytest tests/ -v
 
-# Run dialogue manager tests only
+# Run dialogue manager tests only (58 tests)
 pytest tests/test_dialogue_manager.py -v
 
-# Run specific test categories
-pytest tests/ -k "semantic" -v    # Memory semantic tests
-pytest tests/ -k "intent" -v       # Intent detection tests
-pytest tests/ -k "emotion" -v      # Emotion detection tests
+# Run dependency graph tests only (25 tests)
+pytest tests/test_dependency_graph.py -v
 
-# Dialogue manager test groups
+# Run specific test categories
 pytest tests/test_dialogue_manager.py -k "TestSlotFilling" -v
 pytest tests/test_dialogue_manager.py -k "TestInterruptionHandling" -v
 pytest tests/test_dialogue_manager.py -k "TestReferenceResolution" -v
 pytest tests/test_dialogue_manager.py -k "TestCancellation" -v
 pytest tests/test_dialogue_manager.py -k "TestFullConversations" -v
 ```
+
+---
+
+## 🧭 JARVIS AI OS Roadmap
+
+See [`ROADMAP.md`](ROADMAP.md) for the complete 15-phase vision:
+
+| Phase | Focus | Status |
+|-------|-------|--------|
+| 0 | Foundation | ✅ **Done** — Modular architecture, event bus, config, logging |
+| 1 | Human Brain Architecture | ✅ **Done** — Reflex, Subconscious, Conscious, Reflection brains |
+| 2 | Memory System | ✅ **Done** — Working, Short-Term, Long-Term, Episodic memory |
+| 3 | Multi-Agent System | ⏳ In Progress |
+| 4 | Agent Orchestrator | 🔜 Planned |
+| 5 | Workflow Engine | 🔜 Planned |
+| 6 | Background Task Engine | ✅ **Done** — Timers, reminders, async workers |
+| 7 | Long-Term Planning | 🔜 Planned |
+| 8 | Learning Engine | 🔜 Planned |
+| 9 | Tool System | ✅ **Done** — Dependency Graph MCP, action registry |
+| 10 | Android Controller | ✅ **Done** — Full Android intent execution |
+| 11 | Voice System | ✅ **Done** — Edge TTS, Hindi/English voice |
+| 12 | Automation Engine | 🔜 Planned |
+| 13 | Dashboard | 🔜 Planned |
+| 14 | Coding Intelligence | ✅ **Done** — Dependency analysis, code parsing |
+| 15 | Security & Production | 🔜 Planned |
 
 ---
 

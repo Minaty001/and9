@@ -830,3 +830,183 @@ def dialogue_reset():
         logger.exception("Dialogue reset error")
         return jsonify({"error": str(e)}), 500
 
+
+# ═══════════════════════════════════════════════════════════════
+# Dependency Graph API — Code Analysis & MCP Tools
+# ═══════════════════════════════════════════════════════════════
+
+_depgraph_server = None
+_depgraph_lock = threading.Lock()
+
+
+def get_depgraph_server():
+    """Lazy-init singleton DependencyGraphMCPServer instance."""
+    global _depgraph_server
+    if _depgraph_server is None:
+        with _depgraph_lock:
+            if _depgraph_server is None:
+                from app.and9.dependency_graph.mcp_server import DependencyGraphMCPServer
+                _depgraph_server = DependencyGraphMCPServer(
+                    root_path=os.path.abspath(
+                        os.path.join(os.path.dirname(__file__), "..", "..")
+                    ),
+                )
+    return _depgraph_server
+
+
+@api_bp.route("/depgraph/analyze", methods=["GET"])
+def depgraph_analyze():
+    """GET /api/depgraph/analyze?reanalyze=true — Build/rebuild dependency graph."""
+    try:
+        server = get_depgraph_server()
+        reanalyze = request.args.get("reanalyze", "").lower() in ("true", "1", "yes")
+        graph = server.ensure_graph(reanalyze=reanalyze)
+        return jsonify({
+            "node_count": graph.node_count,
+            "edge_count": graph.edge_count,
+            "status": "ok",
+        })
+    except Exception as e:
+        logger.exception("Depgraph analyze error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/depgraph/graph", methods=["GET"])
+def depgraph_graph():
+    """GET /api/depgraph/graph — Get the full dependency graph."""
+    try:
+        server = get_depgraph_server()
+        result = server.handle_tool_call("get_dependency_graph", {})
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("Depgraph graph error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/depgraph/callers", methods=["POST"])
+def depgraph_callers():
+    """POST /api/depgraph/callers — {"filepath": "..."} — Get callers."""
+    try:
+        data = request.get_json(silent=True) or {}
+        filepath = data.get("filepath", "").strip()
+        if not filepath:
+            return jsonify({"error": "filepath is required"}), 400
+        server = get_depgraph_server()
+        result = server.handle_tool_call("get_callers", {"filepath": filepath})
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("Depgraph callers error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/depgraph/callees", methods=["POST"])
+def depgraph_callees():
+    """POST /api/depgraph/callees — {"filepath": "..."} — Get callees."""
+    try:
+        data = request.get_json(silent=True) or {}
+        filepath = data.get("filepath", "").strip()
+        if not filepath:
+            return jsonify({"error": "filepath is required"}), 400
+        server = get_depgraph_server()
+        result = server.handle_tool_call("get_callees", {"filepath": filepath})
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("Depgraph callees error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/depgraph/impact", methods=["POST"])
+def depgraph_impact():
+    """POST /api/depgraph/impact — {"filepath": "...", "max_depth": 10} — Impact analysis."""
+    try:
+        data = request.get_json(silent=True) or {}
+        filepath = data.get("filepath", "").strip()
+        if not filepath:
+            return jsonify({"error": "filepath is required"}), 400
+        max_depth = int(data.get("max_depth", 10))
+        server = get_depgraph_server()
+        result = server.handle_tool_call("impact_analysis", {
+            "filepath": filepath, "max_depth": max_depth,
+        })
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("Depgraph impact error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/depgraph/orphans", methods=["GET"])
+def depgraph_orphans():
+    """GET /api/depgraph/orphans — Find files with no dependents."""
+    try:
+        server = get_depgraph_server()
+        result = server.handle_tool_call("find_orphans", {})
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("Depgraph orphans error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/depgraph/leaves", methods=["GET"])
+def depgraph_leaves():
+    """GET /api/depgraph/leaves — Find files with no dependencies."""
+    try:
+        server = get_depgraph_server()
+        result = server.handle_tool_call("find_leaves", {})
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("Depgraph leaves error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/depgraph/pagerank", methods=["GET"])
+def depgraph_pagerank():
+    """GET /api/depgraph/pagerank?top_n=20 — PageRank scores."""
+    try:
+        top_n = int(request.args.get("top_n", 20))
+        server = get_depgraph_server()
+        result = server.handle_tool_call("pagerank", {"top_n": top_n})
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("Depgraph pagerank error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/depgraph/mermaid", methods=["GET"])
+def depgraph_mermaid():
+    """GET /api/depgraph/mermaid — Export as Mermaid.js flowchart."""
+    try:
+        server = get_depgraph_server()
+        mermaid = server.handle_tool_call("export_mermaid", {})
+        return mermaid, 200, {"Content-Type": "text/plain; charset=utf-8"}
+    except Exception as e:
+        logger.exception("Depgraph mermaid error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/depgraph/d3", methods=["GET"])
+def depgraph_d3():
+    """GET /api/depgraph/d3 — Export as D3.js force-directed graph JSON."""
+    try:
+        server = get_depgraph_server()
+        result = server.handle_tool_call("export_d3", {})
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("Depgraph d3 error")
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/depgraph/module", methods=["POST"])
+def depgraph_module():
+    """POST /api/depgraph/module — {"filepath": "..."} — Module info."""
+    try:
+        data = request.get_json(silent=True) or {}
+        filepath = data.get("filepath", "").strip()
+        if not filepath:
+            return jsonify({"error": "filepath is required"}), 400
+        server = get_depgraph_server()
+        result = server.handle_tool_call("module_info", {"filepath": filepath})
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("Depgraph module error")
+        return jsonify({"error": str(e)}), 500
+
