@@ -224,7 +224,7 @@ class DialogueManager:
                     return self._handle_interruption(
                         user_message, resolved_message, intent_name,
                         required_slots, optional_slots, active_task,
-                        result, start
+                        result, start, params
                     )
 
             # ── Step 9: Create or reuse task ─────────────────────
@@ -418,8 +418,10 @@ class DialogueManager:
                               required_slots: list[str],
                               optional_slots: list[str],
                               interrupted_task: TaskState,
-                              result: dict, start: float) -> dict:
+                              result: dict, start: float,
+                              detected_params: Optional[dict] = None) -> dict:
         """Handle a user interrupting the current task with a new request."""
+        detected_params = detected_params or {}
         # Pause the current task
         self.state_tracker.pause_task(interrupted_task.task_id)
         logger.info("Interrupted task %s for new intent '%s'",
@@ -433,7 +435,7 @@ class DialogueManager:
                 optional_slots=optional_slots,
                 parent_task_id=interrupted_task.task_id,
             )
-            self._fill_from_message(task, resolved_message, {})
+            self._fill_from_message(task, resolved_message, detected_params)
             self._update_entity_memory(task, resolved_message)
             self.state_tracker.mark_completed(task.task_id)
             result["response"] = f"OK, main sun raha hoon! Aapne kaha: \"{resolved_message}\""
@@ -455,7 +457,7 @@ class DialogueManager:
                 optional_slots=optional_slots,
                 parent_task_id=interrupted_task.task_id,
             )
-            self._fill_from_message(task, resolved_message, {})
+            self._fill_from_message(task, resolved_message, detected_params)
 
             # Check if we can execute immediately
             if self.slot_filler.all_required_filled(task):
@@ -490,7 +492,7 @@ class DialogueManager:
             )
 
         # Fill slots from the resolved message
-        self._fill_from_message(task, resolved_message, {})
+        self._fill_from_message(task, resolved_message, detected_params)
         self._update_entity_memory(task, resolved_message)
 
         return self._handle_task_state(task, user_message, result, start)
@@ -618,12 +620,17 @@ class DialogueManager:
     def _detect_intent(self, message: str) -> tuple[Optional[str], dict]:
         """Detect intent using the AND9 intent router.
 
+        Uses QueryNormalizer for Hindi→English normalization before
+        passing to the intent router for consistent detection.
+
         Returns:
             Tuple of (intent_name, params_dict).
         """
         try:
             from app.and9.router.intent_router import detect_intent
-            normalized = message.lower().strip()
+            from app.and9.router.normalizer import QueryNormalizer
+            normalizer = QueryNormalizer()
+            normalized, _ = normalizer.normalize(message)
             intent_name, action_type, params = detect_intent(normalized)
 
             # If AND9 returns "chat", try fallback to catch
