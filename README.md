@@ -186,6 +186,17 @@ and9/
   │    │         ├── constants.py
   │    │         └── config.py
   │    │
+  │    │    ├── agents/                 ← Multi-Agent System (Phase 3)
+  │    │    │    ├── __init__.py         (Public API, factory, 20 agent classes)
+  │    │    │    ├── base.py             (AgentBase abstract class, AgentMemory, AgentMetrics)
+  │    │    │    ├── registry.py         (AgentRegistry — service locator, routing, delegation)
+  │    │    │    ├── core_agents.py      (Executive, Conversation, Planning)
+  │    │    │    ├── knowledge_agents.py (Research, Coding, Debug)
+  │    │    │    ├── memory_agents.py    (Memory, Learning, Reflection)
+  │    │    │    ├── device_agents.py    (Android, Voice, Browser)
+  │    │    │    ├── system_agents.py    (Scheduler, Automation, Security, Health)
+  │    │    │    └── integration_agents.py (Tool, Integration, Notification, Workflow)
+  │    │
   │    ├── agents/           (LLM orchestrators & coding/research agents)
   │    ├── api/              (REST endpoints & socket routers)
   │    ├── core/
@@ -466,6 +477,143 @@ curl -X POST http://localhost:8000/api/dialogue \
 
 ---
 
+## 🤖 AND9 Multi-Agent System — Phase 3
+
+The **Multi-Agent System** (`app/and9/agents/`) is a coordinated team of 20+ specialized AI agents that work together to handle any user request. Built on the `AgentBase` abstract class with a central `AgentRegistry` for discovery and routing.
+
+### Architecture — 20 Agents in 6 Groups
+
+```
+AgentRegistry (service locator)
+  ├── Core Agents
+  │   ├── Executive      (CEO — orchestrates the swarm)
+  │   ├── Conversation   (natural dialogue)
+  │   └── Planning       (task decomposition)
+  ├── Knowledge Agents
+  │   ├── Research       (web research)
+  │   ├── Coding         (code generation)
+  │   └── Debug          (bug analysis)
+  ├── Memory Agents
+  │   ├── Memory         (information storage)
+  │   ├── Learning       (pattern learning)
+  │   └── Reflection     (self-improvement)
+  ├── Device Agents
+  │   ├── Android        (device control)
+  │   ├── Voice          (speech I/O)
+  │   └── Browser        (browser automation)
+  ├── System Agents
+  │   ├── Scheduler      (time-based tasks)
+  │   ├── Automation     (rule automation)
+  │   ├── Security       (security enforcement)
+  │   └── Health         (system monitoring)
+  └── Integration Agents
+      ├── Tool           (tool registry)
+      ├── Integration    (external services)
+      ├── Notification   (alerting)
+      └── Workflow       (multi-step execution)
+```
+
+### Core Components
+
+| Component | File | Responsibility |
+|-----------|------|---------------|
+| `AgentBase` | `base.py` | Abstract class with memory, metrics, tools, logging, lifecycle |
+| `AgentRegistry` | `registry.py` | Service locator — registration, routing, delegation, health |
+| `AgentMemory` | `base.py` | Per-agent short-term, working, and persistent memory with TTL |
+| `AgentMetrics` | `base.py` | Success/failure tracking, latency, tool usage |
+| `AgentResult` | `base.py` | Standard result type with confidence, follow-up support |
+
+### Each Agent Has
+
+| Property | Description |
+|----------|-------------|
+| `name` | Unique identifier (e.g., `"coding"`, `"research"`) |
+| `role` | Short description of purpose |
+| `goal` | What the agent aims to achieve |
+| `backstory` | Extended persona context |
+| `memory` | `AgentMemory` — short-term (TTL), working, persistent |
+| `tools` | Dict of callable tools bound to the agent |
+| `status` | `AgentStatus` — healthy / degraded / error / disabled |
+| `metrics` | `AgentMetrics` — invocations, latency, success rate |
+| `confidence` | Confidence in responses (0.0 to 1.0) |
+| `logs` | Action history (max 100 entries) |
+
+### Agent Lifecycle
+
+```
+Agent Created → initialize() → HEALTHY
+  → process(input) → returns AgentResult
+  → health_check() → status report
+  → shutdown() → DISABLED
+```
+
+### Executive Agent — CEO of the Swarm
+
+The `ExecutiveAgent` acts as the orchestrator:
+
+1. Receives user requests
+2. Analyzes complexity — simple tasks route directly, complex tasks decompose
+3. Delegates subtasks to specialist agents via the registry
+4. Supports parallel execution for compound tasks (e.g., "Research and write code")
+5. Merges results from multiple agents into coherent responses
+
+### Agent Routing
+
+The registry routes tasks by keyword matching:
+
+```python
+registry = create_agent_system()
+
+# Direct routing to specific agents
+result = registry.delegate("coding", "Write a Python script")
+result = registry.delegate("research", "Latest AI news")
+
+# Automatic routing based on task content
+# "debug this error" → DebugAgent
+# "plan a project" → PlanningAgent
+# "remember my birthday" → MemoryAgent
+
+# Route to all agents (broadcast)
+all_results = registry.route_to_all("System check")
+```
+
+### Usage Examples
+
+```python
+from app.and9.agents import create_agent_system
+
+# Create the full system
+registry = create_agent_system()
+
+# Route tasks
+result = registry.route("Research quantum computing")
+print(result.response)
+# → "**Research Plan for: Research quantum computing**..."
+
+# Get a specific agent
+coding = registry.get("coding")
+result = coding("Write a function to sort files by date")
+
+# Check system health
+health = registry.health_report()
+print(f"Status: {health['overall_status']}")
+print(f"Healthy agents: {health['healthy']}/{health['total_agents']}")
+
+# List all agents
+for agent_info in registry.list_agents():
+    print(f"{agent_info['name']}: {agent_info['status']}")
+```
+
+### Test Coverage
+
+72 tests across 4 test classes:
+- `TestAgentBase` (16 tests) — base class, memory, tools, metrics, lifecycle
+- `TestAgentRegistry` (17 tests) — registration, routing, delegation, broadcasting
+- `TestAgentSystem` (29 tests) — all 20 agents, full system integration
+- `TestEdgeCases` (10 tests) — empty input, special chars, error recovery
+
+---
+
 ## 🔍 Dependency Graph MCP Server — Code Analysis Engine
 
 The **Dependency Graph** (`app/and9/dependency_graph/`) is a pure-Python code analysis engine that parses Python source code using the built-in `ast` module and builds a directed dependency graph. It exposes analysis capabilities via an MCP (Model Context Protocol) server over stdio and REST API endpoints.
@@ -600,7 +748,7 @@ Then send JSON-RPC requests on stdin:
 ## 🧪 Running Tests
 
 ```bash
-# Run all tests (core modules + dialogue manager + dependency graph)
+# Run all tests (core + dialogue + dep graph + multi-agent = 223+ tests)
 pytest tests/ -v
 
 # Run dialogue manager tests only (58 tests)
@@ -608,6 +756,15 @@ pytest tests/test_dialogue_manager.py -v
 
 # Run dependency graph tests only (25 tests)
 pytest tests/test_dependency_graph.py -v
+
+# Run multi-agent system tests only (72 tests)
+pytest tests/test_multi_agent_system.py -v
+
+# Run multi-agent system sub-groups
+pytest tests/test_multi_agent_system.py::TestAgentBase -v
+pytest tests/test_multi_agent_system.py::TestAgentRegistry -v
+pytest tests/test_multi_agent_system.py::TestAgentSystem -v
+pytest tests/test_multi_agent_system.py::TestEdgeCases -v
 
 # Run specific test categories
 pytest tests/test_dialogue_manager.py -k "TestSlotFilling" -v
@@ -628,8 +785,8 @@ See [`ROADMAP.md`](ROADMAP.md) for the complete 15-phase vision:
 | 0 | Foundation | ✅ **Done** — Modular architecture, event bus, config, logging |
 | 1 | Human Brain Architecture | ✅ **Done** — Reflex, Subconscious, Conscious, Reflection brains |
 | 2 | Memory System | ✅ **Done** — Working, Short-Term, Long-Term, Episodic memory |
-| 3 | Multi-Agent System | ⏳ In Progress |
-| 4 | Agent Orchestrator | 🔜 Planned |
+| 3 | Multi-Agent System | ✅ **Done** — 20 agents, registry, routing, delegation |
+| 4 | Agent Orchestrator | ⏳ In Progress |
 | 5 | Workflow Engine | 🔜 Planned |
 | 6 | Background Task Engine | ✅ **Done** — Timers, reminders, async workers |
 | 7 | Long-Term Planning | 🔜 Planned |
