@@ -585,7 +585,7 @@ all_results = registry.route_to_all("System check")
 ### Usage Examples
 
 ```python
-from app.and9.agents import create_agent_system
+from app.agents import create_agent_system
 
 # Create the full system
 registry = create_agent_system()
@@ -676,7 +676,7 @@ The orchestrator automatically determines task complexity:
 The Executive Agent delegates complex tasks to the orchestrator:
 
 ```python
-from app.and9.agents import create_agent_system
+from app.agents import create_agent_system
 
 # create_agent_system() automatically creates and links the orchestrator
 registry = create_agent_system()
@@ -693,8 +693,8 @@ result = registry.route("Research machine learning and write implementation")
 ### Usage Examples
 
 ```python
-from app.and9.orchestrator import AgentOrchestrator
-from app.and9.agents import create_agent_system
+from app.orchestrator import AgentOrchestrator
+from app.agents import create_agent_system
 
 # Create system and orchestrator
 registry = create_agent_system()
@@ -809,7 +809,7 @@ curl -X POST http://localhost:8000/api/depgraph/module \
 ```bash
 # Start the MCP server over stdio
 python3 -c "
-from app.and9.dependency_graph.mcp_server import DependencyGraphMCPServer
+from app.dependency_graph.mcp_server import DependencyGraphMCPServer
 server = DependencyGraphMCPServer('.')
 server.run()
 "

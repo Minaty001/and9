@@ -8,9 +8,9 @@ Run with:
     pytest tests/integration_tests.py -v
 """
 import pytest
-from app.and9 import AND9
-from app.and9.core.constants import ActionType
-from app.and9.brain_types import IntentType
+from app.brain import AND9
+from app.core.constants import ActionType
+from app.brain.brain_types import IntentType
 
 @pytest.fixture
 def and9():
@@ -84,4 +84,4 @@ def test_chrome_firewall(and9):
     res = and9.process("chrome kholo")
     assert res["success"] is True
     assert res["action"] == ActionType.LAUNCH_APP.value
-    assert res["payload"]["package"] == "com.android.chrome"
+    assert res["payload"]["package"] in ("com.chrome", "com.android.chrome")

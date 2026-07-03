@@ -593,7 +593,7 @@ _and9_instance = None
 def get_and9():
     global _and9_instance
     if _and9_instance is None:
-        from app.and9 import AND9
+        from app.brain import AND9
         from app.core.events import EventSystem
         _and9_instance = AND9(events_sys=get_events())
     return _and9_instance
@@ -656,7 +656,7 @@ def and9_sync_apps():
     if not isinstance(data, dict):
         return jsonify({"error": "Expected JSON dict"}), 400
 
-    from app.and9.apps.package_resolver import get_resolver
+    from app.android.apps.package_resolver import get_resolver
     get_resolver().update_dynamic_cache(data)
     return jsonify({"status": "synced", "count": len(data)})
 
@@ -685,7 +685,7 @@ def get_dialogue_manager():
     if _dialogue_manager is None:
         with _dialogue_lock:
             if _dialogue_manager is None:
-                from app.and9.dialogue_manager import DialogueManager, DialogueConfig
+                from app.dialogue_manager import DialogueManager, DialogueConfig
                 import os
                 config = DialogueConfig(
                     persist_path=os.path.join(
@@ -845,7 +845,7 @@ def get_depgraph_server():
     if _depgraph_server is None:
         with _depgraph_lock:
             if _depgraph_server is None:
-                from app.and9.dependency_graph.mcp_server import DependencyGraphMCPServer
+                from app.dependency_graph.mcp_server import DependencyGraphMCPServer
                 _depgraph_server = DependencyGraphMCPServer(
                     root_path=os.path.abspath(
                         os.path.join(os.path.dirname(__file__), "..", "..")

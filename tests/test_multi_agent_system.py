@@ -13,11 +13,11 @@ import pytest
 import time
 from typing import Any, Optional
 
-from app.and9.agents.base import (
+from app.agents.base import (
     AgentBase, AgentResult, AgentStatus, AgentMemory, AgentMetrics,
 )
-from app.and9.agents.registry import AgentRegistry
-from app.and9.agents import create_agent_system
+from app.agents.registry import AgentRegistry
+from app.agents import create_agent_system
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -243,7 +243,7 @@ class TestAgentRegistry:
 
     def test_duplicate_registration_error(self, registry):
         """Test that duplicate registration raises ValueError."""
-        from app.and9.agents.base import AgentBase
+        from app.agents.base import AgentBase
         dup = SimpleTestAgent()
         dup.name = "alpha"
         with pytest.raises(ValueError, match="already registered"):

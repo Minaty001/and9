@@ -11,7 +11,7 @@ Covers:
 import time
 import pytest
 
-from app.and9.orchestrator import (
+from app.orchestrator import (
     TaskQueue,
     OrchestratorTask,
     TaskPriority,
@@ -19,10 +19,10 @@ from app.and9.orchestrator import (
     TaskGraph,
     SubTask,
 )
-from app.and9.orchestrator.task_queue import TaskStatus
-from app.and9.orchestrator.orchestrator import TaskComplexity
-from app.and9.agents.base import AgentResult
-from app.and9.agents import create_agent_system
+from app.orchestrator.task_queue import TaskStatus
+from app.orchestrator.orchestrator import TaskComplexity
+from app.agents.base import AgentResult
+from app.agents import create_agent_system
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -321,7 +321,7 @@ class TestAgentOrchestrator:
         all_results = {
             "t1": AgentResult(success=True, response="Hello", agent_name="coding"),
         }
-        from app.and9.orchestrator.orchestrator import TaskGraph
+        from app.orchestrator.orchestrator import TaskGraph
 
         graph = TaskGraph(original_request="say hello")
         result = orchestrator.merge(
@@ -449,7 +449,7 @@ class TestOrchestratorEdgeCases:
 
     def test_orchestrator_no_registry(self):
         """Orchestrator should fail gracefully with no agents."""
-        from app.and9.agents.registry import AgentRegistry
+        from app.agents.registry import AgentRegistry
 
         registry = AgentRegistry()  # Empty registry
         orch = AgentOrchestrator(registry)

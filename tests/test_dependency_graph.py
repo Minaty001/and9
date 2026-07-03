@@ -16,9 +16,9 @@ import sys
 import tempfile
 import pytest
 
-from app.and9.dependency_graph.graph import DependencyGraph
-from app.and9.dependency_graph.analyzer import DependencyAnalyzer, FileVisitor
-from app.and9.dependency_graph.mcp_server import DependencyGraphMCPServer
+from app.dependency_graph.graph import DependencyGraph
+from app.dependency_graph.analyzer import DependencyAnalyzer, FileVisitor
+from app.dependency_graph.mcp_server import DependencyGraphMCPServer
 
 
 # ── Helper ───────────────────────────────────────────────────────

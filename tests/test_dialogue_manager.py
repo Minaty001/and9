@@ -18,20 +18,20 @@ import tempfile
 import time
 import pytest
 
-from app.and9.dialogue_manager import (
+from app.dialogue_manager import (
     DialogueManager,
     DialogueConfig,
     TaskState,
     TaskStatus,
     SlotDefinition,
 )
-from app.and9.dialogue_manager.intent_definitions import IntentDefinition
-from app.and9.dialogue_manager.state_manager import DialogueStateTracker
-from app.and9.dialogue_manager.slot_filler import SlotFiller
-from app.and9.dialogue_manager.reference_resolver import ReferenceResolver
-from app.and9.dialogue_manager.working_memory import WorkingMemory, ShortTermMemory
-from app.and9.dialogue_manager.task_manager import TaskManager
-from app.and9.dialogue_manager.action_planner import ActionPlanner
+from app.dialogue_manager.intent_definitions import IntentDefinition
+from app.dialogue_manager.state_manager import DialogueStateTracker
+from app.dialogue_manager.slot_filler import SlotFiller
+from app.dialogue_manager.reference_resolver import ReferenceResolver
+from app.dialogue_manager.working_memory import WorkingMemory, ShortTermMemory
+from app.dialogue_manager.task_manager import TaskManager
+from app.dialogue_manager.action_planner import ActionPlanner
 
 
 # ── Fixtures ───────────────────────────────────────────────────────
@@ -562,7 +562,7 @@ class TestEdgeCases:
 
     def test_intent_definitions(self):
         """Test that intent definitions are properly loaded."""
-        from app.and9.dialogue_manager.intent_definitions import (
+        from app.dialogue_manager.intent_definitions import (
             get_intent_definition,
             get_required_slot_names,
             INTENT_DEFINITIONS,
@@ -678,7 +678,7 @@ class TestContextManager:
 
     def test_interruption_detection(self, dm):
         """Test that intent changes are detected as interruptions."""
-        from app.and9.dialogue_manager.context_manager import ContextManager
+        from app.dialogue_manager.context_manager import ContextManager
         cm = ContextManager(dm.working_memory, dm.short_term_memory)
 
         # No active task → no interruption

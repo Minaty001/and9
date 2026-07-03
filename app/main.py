@@ -69,7 +69,7 @@ def _init_and9(app: Flask) -> None:
     """
     # Phase 12: validate action registry
     try:
-        from app.and9.android.action_registry import validate_registry
+        from app.android.action_registry import validate_registry
         validate_registry()
         _startup_logger.info("AND9 Action Registry validated.")
     except AssertionError as e:
@@ -80,7 +80,7 @@ def _init_and9(app: Flask) -> None:
 
     # Priority 1: validate Android handler coverage
     try:
-        from app.and9.android.validate_handlers import validate_android_handlers
+        from app.android.validate_handlers import validate_android_handlers
         validate_android_handlers()
         _startup_logger.info("AND9 Android Handler Coverage validated.")
     except RuntimeError as e:
@@ -102,7 +102,7 @@ def _init_and9(app: Flask) -> None:
 
     # Phase 4: preload dynamic package cache
     try:
-        from app.and9.apps.package_resolver import PackageResolver
+        from app.android.apps.package_resolver import PackageResolver
         PackageResolver()
         _startup_logger.info("AND9 PackageResolver initialized.")
     except Exception as e:
