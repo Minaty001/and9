@@ -244,17 +244,8 @@ def extract_youtube(query: str) -> dict:
     return {"action": "search", "query": _clean_media_query(q)}
 
 
-def _clean_media_query(q: str) -> str:
-    """Strip action words from a media query to get the actual content."""
-    noise = [
-        "youtube", "pe", "par", "aur", "search", "karo", "play",
-        "sunao", "bajao", "chalao", "laga", "do", "on",
-        "song", "gaana", "gana", "music", "video", "kholo",
-    ]
-    result = q
-    for word in noise:
-        result = re.sub(rf'\b{re.escape(word)}\b', ' ', result, flags=re.IGNORECASE)
-    return re.sub(r'\s+', ' ', result).strip()
+# Import shared media query cleaner from the action handler module
+from app.android.actions.youtube_actions import _clean_media_query  # noqa: F811
 
 
 # ── ALARM ─────────────────────────────────────────────────────────

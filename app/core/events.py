@@ -9,7 +9,7 @@ Supabase table: events
 """
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ class EventSystem:
 
     def get_upcoming_events(self, hours_ahead: int = 24) -> list:
         """Return events due in the next N hours."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         cutoff = (now + timedelta(hours=hours_ahead)).isoformat()
         now_str = now.isoformat()
 
@@ -105,7 +105,7 @@ class EventSystem:
 
     def get_due_events(self) -> list:
         """Return events that are due NOW (past event_time, not done)."""
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         q = self._q("events")
         if q is None:
             evs = self._mem._mem.get("events", [])

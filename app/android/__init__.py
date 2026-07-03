@@ -11,7 +11,7 @@ from app.android.executor import execute
 
 # Action Registry
 from app.android.action_registry import (
-    REGISTRY, get_action, is_whitelisted, is_chrome_allowed,
+    REGISTRY, get_action, is_whitelisted, is_chrome_allowed as registry_is_chrome_allowed,
     is_chrome_blocked, list_registered_actions, get_whitelist,
     validate_registry,
 )
@@ -41,10 +41,11 @@ from app.android.validate_handlers import (
 __all__ = [
     "execute",
     "REGISTRY", "get_action", "is_whitelisted",
-    "is_chrome_allowed", "is_chrome_blocked",
+    "registry_is_chrome_allowed", "is_chrome_blocked",
     "list_registered_actions", "get_whitelist", "validate_registry",
     "execute_skill", "register_skill", "get_registered_skills",
-    "ChromeFirewallError", "assert_not_chrome", "check_payload", "get_allowed_actions",
+    "ChromeFirewallError", "firewall_is_chrome_allowed",
+    "assert_not_chrome", "check_payload", "get_allowed_actions",
     "PackageResolver", "get_resolver",
     "ContactsResolver",
     "validate_android_handlers", "get_coverage_report",

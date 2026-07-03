@@ -309,7 +309,7 @@ def validate_registry() -> None:
     missing = _REQUIRED_ACTIONS - registered
     assert not missing, (
         f"AND9 Registry FATAL: Required actions not registered: {sorted(missing)}\n"
-        f"Add them to app/and9/android/action_registry.py before startup."
+        f"Add them to app/android/action_registry.py before startup."
     )
 
     # Warn about handler-less registrations (except emergency)
