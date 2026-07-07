@@ -99,7 +99,6 @@ def execute_call(
         if resolved.get("lookup_required"):
             # Emit CONTACTS_LOOKUP — Android resolves
             contact_disp = resolved["display"]
-            lookup_payload = _resolver.build_lookup_payload(resolved["contact_name"])
             return {
                 "response": f"{contact_disp} ko call kar raha hoon... 📞",
                 "action": "CALL",

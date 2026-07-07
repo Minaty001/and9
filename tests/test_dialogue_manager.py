@@ -396,7 +396,6 @@ class TestStateTracker:
 
     def test_get_active_tasks(self, state_tracker):
         t1 = state_tracker.create_task("youtube", ["search_query"])
-        t2 = state_tracker.create_task("call", ["contact_name"])
 
         active = state_tracker.get_active_tasks()
         assert len(active) >= 2
@@ -553,7 +552,6 @@ class TestEdgeCases:
     def test_multiple_consecutive_same_intent(self, dm):
         """Multiple same-intent messages should continue the same task."""
         r1 = dm.process("Play a song")
-        task_id = r1["task_id"]
         r2 = dm.process("Tum Hi Ho")
         # Should be the same task
         if r2.get("task_id"):
@@ -655,9 +653,6 @@ class TestFullConversations:
 
         state = dm.get_state()
         # There should be an alarm task completed or active
-        alarm_tasks = [t for t in state.get("active_tasks", [])
-                       if t.get("intent") == "alarm"
-                       or t.get("intent") == "alarm"]
         # OR check completed tasks
         assert state["stats"]["total_tasks"] >= 1
 

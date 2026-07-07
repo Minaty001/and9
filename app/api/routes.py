@@ -4,6 +4,7 @@ app/api/routes.py — JSON API endpoints for the chat interface.
 import io
 import asyncio
 import logging
+import os
 import threading
 from flask import Blueprint, request, jsonify, Response
 

@@ -234,11 +234,11 @@ class SecurityAgent(AgentBase):
         return AgentResult(
             success=True,
             response=(
-                f"**Security Check**\n\n"
-                f"System security status: All clear\n"
-                f"Permissions: Standard policy active\n"
-                f"Audit logging: Enabled\n\n"
-                f"No security issues detected."
+                "**Security Check**\n\n"
+                "System security status: All clear\n"
+                "Permissions: Standard policy active\n"
+                "Audit logging: Enabled\n\n"
+                "No security issues detected."
             ),
             data={
                 "status": "secure",
@@ -290,8 +290,6 @@ class HealthAgent(AgentBase):
     def process(self, input_data: Any,
                 context: Optional[dict] = None) -> AgentResult:
         """Perform a health check or diagnostic."""
-        request = str(input_data) if not isinstance(input_data, str) else input_data
-
         return AgentResult(
             success=True,
             response=(

@@ -222,8 +222,6 @@ X = 1
             analyzer = DependencyAnalyzer(tmpdir)
             graph = analyzer.analyze()
             rel_main = "main.py"
-            rel_utils = os.path.join("mylib", "utils.py")
-            rel_models = os.path.join("mylib", "models.py")
             # main.py should depend on utils and models
             deps = graph.get_dependencies(rel_main)
             assert len(deps) >= 2, f"Expected >=2 dependencies, got {deps}"
