@@ -42,6 +42,8 @@ _REQUIRED_ACTIONS = frozenset({
     "volume_max",
     "wifi",
     "bluetooth",
+    "bluetooth_scan",
+    "bluetooth_paired",
     "airplane_mode",
     "emergency",
     "search",
@@ -202,6 +204,20 @@ REGISTRY: Dict[str, Dict[str, Any]] = {
         "params": ["state"],
         "whitelisted": True,
     },
+    "bluetooth_scan": {
+        "handler": "actions.bluetooth_actions.handle_bluetooth_scan",
+        "android_intent": "BluetoothAdapter.startDiscovery",
+        "description": "Scan for nearby Bluetooth devices",
+        "params": [],
+        "whitelisted": True,
+    },
+    "bluetooth_paired": {
+        "handler": "actions.bluetooth_actions.handle_bluetooth_paired",
+        "android_intent": "BluetoothAdapter.getBondedDevices",
+        "description": "List paired Bluetooth devices",
+        "params": [],
+        "whitelisted": True,
+    },
     "airplane_mode": {
         "handler": "actions.device_actions.handle_airplane_mode",
         "android_intent": "Settings.ACTION_AIRPLANE_MODE_SETTINGS",
@@ -252,6 +268,15 @@ REGISTRY: Dict[str, Dict[str, Any]] = {
         "params": ["query"],
         "whitelisted": True,
         "chrome_allowed": True,
+    },
+
+    # ── Chat ───────────────────────────────────────────────────
+    "chat": {
+        "handler": "actions.device_actions.handle_chat",
+        "android_intent": "AND9_INTERNAL",
+        "description": "General conversation response",
+        "params": ["query"],
+        "whitelisted": True,
     },
 }
 

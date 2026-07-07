@@ -447,6 +447,28 @@ INTENT_DEFINITIONS: dict[str, IntentDefinition] = {
         completion_actions=["bluetooth"],
     ),
 
+    "bluetooth_scan": IntentDefinition(
+        name="bluetooth_scan",
+        display_name="Bluetooth Scan",
+        description="Scan for nearby Bluetooth devices",
+        required_slots=[],
+        optional_slots=[],
+        success_message="Bluetooth devices scan kar raha hoon... 🔍🔵",
+        failure_message="Bluetooth scan nahi ho saka.",
+        completion_actions=["bluetooth_scan"],
+    ),
+
+    "bluetooth_paired": IntentDefinition(
+        name="bluetooth_paired",
+        display_name="Bluetooth Paired",
+        description="List paired Bluetooth devices",
+        required_slots=[],
+        optional_slots=[],
+        success_message="Paired Bluetooth devices dikha raha hoon... 📋🔵",
+        failure_message="Paired devices list nahi dikha saka.",
+        completion_actions=["bluetooth_paired"],
+    ),
+
     # ── Chat (no required slots — goes to LLM) ──────────────────
     "chat": IntentDefinition(
         name="chat",

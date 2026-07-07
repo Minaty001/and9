@@ -103,3 +103,12 @@ def handle_camera() -> dict:
             "category": "android.intent.category.LAUNCHER",
         },
     }
+
+
+def handle_chat(query: str) -> dict:
+    """Handle a general chat message."""
+    return {
+        "response": f"Main sun raha hoon! Aapne kaha: \"{query}\"",
+        "action": "CHAT",
+        "payload": {},
+    }

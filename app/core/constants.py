@@ -34,6 +34,8 @@ class ActionType(str, Enum):
     VOLUME_MAX = "volume_max"
     WIFI = "wifi"
     BLUETOOTH = "bluetooth"
+    BLUETOOTH_SCAN = "bluetooth_scan"
+    BLUETOOTH_PAIRED = "bluetooth_paired"
     AIRPLANE_MODE = "airplane_mode"
     GO_HOME = "go_home"
     OPEN_CAMERA = "open_camera"

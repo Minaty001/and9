@@ -81,6 +81,8 @@ register_skill("flashlight_on", "app.android.actions.device_actions", "handle_fl
 register_skill("flashlight_off", "app.android.actions.device_actions", "handle_flashlight", lambda p, e: {"query": "flashlight off"})
 register_skill("wifi", "app.android.actions.device_actions", "handle_wifi", lambda p, e: {"query": f"wifi {'on' if p.get('state') is True else 'off' if p.get('state') is False else ''}"})
 register_skill("bluetooth", "app.android.actions.device_actions", "handle_bluetooth", lambda p, e: {"query": f"bluetooth {'on' if p.get('state') is True else 'off' if p.get('state') is False else ''}"})
+register_skill("bluetooth_scan", "app.android.actions.bluetooth_actions", "handle_bluetooth_scan", lambda p, e: {"query": "bluetooth scan"})
+register_skill("bluetooth_paired", "app.android.actions.bluetooth_actions", "handle_bluetooth_paired", lambda p, e: {"query": "bluetooth paired"})
 register_skill("airplane_mode", "app.android.actions.device_actions", "handle_airplane_mode", lambda p, e: {"query": f"airplane_mode {'on' if p.get('state') is True else 'off' if p.get('state') is False else ''}"})
 register_skill("open_camera", "app.android.actions.device_actions", "handle_camera", lambda p, e: {})
 register_skill("go_home", "app.android.actions.device_actions", "handle_home", lambda p, e: {})
@@ -88,6 +90,7 @@ register_skill("volume_up", "app.android.actions.device_actions", "handle_volume
 register_skill("volume_down", "app.android.actions.device_actions", "handle_volume", lambda p, e: {"query": "down"})
 register_skill("volume_mute", "app.android.actions.device_actions", "handle_volume", lambda p, e: {"query": "mute"})
 register_skill("volume_max", "app.android.actions.device_actions", "handle_volume", lambda p, e: {"query": "max"})
+register_skill("chat", "app.android.actions.device_actions", "handle_chat", lambda p, e: {"query": p.get("query", "")})
 
 
 def execute_skill(action_type: str, params: dict, events_sys: Any = None) -> dict:

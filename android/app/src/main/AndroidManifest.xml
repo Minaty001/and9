@@ -60,6 +60,13 @@
     <!-- Overlay permission for showing UI on top of other apps -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- Bluetooth for device connectivity -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+
     <!-- Expand/collapse status bar for notifications -->
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
 

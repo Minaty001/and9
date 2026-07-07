@@ -165,6 +165,8 @@ FLASHLIGHT_OFF: Pattern = _c(r'\b(off|disable|band|bnd|बंद)\b')
 # ══════════════════════════════════════════════════════════════════
 
 BLUETOOTH: Pattern = _c(r'\bbluetooth\b')
+BLUETOOTH_SCAN: Pattern = _c(r'\b(scan|discover|search|dhundho|find|nearby)\b')
+BLUETOOTH_PAIRED: Pattern = _c(r'\b(paired|paired devices|saved|bonded|list|showing|dikhao|dikha)\b')
 TOGGLE_ON: Pattern = _c(r'\b(on|enable|chalu|start|kholo)\b')
 TOGGLE_OFF: Pattern = _c(r'\b(off|disable|band|bnd|stop|band\s+karo)\b')
 

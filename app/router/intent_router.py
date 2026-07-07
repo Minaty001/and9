@@ -27,7 +27,7 @@ from app.router.command_dictionary import (
     OPEN_APP_TRIGGERS, OPEN_APP_SPECIFIC,
     CAMERA,
     FLASHLIGHT, FLASHLIGHT_ON, FLASHLIGHT_OFF,
-    BLUETOOTH, TOGGLE_ON, TOGGLE_OFF,
+    BLUETOOTH, BLUETOOTH_SCAN, BLUETOOTH_PAIRED, TOGGLE_ON, TOGGLE_OFF,
     WIFI,
     VOLUME, VOLUME_UP, VOLUME_DOWN, VOLUME_MUTE, VOLUME_MAX,
     YOUTUBE_TRIGGER, YOUTUBE_PLAY_TRIGGER, YOUTUBE_OPEN_ONLY,
@@ -134,6 +134,13 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
 
     # ── Priority 7: BLUETOOTH ────────────────────────────────────
     if BLUETOOTH.search(q):
+        # Check for scan/discover sub-command
+        if BLUETOOTH_SCAN.search(q):
+            return 'bluetooth_scan', ActionType.BLUETOOTH_SCAN.value, {}
+        # Check for paired devices list sub-command
+        if BLUETOOTH_PAIRED.search(q):
+            return 'bluetooth_paired', ActionType.BLUETOOTH_PAIRED.value, {}
+        # Default on/off toggle
         state = None
         if TOGGLE_ON.search(q):
             state = True

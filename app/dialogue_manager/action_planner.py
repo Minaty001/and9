@@ -176,6 +176,23 @@ _INTENT_ACTION_MAP = {
         },
         "template": {},
     },
+    "bluetooth_scan": {
+        "action": "bluetooth_scan",
+        "slot_map": {},
+        "template": {},
+    },
+    "bluetooth_paired": {
+        "action": "bluetooth_paired",
+        "slot_map": {},
+        "template": {},
+    },
+    "chat": {
+        "action": "chat",
+        "slot_map": {
+            "query": "query",
+        },
+        "template": {},
+    },
 }
 
 # Volume action mapping

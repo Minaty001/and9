@@ -439,7 +439,7 @@ class DialogueManager:
             return result
 
         # If the new intent is instant (flashlight, etc.), execute directly
-        if new_intent in ("flashlight", "wifi", "bluetooth", "volume", "camera", "home"):
+        if new_intent in ("flashlight", "wifi", "bluetooth", "bluetooth_scan", "bluetooth_paired", "volume", "camera", "home"):
             # Create and execute directly
             task = self.task_manager.create_and_activate(
                 intent=new_intent,

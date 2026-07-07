@@ -78,7 +78,7 @@ class OverlayViewController(
             // Camera
             "camera", "open_camera",
             // Settings / connectivity
-            "settings", "open_settings", "wifi", "wifi_settings", "bluetooth",
+            "settings", "open_settings", "wifi", "wifi_settings", "bluetooth", "bluetooth_scan", "bluetooth_paired",
             // Misc
             "screenshot", "notification", "notifications", "vibrate",
             // Time
@@ -513,7 +513,23 @@ class OverlayViewController(
             "camera", "open_camera" -> openCamera()
             "settings", "open_settings" -> openSettings(payload)
             "wifi", "wifi_settings" -> openWifiSettings()
-            "bluetooth" -> openSettings("bluetooth")
+            "bluetooth" -> {
+                val stateStr = payload.lowercase()
+                if (stateStr == "on" || stateStr == "true") {
+                    toggleBluetooth(true)
+                } else if (stateStr == "off" || stateStr == "false") {
+                    toggleBluetooth(false)
+                } else if (stateStr == "scan" || stateStr == "discover") {
+                    scanBluetoothDevices()
+                } else if (stateStr == "paired" || stateStr == "list" || stateStr == "devices") {
+                    listPairedBluetoothDevices()
+                } else {
+                    // Default: open Bluetooth settings for manual control
+                    openSettings("bluetooth")
+                }
+            }
+            "bluetooth_scan" -> scanBluetoothDevices()
+            "bluetooth_paired" -> listPairedBluetoothDevices()
             "screenshot" -> takeScreenshot()
             "notification", "notifications" -> openNotifications()
             "vibrate" -> triggerVibrate()
@@ -571,6 +587,81 @@ class OverlayViewController(
             } catch (e: Exception) {
                 Log.e(TAG, "Blink flashlight failed: ${e.message}")
             }
+        }
+    }
+
+    // ── Bluetooth Control ───────────────────────────────────────
+
+    private fun toggleBluetooth(on: Boolean) {
+        try {
+            val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (bluetoothAdapter == null) {
+                Log.w(TAG, "Bluetooth not supported on this device")
+                showStatus("Bluetooth supported nahi hai.")
+                return
+            }
+            if (on && !bluetoothAdapter.isEnabled) {
+                bluetoothAdapter.enable()
+                showStatus("Bluetooth on kar diya! 🔵")
+                Log.d(TAG, "Bluetooth enabled")
+            } else if (!on && bluetoothAdapter.isEnabled) {
+                bluetoothAdapter.disable()
+                showStatus("Bluetooth off kar diya! 🔘")
+                Log.d(TAG, "Bluetooth disabled")
+            } else {
+                showStatus("Bluetooth already ${if (on) "on" else "off"} hai.")
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Bluetooth permission denied: ${e.message}")
+            showStatus("Bluetooth permission nahi hai.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Bluetooth toggle failed: ${e.message}")
+        }
+    }
+
+    private fun scanBluetoothDevices() {
+        try {
+            val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (bluetoothAdapter == null) {
+                Log.w(TAG, "Bluetooth not supported")
+                return
+            }
+            if (!bluetoothAdapter.isEnabled) {
+                showStatus("Pehle Bluetooth on karo! 🔵")
+                return
+            }
+            if (bluetoothAdapter.isDiscovering) {
+                bluetoothAdapter.cancelDiscovery()
+            }
+            bluetoothAdapter.startDiscovery()
+            showStatus("Bluetooth devices scan kar raha hoon... 🔍")
+            Log.d(TAG, "Bluetooth discovery started")
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Bluetooth scan permission denied: ${e.message}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Bluetooth scan failed: ${e.message}")
+        }
+    }
+
+    private fun listPairedBluetoothDevices() {
+        try {
+            val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (bluetoothAdapter == null) {
+                Log.w(TAG, "Bluetooth not supported")
+                return
+            }
+            val pairedDevices = bluetoothAdapter.bondedDevices
+            if (pairedDevices.isEmpty()) {
+                showStatus("Koi paired device nahi hai. 👀")
+                return
+            }
+            val deviceList = pairedDevices.joinToString(", ") { it.name ?: "Unknown" }
+            showStatus("Paired devices: $deviceList 🔵")
+            Log.d(TAG, "Paired Bluetooth devices: $deviceList")
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Bluetooth list permission denied: ${e.message}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Bluetooth list failed: ${e.message}")
         }
     }
 
