@@ -28,7 +28,7 @@ from app.android.action_registry import _REQUIRED_ACTIONS
 logger = logging.getLogger(__name__)
 
 # Path to the Kotlin overlay file that dispatches Android actions
-_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_KT_PATH = _PROJECT_ROOT / "android" / "app" / "src" / "main" / "java" / "com" / "jarvis" / "assistant" / "overlay" / "OverlayViewController.kt"
 
 _OVERLAY_KT_PATH = Path(
