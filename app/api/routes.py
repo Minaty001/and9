@@ -381,7 +381,7 @@ def proactive_briefing():
             "quick_actions": quick_actions,
         })
     except Exception as e:
-        logger.exception("Proactive briefing error")
+        logger.exception("Proactive briefing error: %s", e)
         return jsonify({
             "greeting":  "Hey! JARVIS ready! 🤖",
             "time":      "",

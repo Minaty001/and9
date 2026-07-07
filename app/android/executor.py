@@ -89,7 +89,7 @@ def execute(action_type: str, params: Dict[str, Any] = None,
         except ChromeFirewallError as cfe:
             logger.error("Chrome firewall blocked action '%s': %s", action_type, cfe)
             return {
-                "response": f"This action cannot open Chrome. Only Search can. 🚫",
+                "response": "This action cannot open Chrome. Only Search can. 🚫",
                 "action": "CHROME_FIREWALL_BLOCKED",
                 "payload": {"blocked_action": action_type, "reason": str(cfe)},
                 "metadata": {"failure_reason": "chrome_firewall_blocked"},
