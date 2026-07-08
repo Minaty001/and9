@@ -31,7 +31,7 @@
       <div class="status-dot" id="statusDot"></div>
     </div>
     <div class="topbar-right">
-      <button id="memoryBtn" class="icon-btn" aria-label="Memory" title="Memory Recall" id="memoryRecallBtn">🧠</button>
+      <button class="icon-btn" aria-label="Memory" title="Memory Recall" id="memoryRecallBtn">🧠</button>
       <button id="profileBtn" class="icon-btn" aria-label="Profile">👤</button>
     </div>
   </div>
@@ -40,7 +40,7 @@
   <div id="sidePanel" class="side-panel">
     <div class="side-panel-header">
       <span>⚡ JARVIS HQ</span>
-      <button id="closeSidePanel" class="close-btn">✕</button>
+      <button id="closeSidePanel" class="close-btn" aria-label="Close side panel">✕</button>
     </div>
 
     <!-- Proactive Briefing Card -->
@@ -64,7 +64,7 @@
       </div>
       <form id="addGoalForm" class="panel-add-form">
         <input id="newGoalInput" type="text" placeholder="Add new goal..." autocomplete="off">
-        <button type="submit">+</button>
+        <button type="submit" aria-label="Add goal">+</button>
       </form>
     </div>
 
@@ -97,11 +97,11 @@
   <div id="memoryDrawer" class="memory-drawer">
     <div class="memory-drawer-header">
       <span>🧠 Memory Recall</span>
-      <button id="closeMemoryDrawer" class="close-btn">✕</button>
+      <button id="closeMemoryDrawer" class="close-btn" aria-label="Close memory drawer">✕</button>
     </div>
     <div class="memory-search-bar">
       <input id="memorySearchInput" type="text" placeholder="Search past conversations..." autocomplete="off">
-      <button id="memorySearchBtn">🔍</button>
+      <button id="memorySearchBtn" aria-label="Search memory">🔍</button>
     </div>
     <div class="memory-stats" id="memoryStats"></div>
     <div class="memory-results" id="memoryResults">
@@ -141,7 +141,7 @@
       <div class="proactive-card" id="proactiveCard" style="display:none;">
         <span class="proactive-icon">💡</span>
         <span class="proactive-text" id="proactiveText"></span>
-        <button class="proactive-close" id="proactiveClose">✕</button>
+        <button class="proactive-close" id="proactiveClose" aria-label="Close proactive card">✕</button>
       </div>
     </div>
 
@@ -173,12 +173,12 @@
 
     <!-- Input row -->
     <div class="input-row">
-      <button id="attachBtn" class="input-icon-btn" title="Voice Note">🎤</button>
+      <button id="attachBtn" class="input-icon-btn" title="Voice Note" aria-label="Attach voice note">🎤</button>
       <div class="input-wrapper">
         <input type="text" id="textInput" placeholder="Message JARVIS..." autocomplete="off" autocorrect="on" spellcheck="true">
-        <button id="clearInputBtn" class="clear-btn" style="display:none;">✕</button>
+        <button id="clearInputBtn" class="clear-btn" style="display:none;" aria-label="Clear input">✕</button>
       </div>
-      <button id="sendBtn" class="send-btn" title="Send">
+      <button id="sendBtn" class="send-btn" title="Send" aria-label="Send message">
         <span id="sendIcon">➤</span>
       </button>
     </div>
@@ -217,7 +217,7 @@
   <div id="ytPlayer" class="yt-player" style="display:none;">
     <div class="yt-header">
       <span id="ytTitle">🎵 Playing...</span>
-      <button id="ytClose">✕</button>
+      <button id="ytClose" aria-label="Close YouTube player">✕</button>
     </div>
     <div class="yt-embed" id="ytEmbed"></div>
   </div>
