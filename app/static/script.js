@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════
-// THE BOSS — Jarvis UI Script
+// THE BOSS — Jarvis Interface Script
 // ═══════════════════════════════════════════════
 
 'use strict';
@@ -9,12 +9,11 @@ const isAndroid = /android/i.test(navigator.userAgent);
 // ── DOM refs ─────────────────────────────────────
 const $ = id => document.getElementById(id);
 const speakTrigger = $('speak-trigger');
-const mainOrb = $('main-orb');
+const orbCore = $('orb-core-engine');
 const clockTime = $('clock-time');
 const clockDate = $('clock-date');
 const statBattery = $('stat-battery');
 const statMemory = $('stat-memory');
-const statNetwork = $('stat-network');
 const toastContainer = $('toastContainer');
 const imageDisplay = $('imageDisplay');
 const generatedImg = $('generatedImg');
@@ -23,34 +22,26 @@ const generatedImg = $('generatedImg');
 // CLOCK — live every second
 // ═══════════════════════════════════════════════
 
-function updateClock() {
+function updateChronosEngine() {
     const now = new Date();
     let hours = now.getHours();
     const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12 || 12;
-    clockTime.textContent = `${hours}:${minutes} ${ampm}`;
+    clockTime.textContent = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
 
     const options = { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' };
     clockDate.textContent = now.toLocaleDateString('en-US', options);
-
-    // Update greeting based on time of day
-    const greetingEl = document.querySelector('.greeting-text span');
-    if (greetingEl) {
-        const h = now.getHours();
-        if (h < 12) greetingEl.textContent = 'Boss.';
-        else if (h < 17) greetingEl.textContent = 'Boss.';
-        else greetingEl.textContent = 'Boss.';
-    }
 }
-setInterval(updateClock, 1000);
-updateClock();
+setInterval(updateChronosEngine, 1000);
+updateChronosEngine();
 
 // ═══════════════════════════════════════════════
 // SYSTEM STATS — live diagnostics
 // ═══════════════════════════════════════════════
 
-// Try to get real battery info
+// Real battery via API
 async function initBattery() {
     try {
         if ('getBattery' in navigator) {
@@ -63,29 +54,28 @@ async function initBattery() {
             battery.addEventListener('levelchange', updateBattery);
             battery.addEventListener('chargingchange', updateBattery);
         }
-    } catch (e) {
-        // Fallback: simulate
-    }
+    } catch (e) {}
 }
 initBattery();
 
-// Memory fluctuation simulation
-setInterval(() => {
-    const currentMemory = Math.floor(58 + Math.random() * 8);
-    statMemory.textContent = currentMemory + '%';
-}, 4000);
-
-// Battery fallback simulation (if no Battery API)
-setInterval(() => {
+// Simulated fluctuations for live dashboard realism
+function simulateSystemMetrics() {
+    // Battery drift (fallback if no Battery API)
     if (!('getBattery' in navigator)) {
-        const el = statBattery;
-        let val = parseInt(el.textContent);
+        let currentBattery = parseInt(statBattery.textContent);
         if (Math.random() > 0.85) {
-            val = Math.max(5, val - 1);
-            el.textContent = val + '%';
+            currentBattery = Math.max(1, Math.min(100, currentBattery + (Math.random() > 0.5 ? 1 : -1)));
+            statBattery.textContent = `${currentBattery}%`;
         }
     }
-}, 5000);
+
+    // Memory fluctuation
+    let currentMemory = parseInt(statMemory.textContent) || 62;
+    let change = Math.floor(Math.random() * 5) - 2;
+    currentMemory = Math.max(45, Math.min(88, currentMemory + change));
+    statMemory.textContent = `${currentMemory}%`;
+}
+setInterval(simulateSystemMetrics, 3000);
 
 // ═══════════════════════════════════════════════
 // TOAST SYSTEM
@@ -140,14 +130,10 @@ if (SpeechRecognition) {
         console.warn("Speech Error:", event.error);
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
             isListening = false;
-            setOrbState('');
-            speakTrigger.textContent = "Tap to Speak";
-            speakTrigger.style.color = '';
+            setOrbState(false);
             showToast('⚠️ Microphone blocked. Allow mic in browser settings.', 'error');
         } else if (event.error === 'no-speech') {
-            if (isListening && !isSpeaking) {
-                setTimeout(startListening, 500);
-            }
+            if (isListening && !isSpeaking) setTimeout(startListening, 500);
         } else if (event.error === 'aborted') {
             // Intentional
         } else {
@@ -170,8 +156,35 @@ if (SpeechRecognition) {
 // ORB STATE MANAGEMENT
 // ═══════════════════════════════════════════════
 
-function setOrbState(state) {
-    mainOrb.className = 'orb-container' + (state ? ' ' + state : '');
+function setOrbState(listening) {
+    const tapText = speakTrigger.querySelector('.tap-text');
+    const tapNode = speakTrigger.querySelector('.tap-node');
+    
+    if (listening) {
+        tapText.textContent = "Listening...";
+        tapText.style.color = "#ff3b30";
+        tapText.style.textShadow = "0 0 8px rgba(255,59,48,0.6)";
+        tapNode.style.background = "#ff3b30";
+        tapNode.style.boxShadow = "0 0 12px #ff3b30";
+        orbCore.style.background = "radial-gradient(circle, #ffffff 0%, #ff3b30 45%, #860000 75%, transparent 100%)";
+        orbCore.style.boxShadow = "0 0 45px #ff3b30";
+    } else if (isSpeaking) {
+        tapText.textContent = "Speaking...";
+        tapText.style.color = "#00ff88";
+        tapText.style.textShadow = "0 0 8px rgba(0,255,136,0.6)";
+        tapNode.style.background = "#00ff88";
+        tapNode.style.boxShadow = "0 0 12px #00ff88";
+        orbCore.style.background = "radial-gradient(circle, #ffffff 0%, #00ff88 45%, #00aa55 75%, transparent 100%)";
+        orbCore.style.boxShadow = "0 0 45px #00ff88";
+    } else {
+        tapText.textContent = "Tap to Speak";
+        tapText.style.color = "";
+        tapText.style.textShadow = "";
+        tapNode.style.background = "";
+        tapNode.style.boxShadow = "";
+        orbCore.style.background = "";
+        orbCore.style.boxShadow = "";
+    }
 }
 
 function startListening() {
@@ -184,17 +197,13 @@ function startListening() {
         return;
     }
     isListening = true;
-    setOrbState('listening');
-    speakTrigger.textContent = "Listening...";
-    speakTrigger.style.color = "#ff4444";
+    setOrbState(true);
     try { recognition.start(); } catch (e) {}
 }
 
 function stopListening() {
     isListening = false;
-    setOrbState('');
-    speakTrigger.textContent = "Tap to Speak";
-    speakTrigger.style.color = "";
+    setOrbState(false);
     if (recognition) { try { recognition.stop(); } catch (e) {} }
 }
 
@@ -227,9 +236,7 @@ function speak(text) {
     if (_ttsAudio) { _ttsAudio.pause(); _ttsAudio = null; }
 
     isSpeaking = true;
-    setOrbState('processing');
-    speakTrigger.textContent = "Speaking...";
-    speakTrigger.style.color = "#00ffaa";
+    setOrbState(false); // sets to speaking state via isSpeaking flag
 
     fetch('/api/tts', {
         method: 'POST',
@@ -270,9 +277,7 @@ function finishSpeaking() {
     if (isListening) {
         setTimeout(startListening, isAndroid ? 500 : 200);
     } else {
-        setOrbState('');
-        speakTrigger.textContent = "Tap to Speak";
-        speakTrigger.style.color = "";
+        setOrbState(false);
     }
 }
 
@@ -307,9 +312,8 @@ async function sendToJarvis(message) {
         try { recognition.abort(); } catch (e) {}
     }
 
-    setOrbState('processing');
-    speakTrigger.textContent = "Thinking...";
-    speakTrigger.style.color = "#00d4ff";
+    isSpeaking = true;
+    setOrbState(false); // will show processing via isSpeaking
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 100000);
@@ -370,10 +374,11 @@ async function sendToJarvis(message) {
 }
 
 // ═══════════════════════════════════════════════
-// TAP TO SPEAK — click handler
+// TAP TO SPEAK — click handlers
 // ═══════════════════════════════════════════════
 
 speakTrigger.addEventListener('click', toggleListening);
+orbCore.addEventListener('click', toggleListening);
 
 // ═══════════════════════════════════════════════
 // HEX BUTTON ACTIONS
@@ -394,26 +399,29 @@ const actionMap = {
     'history': () => sendToJarvis('Show my conversation history'),
 };
 
-document.querySelectorAll('.hex-btn-wrapper').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const action = btn.dataset.action;
+// Hex button clicks
+document.querySelectorAll('.hex-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const action = this.dataset.action;
 
-        // Neon click animation splash
-        const hexSvg = btn.querySelector('svg.hex-svg');
-        const label = btn.querySelector('.hex-label');
-        if (hexSvg) {
-            hexSvg.style.fill = 'rgba(0, 240, 255, 0.4)';
-            hexSvg.style.filter = 'drop-shadow(0 0 15px #00f0ff)';
+        // Interactive ripple pulse effect
+        const svg = this.querySelector('svg.hex-svg');
+        if (svg) {
+            svg.style.stroke = '#ffffff';
             setTimeout(() => {
-                hexSvg.style.fill = 'rgba(4, 18, 38, 0.7)';
-                hexSvg.style.filter = 'drop-shadow(0 0 4px var(--neon-glow))';
-            }, 300);
+                svg.style.stroke = '';
+            }, 200);
         }
 
         if (action && actionMap[action]) {
             actionMap[action]();
         }
     });
+});
+
+// Settings gear click
+$('settings-toggle').addEventListener('click', () => {
+    window.location.href = '/api/admin/panel';
 });
 
 // Bottom nav items
