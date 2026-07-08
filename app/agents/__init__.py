@@ -54,7 +54,8 @@ def create_agent_system(auto_init: bool = False,
     """
     registry = AgentRegistry()
 
-    registry.register(ExecutiveAgent())
+    exec_agent = ExecutiveAgent()
+    registry.register(exec_agent)
     registry.register(ConversationAgent())
     registry.register(PlanningAgent())
     registry.register(KnowledgeResearchAgent())
@@ -78,10 +79,14 @@ def create_agent_system(auto_init: bool = False,
     if auto_init:
         registry.initialize_all()
 
+    # Set registry reference on executive agent for delegation
+    executive = registry.get("executive")
+    if executive:
+        executive._registry = registry
+
     if create_orchestrator:
         from app.orchestrator import AgentOrchestrator
         orch = AgentOrchestrator(registry)
-        executive = registry.get("executive")
         if executive:
             executive._orchestrator = orch
 

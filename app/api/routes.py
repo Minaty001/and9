@@ -6,6 +6,7 @@ import asyncio
 import logging
 import os
 import threading
+import time
 from flask import Blueprint, request, jsonify, Response
 
 from app.core.orchestrator import Orchestrator
@@ -1009,5 +1010,191 @@ def depgraph_module():
         return jsonify(result)
     except Exception as e:
         logger.exception("Depgraph module error")
+        return jsonify({"error": str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════
+# Multi-Agent System API (AND9 Phase 3 — Agent Swarm)
+# ═══════════════════════════════════════════════════════════════
+
+_multi_agent_system = None
+_multi_agent_lock = threading.Lock()
+
+
+def get_multi_agent_system():
+    """Lazy-init singleton for the AND9 multi-agent system.
+
+    Creates all 20 agents, links the AgentOrchestrator to the
+    ExecutiveAgent, and initializes them for use.
+    """
+    global _multi_agent_system
+    if _multi_agent_system is None:
+        with _multi_agent_lock:
+            if _multi_agent_system is None:
+                from app.agents import create_agent_system
+                _multi_agent_system = create_agent_system(
+                    auto_init=True,
+                    create_orchestrator=True,
+                )
+                logger.info(
+                    "Multi-agent system initialised with %d agents",
+                    len(_multi_agent_system.list_agents()),
+                )
+    return _multi_agent_system
+
+
+@api_bp.route("/multi-agent", methods=["POST"])
+def multi_agent_process():
+    """POST /api/multi-agent — Process a message through the multi-agent swarm.
+
+    Body JSON:
+        message (str)  — User input (required).
+        agent   (str)  — Optional: target a specific agent by name.
+        mode    (str)  — "auto" (default) = orchestrator routes it,
+                         "direct" = send directly to specified agent.
+
+    Returns JSON with the response and full agent execution breakdown.
+    """
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    agent_name = (data.get("agent") or "").strip() or None
+    mode = (data.get("mode") or "auto").strip()
+
+    if not message:
+        return jsonify({
+            "response": "Please provide a message.",
+            "agent": None,
+            "sub_agents": [],
+            "agent_results": [],
+            "total_time_ms": 0,
+            "status": "error",
+        }), 400
+
+    start_time = time.perf_counter()
+
+    try:
+        registry = get_multi_agent_system()
+
+        # Direct mode: send to a specific agent
+        if mode == "direct" and agent_name:
+            agent = registry.get(agent_name)
+            if not agent:
+                return jsonify({
+                    "response": f"Agent '{agent_name}' not found. Use GET /api/multi-agent/agents to see available agents.",
+                    "agent": agent_name,
+                    "sub_agents": [],
+                    "agent_results": [],
+                    "total_time_ms": 0,
+                    "status": "error",
+                }), 404
+
+            agent_result = agent(message)
+            elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+            return jsonify({
+                "response": agent_result.response,
+                "agent": agent_name,
+                "sub_agents": [agent_name],
+                "agent_results": [{
+                    "agent": agent_name,
+                    "success": agent_result.success,
+                    "response": agent_result.response,
+                    "confidence": agent_result.confidence,
+                    "latency_ms": agent_result.latency_ms,
+                    "error": agent_result.error,
+                }],
+                "total_time_ms": elapsed_ms,
+                "status": "success" if agent_result.success else "error",
+            })
+
+        # Auto mode: use the orchestrator / executive agent
+        executive = registry.get("executive")
+        if not executive:
+            return jsonify({
+                "response": "Executive agent not available.",
+                "agent": None,
+                "sub_agents": [],
+                "agent_results": [],
+                "total_time_ms": 0,
+                "status": "error",
+            }), 500
+
+        # If the executive has an orchestrator, use it
+        orch = getattr(executive, "_orchestrator", None)
+        if orch is not None:
+            result = orch.run(message)
+        else:
+            result = executive(message)
+
+        elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+
+        # Build sub_agent breakdown
+        sub_agents = []
+        agent_results = []
+
+        if result.data and isinstance(result.data, dict):
+            meta = result.data
+            sub_agent_data = meta.get("sub_agents") or meta.get("agent_results") or []
+            if isinstance(sub_agent_data, list):
+                for sr in sub_agent_data:
+                    if isinstance(sr, dict):
+                        agent_results.append({
+                            "agent": sr.get("agent_name") or sr.get("agent", "unknown"),
+                            "success": sr.get("success", True),
+                            "response": (sr.get("response") or "")[:200],
+                            "confidence": sr.get("confidence", 0.0),
+                            "latency_ms": sr.get("latency_ms", 0),
+                            "error": sr.get("error"),
+                        })
+                        sub_agents.append(agent_results[-1]["agent"])
+
+        if not sub_agents:
+            sub_agents = [result.agent_name or "executive"]
+            agent_results = [{
+                "agent": result.agent_name or "executive",
+                "success": result.success,
+                "response": (result.response or "")[:500],
+                "confidence": result.confidence,
+                "latency_ms": result.latency_ms,
+                "error": result.error,
+            }]
+
+        return jsonify({
+            "response": result.response,
+            "agent": result.agent_name or "executive",
+            "sub_agents": sub_agents,
+            "agent_results": agent_results,
+            "total_time_ms": elapsed_ms,
+            "status": "success" if result.success else "error",
+        })
+
+    except Exception as e:
+        logger.exception("Multi-agent endpoint error")
+        elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+        return jsonify({
+            "response": f"Multi-agent system error: {e}",
+            "agent": None,
+            "sub_agents": [],
+            "agent_results": [],
+            "total_time_ms": elapsed_ms,
+            "status": "error",
+        }), 500
+
+
+@api_bp.route("/multi-agent/agents", methods=["GET"])
+def multi_agent_list():
+    """GET /api/multi-agent/agents — List all registered agents.
+
+    Returns each agent's name, role, status, and basic metrics
+    (invocations, success rate, average latency).
+    """
+    try:
+        registry = get_multi_agent_system()
+        agents = registry.list_agents()
+        return jsonify({
+            "agents": agents,
+            "count": len(agents),
+        })
+    except Exception as e:
+        logger.exception("Multi-agent list error")
         return jsonify({"error": str(e)}), 500
 
