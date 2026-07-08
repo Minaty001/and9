@@ -18,6 +18,8 @@ from datetime import datetime
 
 from app.core.config import SERP_API_KEY, NEWS_API_KEY, NOTES_DIR, IS_TERMUX, IS_WINDOWS
 from app.skills.intent_executor import IntentExecutor
+from app.skills.pc_control import handle_pc_command
+from app.skills.audio_manager import handle_audio_command
 
 logger = logging.getLogger(__name__)
 
@@ -72,28 +74,6 @@ def get_realtime_data(query: str) -> str:
         return f"No data found for '{query}'."
     except Exception as e:
         return f"Search error: {e}"
-
-
-# ── Image Generation ──────────────────────────────────────────
-
-def generate_image_task(prompt: str) -> dict:
-    """Generate an image using SeaArt API. Returns dict with result and image_url."""
-    if not prompt:
-        return {"result": "No image description provided.", "image_url": None}
-    try:
-        from app.skills.img import generate_image
-        filepath, image_url = generate_image(prompt)
-        if filepath and image_url:
-            return {
-                "result": f"Image generated: {prompt}",
-                "image_url": image_url,
-            }
-        elif image_url:
-            return {"result": f"Image generated: {prompt}", "image_url": image_url}
-        return {"result": "Image generation failed. The AI art service may be busy, try again.", "image_url": None}
-    except Exception as e:
-        logger.exception("Image generation error")
-        return {"result": f"Image error: {e}", "image_url": None}
 
 
 # ── Time & Info ───────────────────────────────────────────────
@@ -216,8 +196,8 @@ def handle_device_command(query: str) -> dict:
 
     # Volume
     if "volume" in q:
-        is_up = bool(re.search(r"\b(up|increase|raise|louder)\b", q))
         if IS_TERMUX:
+            is_up = bool(re.search(r"\b(up|increase|raise|louder)\b", q))
             try:
                 if is_up:
                     subprocess.run(["termux-volume", "music", "max"], capture_output=True, timeout=5)
@@ -227,14 +207,35 @@ def handle_device_command(query: str) -> dict:
                     return {"reply": "Volume decreased.", "action": "none"}
             except Exception as e:
                 return {"reply": f"Failed to adjust volume: {e}", "action": "none"}
-        return {"reply": "Adjusting volume.", "action": "volume", "payload": "up" if is_up else "down"}
+        if IS_WINDOWS:
+            from app.skills.pc_control import pc_volume
+            reply = pc_volume("up" if re.search(r"\b(up|increase|raise|louder)\b", q) else "down")
+            return {"reply": reply, "action": "volume", "payload": reply}
+        return {"reply": "Adjusting volume.", "action": "volume", "payload": "up" if bool(re.search(r"\b(up|increase|raise|louder)\b", q)) else "down"}
 
     # Brightness
     if "brightness" in q:
-        return {"reply": "Brightness control is not supported from JARVIS right now.", "action": "none"}
+        if IS_WINDOWS:
+            from app.skills.pc_control import pc_brightness
+            if "up" in q or "increase" in q:
+                return {"reply": pc_brightness("up"), "action": "brightness", "payload": "up"}
+            if "down" in q or "decrease" in q:
+                return {"reply": pc_brightness("down"), "action": "brightness", "payload": "down"}
+            num_match = re.search(r'(\d{1,3})', q)
+            if num_match:
+                val = int(num_match.group(1))
+                if 0 <= val <= 100:
+                    return {"reply": pc_brightness(val), "action": "brightness", "payload": val}
+            return {"reply": pc_brightness("up"), "action": "brightness", "payload": "up"}
+        if IS_TERMUX:
+            return {"reply": "Brightness control not supported via Termux.", "action": "none"}
+        return {"reply": "Brightness control is not available.", "action": "none"}
 
     # Bluetooth
-    if "bluetooth" in q:
+    if "bluetooth" in q and "audio" not in q and "speaker" not in q and "mic" not in q:
+        if IS_WINDOWS:
+            from app.skills.audio_manager import handle_audio_command
+            return handle_audio_command(query)
         return {"reply": "Bluetooth control is not supported from JARVIS right now.", "action": "none"}
 
     # Camera

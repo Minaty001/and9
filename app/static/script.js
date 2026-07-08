@@ -1,366 +1,263 @@
 // ═══════════════════════════════════════════════
-// JARVIS UI — Android-Optimized Voice + Text
-// Voice fixes: en-IN lang, visible mic permission error,
-//              proper restart loop, Hinglish TTS support
+// THE BOSS — Jarvis UI Script
 // ═══════════════════════════════════════════════
 
-const canvas = document.getElementById("particles");
-const statusText = document.getElementById("statusText");
-const hintText = document.getElementById("hintText");
-const voiceTrigger = document.getElementById("voiceTrigger");
-const transcriptText = document.getElementById("transcriptText");
-const responseText = document.getElementById("responseText");
-const textInput = document.getElementById("textInput");
-const sendBtn = document.getElementById("sendBtn");
+'use strict';
 
-// ══════════════ Device Detection ══════════════
 const isAndroid = /android/i.test(navigator.userAgent);
-const isIOS     = /ipad|iphone|ipod/i.test(navigator.userAgent);
-const isMobile  = /mobile|tablet|android/i.test(navigator.userAgent);
 
-// ══════════════ Canvas Setup ══════════════
+// ── DOM refs ─────────────────────────────────────
+const $ = id => document.getElementById(id);
+const speakTrigger = $('speak-trigger');
+const mainOrb = $('main-orb');
+const clockTime = $('clock-time');
+const clockDate = $('clock-date');
+const statBattery = $('stat-battery');
+const statMemory = $('stat-memory');
+const statNetwork = $('stat-network');
+const toastContainer = $('toastContainer');
+const imageDisplay = $('imageDisplay');
+const generatedImg = $('generatedImg');
 
-function setupCanvas(canvasElement) {
-    const rect = canvasElement.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvasElement.width = rect.width * dpr;
-    canvasElement.height = rect.height * dpr;
-    const ctx = canvasElement.getContext("2d");
-    ctx.scale(dpr, dpr);
-    return { ctx, width: rect.width, height: rect.height };
+// ═══════════════════════════════════════════════
+// CLOCK — live every second
+// ═══════════════════════════════════════════════
+
+function updateClock() {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    clockTime.textContent = `${hours}:${minutes} ${ampm}`;
+
+    const options = { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' };
+    clockDate.textContent = now.toLocaleDateString('en-US', options);
+
+    // Update greeting based on time of day
+    const greetingEl = document.querySelector('.greeting-text span');
+    if (greetingEl) {
+        const h = now.getHours();
+        if (h < 12) greetingEl.textContent = 'Boss.';
+        else if (h < 17) greetingEl.textContent = 'Boss.';
+        else greetingEl.textContent = 'Boss.';
+    }
 }
+setInterval(updateClock, 1000);
+updateClock();
 
-let { ctx, width, height } = setupCanvas(canvas);
-let centerX = width / 2;
-let centerY = height / 2;
+// ═══════════════════════════════════════════════
+// SYSTEM STATS — live diagnostics
+// ═══════════════════════════════════════════════
 
-const count = isMobile ? 80 : 150;
-const baseRadius = width * 0.35;
-const particles = [];
-
-for (let i = 0; i < count; i++) {
-    particles.push({
-        angle: Math.random() * Math.PI * 2,
-        radius: baseRadius + Math.random() * (width * 0.1),
-        speed: 0.001 + Math.random() * 0.004,
-        size: 1 + Math.random() * 2
-    });
-}
-
-function animate() {
-    ctx.clearRect(0, 0, width, height);
-    particles.forEach(p => {
-        p.angle += p.speed;
-        const x = centerX + p.radius * Math.cos(p.angle);
-        const y = centerY + p.radius * Math.sin(p.angle);
-        const depth = Math.sin(p.angle);
-        const opacity = 0.2 + (depth + 1) / 2;
-        ctx.fillStyle = `rgba(255,165,0,${opacity * 0.7})`;
-        ctx.beginPath();
-        ctx.arc(x, y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-    });
-    requestAnimationFrame(animate);
-}
-
-// ══════════════ Haptic Feedback ══════════════
-
-function vibrate(pattern) {
-    if (navigator.vibrate) navigator.vibrate(pattern);
-}
-
-// ══════════════ Screen Wake Lock ══════════════
-
-let wakeLock = null;
-
-async function requestWakeLock() {
+// Try to get real battery info
+async function initBattery() {
     try {
-        if ('wakeLock' in navigator) {
-            wakeLock = await navigator.wakeLock.request('screen');
-            wakeLock.addEventListener('release', () => { wakeLock = null; });
+        if ('getBattery' in navigator) {
+            const battery = await navigator.getBattery();
+            function updateBattery() {
+                const level = Math.round(battery.level * 100);
+                statBattery.textContent = level + '%';
+            }
+            updateBattery();
+            battery.addEventListener('levelchange', updateBattery);
+            battery.addEventListener('chargingchange', updateBattery);
         }
-    } catch (e) {}
+    } catch (e) {
+        // Fallback: simulate
+    }
+}
+initBattery();
+
+// Memory fluctuation simulation
+setInterval(() => {
+    const currentMemory = Math.floor(58 + Math.random() * 8);
+    statMemory.textContent = currentMemory + '%';
+}, 4000);
+
+// Battery fallback simulation (if no Battery API)
+setInterval(() => {
+    if (!('getBattery' in navigator)) {
+        const el = statBattery;
+        let val = parseInt(el.textContent);
+        if (Math.random() > 0.85) {
+            val = Math.max(5, val - 1);
+            el.textContent = val + '%';
+        }
+    }
+}, 5000);
+
+// ═══════════════════════════════════════════════
+// TOAST SYSTEM
+// ═══════════════════════════════════════════════
+
+function showToast(msg, type = '', duration = 3000) {
+    const el = document.createElement('div');
+    el.className = 'toast-msg ' + type;
+    el.textContent = msg;
+    toastContainer.appendChild(el);
+    requestAnimationFrame(() => {
+        el.classList.add('show');
+        setTimeout(() => {
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 350);
+        }, duration);
+    });
 }
 
-function releaseWakeLock() {
-    if (wakeLock) { wakeLock.release(); wakeLock = null; }
-}
-
-// ══════════════ Voice + Chat State ══════════════
+// ═══════════════════════════════════════════════
+// VOICE RECOGNITION
+// ═══════════════════════════════════════════════
 
 let isListening = false;
-let isSpeaking  = false;
+let isSpeaking = false;
 let recognition = null;
-let _ttsAudio   = null; // current HTMLAudioElement
-
-// ══════════════ Speech Recognition Setup ══════════════
+let _ttsAudio = null;
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (SpeechRecognition) {
     recognition = new SpeechRecognition();
-    recognition.continuous      = false;
-    recognition.interimResults  = !isAndroid; // Android interim = buggy
+    recognition.continuous = false;
+    recognition.interimResults = !isAndroid;
     recognition.maxAlternatives = 1;
-
-    // ── CRITICAL FIX: use en-IN for Hinglish support ──────────
-    // 'en-US' rejects Indian accents and Hindi words.
-    // 'en-IN' (Indian English) accepts Hinglish naturally on Chrome/Android.
     recognition.lang = 'en-IN';
 
     recognition.onresult = (event) => {
-        let interimTranscript = '';
-        let finalTranscript   = '';
-
+        let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
-            const t = event.results[i][0].transcript;
-            if (event.results[i].isFinal) finalTranscript += t;
-            else interimTranscript += t;
+            if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+            }
         }
-
-        if (interimTranscript) {
-            transcriptText.textContent = '🎤 ' + interimTranscript;
-            transcriptText.style.opacity = '0.6';
-        }
-
         if (finalTranscript) {
-            transcriptText.textContent = '🎤 ' + finalTranscript;
-            transcriptText.style.opacity = '1';
+            showToast('🎤 ' + finalTranscript, '', 2000);
             sendToJarvis(finalTranscript);
         }
     };
 
     recognition.onerror = (event) => {
         console.warn("Speech Error:", event.error);
-
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-            // ── VISIBLE ERROR — previously this was silent ──
             isListening = false;
-            updateUI('', 'MIC BLOCKED');
-            hintText.textContent = '⚠ ALLOW MIC IN BROWSER SETTINGS · TAP ORB TO RETRY';
-            hintText.style.color = '#ff4444';
-            responseText.textContent = '🎤 Microphone access blocked. Open browser settings → allow mic for this site, then tap the orb again.';
-            responseText.style.opacity = '1';
-            vibrate([100, 50, 100]);
-
+            setOrbState('');
+            speakTrigger.textContent = "Tap to Speak";
+            speakTrigger.style.color = '';
+            showToast('⚠️ Microphone blocked. Allow mic in browser settings.', 'error');
         } else if (event.error === 'no-speech') {
-            // Silence detected — restart if still meant to be listening
             if (isListening && !isSpeaking) {
                 setTimeout(startListening, 500);
             }
-        } else if (event.error === 'network') {
-            updateUI('', 'NO NETWORK');
-            hintText.textContent = 'CHECK INTERNET CONNECTION';
         } else if (event.error === 'aborted') {
-            // Intentional — do nothing
+            // Intentional
         } else {
-            // Other transient errors — retry
             if (isListening && !isSpeaking) setTimeout(startListening, 300);
         }
     };
 
     recognition.onend = () => {
-        // Auto-restart loop while listening is active
         if (isListening && !isSpeaking) {
             setTimeout(() => {
                 if (isListening && !isSpeaking) {
-                    try { recognition.start(); } catch(e) {}
+                    try { recognition.start(); } catch (e) {}
                 }
             }, isAndroid ? 350 : 120);
         }
     };
-} else {
-    // No Speech API
-    console.warn("Web Speech API not supported in this browser.");
 }
 
-// ══════════════ sendToJarvis ══════════════
+// ═══════════════════════════════════════════════
+// ORB STATE MANAGEMENT
+// ═══════════════════════════════════════════════
 
-async function sendToJarvis(message) {
-    if (!message.trim()) return;
+function setOrbState(state) {
+    mainOrb.className = 'orb-container' + (state ? ' ' + state : '');
+}
 
-    // Admin shortcut
-    const msgLower = message.toLowerCase().replace(/\s+/g, ' ').trim();
-    if (msgLower.includes('admin access') || msgLower.includes('admin panel') || msgLower === 'admin') {
-        speak("Opening admin panel. Authentication required.");
-        vibrate([50, 30, 50]);
-        setTimeout(() => { window.location.href = '/api/admin/panel'; }, 1500);
+function startListening() {
+    if (!recognition) {
+        showToast('Voice not supported — use Chrome', 'error');
         return;
     }
-
-    // Device control commands
-    if (typeof DeviceControl !== 'undefined') {
-        const deviceResult = DeviceControl.handle(message);
-        if (deviceResult) {
-            if (deviceResult instanceof Promise) {
-                const result = await deviceResult;
-                if (result) {
-                    transcriptText.textContent = '🎤 ' + message;
-                    responseText.textContent = result.reply;
-                    responseText.style.opacity = '1';
-                    vibrate(30);
-                    if (result.speak) speak(result.speak);
-                    return;
-                }
-            } else {
-                transcriptText.textContent = '🎤 ' + message;
-                responseText.textContent = deviceResult.reply;
-                responseText.style.opacity = '1';
-                vibrate(30);
-                if (deviceResult.speak) speak(deviceResult.speak);
-                return;
-            }
-        }
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        showToast('HTTPS required for voice', 'error');
+        return;
     }
+    isListening = true;
+    setOrbState('listening');
+    speakTrigger.textContent = "Listening...";
+    speakTrigger.style.color = "#ff4444";
+    try { recognition.start(); } catch (e) {}
+}
 
-    // Stop listening while processing
-    if (recognition && isListening) {
-        try { recognition.abort(); } catch(e) {}
+function stopListening() {
+    isListening = false;
+    setOrbState('');
+    speakTrigger.textContent = "Tap to Speak";
+    speakTrigger.style.color = "";
+    if (recognition) { try { recognition.stop(); } catch (e) {} }
+}
+
+function toggleListening() {
+    if (isSpeaking) {
+        stopSpeaking();
+        return;
     }
-
-    updateUI('processing', 'PROCESSING...');
-    responseText.textContent = '⏳ Thinking...';
-    responseText.style.opacity = '0.5';
-    vibrate(50);
-
-    const controller = new AbortController();
-    const timeoutId  = setTimeout(() => controller.abort(), 100000); // 100s — matches backend 90s fallback
-
-    try {
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message }),
-            signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-        const data = await response.json();
-
-        if (data.reply) {
-            responseText.textContent = data.reply;
-            responseText.style.opacity = '1';
-            vibrate(30);
-
-            // Auto-open YouTube if a song was found
-            if (data.youtube_url) {
-                setTimeout(() => {
-                    window.open(data.youtube_url, '_blank');
-                }, 800);
-            }
-
-            // Start timer if the response contains one
-            if (data.metadata && data.metadata.timer) {
-                const t = data.metadata.timer;
-                TimerManager.startTimerDisplay(t.id, t.remaining, t.label);
-            }
-
-            speak(data.reply);
-
-            // Trigger remote device action if returned from backend
-            if (data.intent || (data.metadata && data.metadata.task === "device" && data.metadata.action && data.metadata.action !== "none")) {
-                if (typeof DeviceControl !== 'undefined' && DeviceControl.handleRemoteAction) {
-                    DeviceControl.handleRemoteAction(data);
-                }
-            }
-        }
-
-        // Notify panel.js (agent badge + auto-refresh)
-        if (typeof window.onJarvisResponse === 'function') {
-            window.onJarvisResponse(data);
-        }
-
-        if (data.image_url) {
-            const display = document.getElementById("imageDisplay");
-            const img     = document.getElementById("generatedImg");
-            img.src = data.image_url;
-            display.style.display = 'flex';
-            vibrate([50, 30, 50]);
-        } else if (data.error) {
-            updateUI('', 'NEURAL ERROR');
-            responseText.textContent = '⚠️ ' + (data.error || 'Unknown error');
-            speak("I encountered a neural link error.");
-        }
-
-    } catch (error) {
-        clearTimeout(timeoutId);
-        vibrate([100, 50, 100]);
-        if (error.name === 'AbortError') {
-            updateUI('', 'TIMEOUT');
-            responseText.textContent = '⏱️ Request timed out';
-            speak("The cognitive link timed out.");
-        } else {
-            updateUI('', 'OFFLINE');
-            responseText.textContent = '🔌 Connection lost';
-            speak("Connection to core server lost.");
-        }
+    if (isListening) {
+        stopListening();
+    } else {
+        startListening();
     }
 }
 
-// ══════════════ TTS — Server-side Edge TTS (works on Render.com) ══════════════
-// Calls /api/tts which uses Microsoft Edge TTS neural voices server-side.
-// Returns MP3 audio played via HTMLAudioElement — works on ALL browsers.
-// No browser Speech Synthesis API dependency.
+// ═══════════════════════════════════════════════
+// TTS — Server-side Edge TTS
+// ═══════════════════════════════════════════════
 
-function _cleanForTTS(text) {
-    return text
+function speak(text) {
+    const cleaned = text
         .replace(/https?:\/\/\S+|www\.\S+/gi, '')
         .replace(/[#$%^&*_+{}\[\]|\\<>~`]/g, '')
         .replace(/[@:;]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
-}
-
-async function speak(text) {
-    const cleaned = _cleanForTTS(text);
     if (!cleaned) { finishSpeaking(); return; }
 
-    // Stop mic while speaking
-    if (recognition) { try { recognition.abort(); } catch(e) {} }
-
-    // Stop any current audio
+    if (recognition) { try { recognition.abort(); } catch (e) {} }
     if (_ttsAudio) { _ttsAudio.pause(); _ttsAudio = null; }
 
     isSpeaking = true;
-    updateUI('speaking', 'SPEAKING...');
+    setOrbState('processing');
+    speakTrigger.textContent = "Speaking...";
+    speakTrigger.style.color = "#00ffaa";
 
-    try {
-        const resp = await fetch('/api/tts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: cleaned }),
-        });
-
-        if (!resp.ok) {
-            console.warn('TTS server error:', resp.status);
-            finishSpeaking();
-            return;
-        }
-
-        const blob = await resp.blob();
-        const url  = URL.createObjectURL(blob);
+    fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleaned }),
+    })
+    .then(resp => {
+        if (!resp.ok) { finishSpeaking(); return null; }
+        return resp.blob();
+    })
+    .then(blob => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         _ttsAudio = audio;
-
         audio.onended = () => {
             URL.revokeObjectURL(url);
             _ttsAudio = null;
             finishSpeaking();
         };
-        audio.onerror = (e) => {
-            console.warn('Audio playback error:', e);
+        audio.onerror = () => {
             URL.revokeObjectURL(url);
             _ttsAudio = null;
             finishSpeaking();
         };
-
-        // Android requires user-gesture to play — we're inside a tap/send handler so this is fine
-        await audio.play();
-
-    } catch (err) {
-        console.warn('TTS fetch failed:', err);
-        finishSpeaking();
-    }
+        audio.play().catch(() => finishSpeaking());
+    })
+    .catch(() => finishSpeaking());
 }
 
 function stopSpeaking() {
@@ -373,239 +270,188 @@ function finishSpeaking() {
     if (isListening) {
         setTimeout(startListening, isAndroid ? 500 : 200);
     } else {
-        updateUI('', 'SYSTEM ONLINE');
+        setOrbState('');
+        speakTrigger.textContent = "Tap to Speak";
+        speakTrigger.style.color = "";
     }
 }
 
-// ══════════════ UI State Manager ══════════════
+// ═══════════════════════════════════════════════
+// SEND TO JARVIS (API call)
+// ═══════════════════════════════════════════════
 
-function updateUI(state, text) {
-    if (statusText) statusText.textContent = text;
-    if (voiceTrigger) voiceTrigger.className = 'center ' + state;
-    if (!hintText) return;
-    // Reset color on any state change
-    hintText.style.color = '';
+async function sendToJarvis(message) {
+    if (!message.trim()) return;
 
-    if (state === 'listening') {
-        hintText.textContent = 'LISTENING... TAP ORB TO STOP';
-    } else if (state === 'processing') {
-        hintText.textContent = 'PROCESSING NEURAL QUERY...';
-    } else if (state === 'speaking') {
-        hintText.textContent = 'JARVIS IS SPEAKING... TAP TO INTERRUPT';
-    } else {
-        hintText.textContent = isListening ? 'ALWAYS ON | READY' : 'TAP ORB FOR VOICE · TYPE BELOW';
-    }
-}
-
-// ══════════════ Voice Toggle ══════════════
-
-function toggleListening() {
-    if (isSpeaking) {
-        stopSpeaking();
-        vibrate(30);
+    // Admin shortcut
+    if (/admin\s*(panel|access)?$/i.test(message.trim())) {
+        window.location.href = '/api/admin/panel';
         return;
     }
 
-    vibrate(50);
-
-    if (isListening) {
-        isListening = false;
-        releaseWakeLock();
-        if (recognition) { try { recognition.stop(); } catch(e) {} }
-        updateUI('', 'SYSTEM ONLINE');
-        transcriptText.textContent = '';
-    } else {
-        requestWakeLock();
-        startListening();
-    }
-}
-
-function startListening() {
-    if (!recognition) {
-        hintText.textContent = 'VOICE NOT SUPPORTED — USE CHROME ON ANDROID';
-        hintText.style.color = '#ff4444';
-        textInput.focus();
-        return;
+    // Check device control first
+    if (typeof DeviceControl !== 'undefined') {
+        const dr = DeviceControl.handle(message);
+        if (dr) {
+            const result = dr instanceof Promise ? await dr : dr;
+            if (result) {
+                showToast('⚡ ' + result.reply, 'success', 3000);
+                if (result.speak) speak(result.speak);
+                return;
+            }
+        }
     }
 
-    // Check if page is served over HTTPS (required for mic on mobile)
-    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-        hintText.textContent = '⚠ HTTPS REQUIRED FOR VOICE';
-        hintText.style.color = '#ff4444';
-        return;
+    // Stop mic while processing
+    if (recognition && isListening) {
+        try { recognition.abort(); } catch (e) {}
     }
 
-    isListening = true;
-    updateUI('listening', 'LISTENING...');
+    setOrbState('processing');
+    speakTrigger.textContent = "Thinking...";
+    speakTrigger.style.color = "#00d4ff";
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 100000);
 
     try {
-        recognition.start();
-    } catch (e) {
-        // InvalidStateError = already started — safe to ignore
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (data.reply) {
+            showToast('⚡ ' + data.reply.slice(0, 60) + (data.reply.length > 60 ? '...' : ''), 'success', 3000);
+            speak(data.reply);
+        }
+
+        // Image display
+        if (data.image_url) {
+            generatedImg.src = data.image_url;
+            imageDisplay.style.display = 'flex';
+        }
+
+        // YouTube link
+        if (data.youtube_url) {
+            window.open(data.youtube_url, '_blank');
+        }
+
+        // Timer
+        if (data.metadata && data.metadata.timer) {
+            const t = data.metadata.timer;
+            if (typeof TimerManager !== 'undefined') {
+                TimerManager.startTimerDisplay(t.id, t.remaining, t.label);
+            }
+        }
+
+        if (data.error) {
+            showToast('⚠️ ' + data.error, 'error');
+        }
+
+        // Device remote action
+        if (data.intent || (data.metadata && data.metadata.task === 'device' && data.metadata.action && data.metadata.action !== 'none')) {
+            if (typeof DeviceControl !== 'undefined' && DeviceControl.handleRemoteAction) {
+                DeviceControl.handleRemoteAction(data);
+            }
+        }
+
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            showToast('⏱️ Request timed out', 'error');
+        } else {
+            showToast('🔌 Connection lost', 'error');
+        }
     }
 }
 
-// ══════════════ Text Input ══════════════
+// ═══════════════════════════════════════════════
+// TAP TO SPEAK — click handler
+// ═══════════════════════════════════════════════
 
-function sendTypedMessage() {
-    const msg = textInput.value.trim();
-    if (!msg) return;
-    transcriptText.textContent = '⌨️ ' + msg;
-    textInput.value = '';
-    textInput.blur(); // hide keyboard on Android
-    sendToJarvis(msg);
-}
+speakTrigger.addEventListener('click', toggleListening);
 
-// ══════════════ Event Listeners ══════════════
+// ═══════════════════════════════════════════════
+// HEX BUTTON ACTIONS
+// ═══════════════════════════════════════════════
 
-// Touch events for orb (faster than click on Android)
-let touchHandled = false;
+const actionMap = {
+    'voice': () => toggleListening(),
+    'apps': () => sendToJarvis('Show me my apps'),
+    'browser': () => sendToJarvis('Open browser and search'),
+    'music': () => sendToJarvis('Play some music'),
+    'notes': () => sendToJarvis('Show my notes'),
+    'ai-chat': () => sendToJarvis('Start AI chat session'),
+    'tasks': () => sendToJarvis('Show my tasks and goals'),
+    'weather': () => sendToJarvis("What's the weather today?"),
+    'news': () => sendToJarvis('Latest news'),
+    'settings': () => { window.location.href = '/api/admin/panel'; },
+    'jarvis': () => sendToJarvis('What can you do?'),
+    'history': () => sendToJarvis('Show my conversation history'),
+};
 
-voiceTrigger.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    touchHandled = true;
-    toggleListening();
-    setTimeout(() => { touchHandled = false; }, 300);
-}, { passive: false });
+document.querySelectorAll('.hex-btn-wrapper').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
 
-voiceTrigger.addEventListener('click', (e) => {
-    if (touchHandled) return;
-    toggleListening();
+        // Neon click animation splash
+        const hexSvg = btn.querySelector('svg.hex-svg');
+        const label = btn.querySelector('.hex-label');
+        if (hexSvg) {
+            hexSvg.style.fill = 'rgba(0, 240, 255, 0.4)';
+            hexSvg.style.filter = 'drop-shadow(0 0 15px #00f0ff)';
+            setTimeout(() => {
+                hexSvg.style.fill = 'rgba(4, 18, 38, 0.7)';
+                hexSvg.style.filter = 'drop-shadow(0 0 4px var(--neon-glow))';
+            }, 300);
+        }
+
+        if (action && actionMap[action]) {
+            actionMap[action]();
+        }
+    });
 });
 
-// Text input
-sendBtn.addEventListener('click', sendTypedMessage);
-textInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); sendTypedMessage(); }
+// Bottom nav items
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const action = item.dataset.action;
+        if (action && actionMap[action]) {
+            actionMap[action]();
+        }
+    });
 });
 
-// Android keyboard resize
+// Center trigger button
+$('center-trigger').addEventListener('click', () => {
+    sendToJarvis('Home');
+});
+
+// ═══════════════════════════════════════════════
+// IMAGE OVERLAY — close on tap
+// ═══════════════════════════════════════════════
+
+imageDisplay.addEventListener('click', function() {
+    this.style.display = 'none';
+});
+
+// ═══════════════════════════════════════════════
+// KEYBOARD / VIEWPORT (Android keyboard fix)
+// ═══════════════════════════════════════════════
+
 if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => {
         document.body.style.height = window.visualViewport.height + 'px';
     });
 }
 
-// Image overlay close
-document.getElementById("imageDisplay").addEventListener('click', function() {
-    this.style.display = 'none';
-});
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
 
-// Orientation change
-window.addEventListener('orientationchange', () => {
-    setTimeout(() => {
-        const result = setupCanvas(canvas);
-        ctx = result.ctx; width = result.width; height = result.height;
-        centerX = width / 2; centerY = height / 2;
-        resizeBg();
-    }, 300);
-});
-
-// Visibility change (Android tab switch)
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && isListening) requestWakeLock();
-    // Edge TTS audio pauses automatically when tab is hidden (HTMLAudioElement behavior)
-});
-
-// ══════════════ Init ══════════════
-animate();
-updateUI('', 'SYSTEM ONLINE');
-console.log(`JARVIS v5 | ${isAndroid ? 'Android' : isIOS ? 'iOS' : 'Desktop'} | Voice: ${!!recognition} | TTS: ${!!window.speechSynthesis}`);
-
-// ══════════════ Sci-Fi Solar System ══════════════
-const bgCanvas = document.getElementById("bgCanvas");
-const bgCtx    = bgCanvas.getContext("2d");
-
-function resizeBg() {
-    bgCanvas.width  = window.innerWidth;
-    bgCanvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resizeBg);
-resizeBg();
-
-const planets = [
-    { radius: 140, size: 2.5, speed: 0.006,  color: "#00ffff", angle: Math.random() * Math.PI * 2, hasRings: false },
-    { radius: 210, size: 4.5, speed: 0.004,  color: "#ff4444", angle: Math.random() * Math.PI * 2, hasRings: false },
-    { radius: 310, size: 6.5, speed: 0.003,  color: "#ffb700", angle: Math.random() * Math.PI * 2, hasRings: false },
-    { radius: 420, size: 5,   speed: 0.002,  color: "#00ff88", angle: Math.random() * Math.PI * 2, hasRings: false },
-    { radius: 540, size: 9,   speed: 0.0012, color: "#0088ff", angle: Math.random() * Math.PI * 2, hasRings: true  },
-    { radius: 680, size: 3.5, speed: 0.0009, color: "#ff00ff", angle: Math.random() * Math.PI * 2, hasRings: false },
-    { radius: 840, size: 3,   speed: 0.0006, color: "#aaddff", angle: Math.random() * Math.PI * 2, hasRings: false },
-];
-
-const numStars = isMobile ? 200 : 400;
-const stars = [];
-for (let i = 0; i < numStars; i++) {
-    stars.push({
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
-        size: Math.random() * 1.5,
-        opacity: Math.random(),
-    });
-}
-
-function animateSolarSystem() {
-    bgCtx.fillStyle = "rgba(3, 5, 12, 0.3)";
-    bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-
-    const cx = bgCanvas.width / 2;
-    const cy = bgCanvas.height / 2;
-
-    stars.forEach(star => {
-        bgCtx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
-        bgCtx.beginPath();
-        bgCtx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-        bgCtx.fill();
-
-        star.opacity += (Math.random() - 0.5) * 0.03;
-        if (star.opacity < 0.05) star.opacity = 0.05;
-        if (star.opacity > 1)    star.opacity = 1;
-
-        star.x -= 0.15;
-        if (star.x < 0) { star.x = bgCanvas.width; star.y = Math.random() * bgCanvas.height; }
-    });
-
-    planets.forEach(p => {
-        p.angle += p.speed;
-        const px = cx + Math.cos(p.angle) * p.radius;
-        const py = cy + Math.sin(p.angle) * p.radius;
-
-        bgCtx.beginPath();
-        bgCtx.moveTo(cx, cy);
-        bgCtx.lineTo(px, py);
-        bgCtx.strokeStyle = "rgba(255, 255, 255, 0.03)";
-        bgCtx.lineWidth = 1;
-        bgCtx.stroke();
-
-        bgCtx.shadowBlur  = isMobile ? 15 : 25;
-        bgCtx.shadowColor = p.color;
-        bgCtx.fillStyle   = p.color;
-        bgCtx.beginPath();
-        bgCtx.arc(px, py, p.size, 0, Math.PI * 2);
-        bgCtx.fill();
-        bgCtx.shadowBlur = 0;
-
-        if (p.hasRings) {
-            bgCtx.beginPath();
-            bgCtx.ellipse(px, py, p.size * 2.8, p.size * 0.8, p.angle, 0, Math.PI * 2);
-            bgCtx.strokeStyle = "rgba(0, 136, 255, 0.6)";
-            bgCtx.lineWidth = 1.5;
-            bgCtx.stroke();
-
-            bgCtx.beginPath();
-            bgCtx.ellipse(px, py, p.size * 4, p.size * 1.1, p.angle, 0, Math.PI * 2);
-            bgCtx.strokeStyle = "rgba(0, 136, 255, 0.2)";
-            bgCtx.lineWidth = 1;
-            bgCtx.stroke();
-        }
-    });
-
-    requestAnimationFrame(animateSolarSystem);
-}
-
-animateSolarSystem();
-
-// Close image display on click
-document.getElementById('imageDisplay').addEventListener('click', function() {
-    this.style.display = 'none';
-});
+console.log('THE BOSS UI | Voice: ' + !!recognition + ' | Android: ' + isAndroid);
+showToast('⚡ SYSTEM ONLINE', 'success', 2000);

@@ -313,19 +313,6 @@ def clear_data():
         return jsonify({"error": str(e)}), 500
 
 
-@admin_bp.route("/images", methods=["GET"])
-@admin_required
-def list_images():
-    """List all generated images."""
-    try:
-        from app.skills.img import list_generated_images
-        images = list_generated_images()
-        return jsonify({"images": images})
-    except Exception as e:
-        logger.error(f"Failed to list images: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
 # ═══════════════════════════════════════════════════════════════
 # Daily Activity Log Endpoints
 # ═══════════════════════════════════════════════════════════════

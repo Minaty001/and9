@@ -15,7 +15,6 @@ AGENT_REGISTRY = {
     "coding": CodingAgent,
     "research": ResearchAgent,
     "search": AssistantAgent,
-    "image": AssistantAgent,
     "chat": AssistantAgent,
     "device": AssistantAgent,
 }

@@ -1,233 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#03050c">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>JARVIS — AI Assistant</title>
-  <meta name="description" content="JARVIS — Your personal cognitive AI assistant. Voice-powered, memory-aware, goal-tracking, Android-optimized.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="jarvis_v2.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#020813">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>THE BOSS - Jarvis UI</title>
+    <link rel="stylesheet" href="style.css">
 </head>
+<body>
 
-<body class="android-ui">
+    <div class="wrapper">
+        <header class="header">
+            <div class="brand-section">
+                <div class="logo-container">
+                    <div class="logo-icon"></div>
+                    <span class="logo-text">THE BOSS</span>
+                </div>
+                <h1 class="greeting-text">Good Evening, <span>Boss.</span></h1>
+                <p class="sub-greeting">How can I help you today?</p>
+            </div>
+            
+            <div class="time-card">
+                <div class="time-display" id="clock-time">12:45 PM</div>
+                <div class="date-display" id="clock-date">Friday, 04 July 2025</div>
+            </div>
+        </header>
 
-  <!-- ═══ BACKGROUND CANVAS ═══ -->
-  <canvas id="bgCanvas" class="bg-canvas"></canvas>
+        <div class="main-content-layout">
+            
+            <div class="left-panel">
+                <div class="hex-btn-wrapper" data-action="voice">
+                    <div class="hex-btn">
+                        <svg class="hex-svg" viewBox="0 0 100 100"><polygon points="50,1 98,25 98,75 50,99 2,75 2,25" /></svg>
+                        <div class="hex-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg></div>
+                    </div>
+                    <span class="hex-label">Voice</span>
+                </div>
 
-  <!-- ═══ TOP STATUS BAR ═══ -->
-  <div class="topbar" id="topbar">
-    <button id="menuBtn" class="icon-btn" aria-label="Open Menu" title="Open Menu">
-      <span class="icon-menu">☰</span>
-    </button>
-    <div class="topbar-center">
-      <div class="jarvis-logo">⚡ JARVIS</div>
-      <div class="status-dot" id="statusDot"></div>
-    </div>
-    <div class="topbar-right">
-      <button id="memoryBtn" class="icon-btn" aria-label="Memory" title="Memory Recall" id="memoryRecallBtn">🧠</button>
-      <button id="profileBtn" class="icon-btn" aria-label="Profile">👤</button>
-    </div>
-  </div>
+                <div class="hex-btn-wrapper" data-action="apps">
+                    <div class="hex-btn">
+                        <svg class="hex-svg" viewBox="0 0 100 100"><polygon points="50,1 98,25 98,75 50,99 2,75 2,25" /></svg>
+                        <div class="hex-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></div>
+                    </div>
+                    <span class="hex-label">Apps</span>
+                </div>
 
-  <!-- ═══ SIDE PANEL (Drawer) ═══ -->
-  <div id="sidePanel" class="side-panel">
-    <div class="side-panel-header">
-      <span>⚡ JARVIS HQ</span>
-      <button id="closeSidePanel" class="close-btn">✕</button>
-    </div>
+                <div class="hex-btn-wrapper" data-action="browser">
+                    <div class="hex-btn">
+                        <svg class="hex-svg" viewBox="0 0 100 100"><polygon points="50,1 98,25 98,75 50,99 2,75 2,25" /></svg>
+                        <div class="hex-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg></div>
+                    </div>
+                    <span class="hex-label">Browser</span>
+                </div>
 
-    <!-- Proactive Briefing Card -->
-    <div class="briefing-card" id="briefingCard">
-      <div class="briefing-time" id="briefingTime">--:--</div>
-      <div class="briefing-greeting" id="briefingGreeting">Loading...</div>
-      <div class="briefing-tip" id="briefingTip"></div>
-    </div>
+                <div class="hex-btn-wrapper" data-action="music">
+                    <div class="hex-btn">
+                        <svg class="hex-svg" viewBox="0 0 100 100"><polygon points="50,1 98,25 98,75 50,99 2,75 2,25" /></svg>
+                        <div class="hex-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg></div>
+                    </div>
+                    <span class="hex-label">Music</span>
+                </div>
 
-    <!-- Productivity Streak -->
-    <div class="streak-banner" id="streakBanner">
-      <span class="streak-icon">🔥</span>
-      <span class="streak-text" id="streakText">Loading streak...</span>
-    </div>
+                <div class="hex-btn-wrapper" data-action="notes">
+                    <div class="hex-btn">
+                        <svg class="hex-svg" viewBox="0 0 100 100"><polygon points="50,1 98,25 98,75 50,99 2,75 2,25" /></svg>
+                        <div class="hex-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div>
+                    </div>
+                    <span class="hex-label">Notes</span>
+                </div>
+            </div>
 
-    <!-- Goals Section -->
-    <div class="panel-section">
-      <div class="panel-section-title">🎯 Active Goals</div>
-      <div id="goalsList" class="panel-list">
-        <div class="panel-loading">Loading...</div>
-      </div>
-      <form id="addGoalForm" class="panel-add-form">
-        <input id="newGoalInput" type="text" placeholder="Add new goal..." autocomplete="off">
-        <button type="submit">+</button>
-      </form>
-    </div>
+            <div class="center-panel">
+                <div class="orb-container" id="main-orb">
+                    <div class="orb-layer orb-ring-3"></div>
+                    <div class="orb-layer orb-ring-2"></div>
+                    <div class="orb-layer orb-ring-1"></div>
+                    <div class="orb-layer orb-core"></div>
+                </div>
+                <div class="speak-text" id="speak-trigger">Tap to Speak</div>
+            </div>
 
-    <!-- Reminders Section -->
-    <div class="panel-section">
-      <div class="panel-section-title">🔔 Upcoming Reminders</div>
-      <div id="eventsList" class="panel-list">
-        <div class="panel-loading">Loading...</div>
-      </div>
-    </div>
+            <div class="right-panel">
+                <div class="hex-btn-wrapper" data-action="ai-chat">
+                    <div class="hex-btn">
+                        <svg class="hex-svg" viewBox="0 0 100 100"><polygon points="50,1 98,25 98,75 50,99 2,75 2,25" /></svg>
+                        <div class="hex-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg></div>
+                    </div>
+                    <span class="hex-label">AI Chat</span>
+                </div>
 
-    <!-- Quick Actions -->
-    <div class="panel-section">
-      <div class="panel-section-title">⚡ Quick Ask</div>
-      <div class="quick-chips" id="dynamicChips">
-        <button class="chip" data-msg="Aaj ka daily review do">📋 Daily Review</button>
-        <button class="chip" data-msg="Mera goal list batao">🎯 My Goals</button>
-        <button class="chip" data-msg="Upcoming reminders batao">🔔 Reminders</button>
-        <button class="chip" data-msg="Koi achha soft song laga do">🎵 Play Music</button>
-        <button class="chip" data-msg="Humne kya baat ki thi">🧠 Memory</button>
-        <button class="chip" data-msg="Focus improve karne ka tip do">💡 Focus Tip</button>
-      </div>
-    </div>
-  </div>
+                <div class="hex-btn-wrapper" data-action="tasks">
+                    <div class="hex-btn">
+                        <svg class="hex-svg" viewBox="0 0 100 100"><polygon points="50,1 98,25 98,75 50,99 2,75 2,25" /></svg>
+                        <div class="hex-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg></div>
+                    </div>
+                    <span class="hex-label">Tasks</span>
+                </div>
 
-  <!-- Overlay for sidebar -->
-  <div id="sideOverlay" class="side-overlay"></div>
+                <div class="hex-btn-wrapper" data-action="weather">
+                    <div class="hex-btn">
+                        <svg class="hex-svg" viewBox="0 0 100 100"><polygon points="50,1 98,25 98,75 50,99 2,75 2,25" /></svg>
+                        <div class="hex-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg></div>
+                    </div>
+                    <span class="hex-label">Weather</span>
+                </div>
 
-  <!-- ═══ MEMORY RECALL DRAWER ═══ -->
-  <div id="memoryDrawer" class="memory-drawer">
-    <div class="memory-drawer-header">
-      <span>🧠 Memory Recall</span>
-      <button id="closeMemoryDrawer" class="close-btn">✕</button>
-    </div>
-    <div class="memory-search-bar">
-      <input id="memorySearchInput" type="text" placeholder="Search past conversations..." autocomplete="off">
-      <button id="memorySearchBtn">🔍</button>
-    </div>
-    <div class="memory-stats" id="memoryStats"></div>
-    <div class="memory-results" id="memoryResults">
-      <div class="panel-empty">Search karo ya bol "yaad hai kya..." 💭</div>
-    </div>
-    <div class="memory-sessions" id="memorySessions"></div>
-  </div>
+                <div class="hex-btn-wrapper" data-action="news">
+                    <div class="hex-btn">
+                        <svg class="hex-svg" viewBox="0 0 100 100"><polygon points="50,1 98,25 98,75 50,99 2,75 2,25" /></svg>
+                        <div class="hex-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path></svg></div>
+                    </div>
+                    <span class="hex-label">News</span>
+                </div>
 
-  <!-- ═══ MAIN CHAT CONTAINER ═══ -->
-  <div class="main-container" id="mainContainer">
+                <div class="hex-btn-wrapper" data-action="settings">
+                    <div class="hex-btn">
+                        <svg class="hex-svg" viewBox="0 0 100 100"><polygon points="50,1 98,25 98,75 50,99 2,75 2,25" /></svg>
+                        <div class="hex-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg></div>
+                    </div>
+                    <span class="hex-label">Settings</span>
+                </div>
+            </div>
 
-    <!-- Orb Section -->
-    <div class="orb-section" id="orbSection">
-      <!-- Sci-fi Rings -->
-      <div class="center" id="voiceTrigger">
-        <div class="rings">
-          <div class="ring ring1"></div>
-          <div class="ring ring2"></div>
-          <div class="ring ring3"></div>
         </div>
-        <!-- Neural Orb -->
-        <div class="orb">
-          <div class="core" id="orbCore"></div>
-          <canvas id="particles"></canvas>
+
+        <div class="system-status-container">
+            <div class="status-header">
+                <div class="status-header-line"></div>
+                <div class="status-title">System Status</div>
+                <div class="status-header-line"></div>
+            </div>
+            
+            <div class="pulse-wave-container">
+                <svg width="100%" height="100%" viewBox="0 0 400 40" preserveAspectRatio="none">
+                    <path class="pulse-path" d="M 0,20 L 60,20 L 70,10 L 80,30 L 90,20 L 150,20 L 160,5 L 170,35 L 180,15 L 190,25 L 200,20 L 270,20 L 280,10 L 290,30 L 300,20 L 350,20 L 360,5 L 370,35 L 380,20 L 400,20" />
+                </svg>
+            </div>
+
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
+                    <span class="card-label">Battery</span>
+                    <span class="card-value" id="stat-battery">78%</span>
+                </div>
+                <div class="status-card">
+                    <div class="card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 5h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2z"></path></svg></div>
+                    <span class="card-label">Memory</span>
+                    <span class="card-value" id="stat-memory">62%</span>
+                </div>
+                <div class="status-card">
+                    <div class="card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.58 4 8 4s8-1.79 8-4M4 7c0-2.21 3.58-4 8-4s8 1.79 8 4m0 5c0 2.21-3.58 4-8 4s-8-1.79-8-4"></path></svg></div>
+                    <span class="card-label">Storage</span>
+                    <span class="card-value" id="stat-storage">128 GB</span>
+                </div>
+                <div class="status-card">
+                    <div class="card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
+                    <span class="card-label">Network</span>
+                    <span class="card-value online" id="stat-network">ONLINE</span>
+                </div>
+            </div>
         </div>
-        <!-- Mic icon -->
-        <div class="mic-icon" id="micIcon">🎙️</div>
-      </div>
 
-      <!-- Status text -->
-      <div class="orb-status">
-        <div class="status" id="statusText">SYSTEM ONLINE</div>
-        <div class="hint" id="hintText">TAP ORB TO SPEAK · TYPE BELOW</div>
-      </div>
+        <footer class="bottom-nav">
+            <div class="nav-item" data-action="jarvis">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                <span>Jarvis</span>
+            </div>
+            
+            <div class="center-trigger-btn" id="center-trigger">
+                <svg fill="currentColor" viewBox="0 0 24 24" width="12" height="12"><path d="M12 4.5l-9 9H7V21h10v-7.5h4l-9-9z"/></svg>
+            </div>
 
-      <!-- Proactive suggestion -->
-      <div class="proactive-card" id="proactiveCard" style="display:none;">
-        <span class="proactive-icon">💡</span>
-        <span class="proactive-text" id="proactiveText"></span>
-        <button class="proactive-close" id="proactiveClose">✕</button>
-      </div>
+            <div class="nav-item" data-action="history">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>History</span>
+            </div>
+        </footer>
     </div>
 
-    <!-- Chat History -->
-    <div class="chat-section" id="chatSection" style="display:none;">
-      <div class="chat-messages" id="chatMessages"></div>
+    <!-- ═══ TIMER OVERLAY ═══ -->
+    <div id="timerOverlay" class="timer-overlay" style="display:none;">
+        <div class="timer-card">
+            <div class="timer-label" id="timerLabel">Timer</div>
+            <div class="timer-display" id="timerDisplay">00:00</div>
+            <div class="timer-progress" id="timerProgress">
+                <div class="timer-progress-bar" id="timerProgressBar"></div>
+            </div>
+            <button id="dismissTimerBtn" class="timer-dismiss-btn" style="display:none;" onclick="TimerManager.dismissAlert()">✕ Dismiss</button>
+            <button id="cancelTimerBtn" class="timer-cancel-btn" onclick="TimerManager.cancelTimer()">Cancel</button>
+        </div>
     </div>
 
-    <!-- Response area (legacy fallback, hidden when chat visible) -->
-    <div class="transcript" id="transcriptText"></div>
-    <div class="response" id="responseText"></div>
-
-    <!-- Agent badge -->
-    <div class="agent-badge" id="agentBadge"></div>
-
-  </div>
-
-  <!-- ═══ BOTTOM INPUT BAR ═══ -->
-  <div class="bottom-bar" id="bottomBar">
-    <!-- Quick chips row (horizontal scroll) -->
-    <div class="bottom-chips" id="bottomChips">
-      <button class="bchip" data-msg="Time kya hua?">🕐 Time</button>
-      <button class="bchip" data-msg="Aaj ka weather kya hai">🌤 Weather</button>
-      <button class="bchip" data-msg="Koi motivational quote do">✨ Motivate</button>
-      <button class="bchip" data-msg="Koi achha song laga do">🎵 Music</button>
-      <button class="bchip" data-msg="Latest news batao">📰 News</button>
-      <button class="bchip" data-msg="Ek joke sunao">😄 Joke</button>
+    <!-- ═══ IMAGE DISPLAY OVERLAY ═══ -->
+    <div id="imageDisplay" class="image-overlay" style="display:none;">
+        <div class="image-overlay-inner">
+            <img id="generatedImg" src="" alt="Generated Image">
+            <div class="image-overlay-hint">TAP TO CLOSE</div>
+        </div>
     </div>
 
-    <!-- Input row -->
-    <div class="input-row">
-      <button id="attachBtn" class="input-icon-btn" title="Voice Note">🎤</button>
-      <div class="input-wrapper">
-        <input type="text" id="textInput" placeholder="Message JARVIS..." autocomplete="off" autocorrect="on" spellcheck="true">
-        <button id="clearInputBtn" class="clear-btn" style="display:none;">✕</button>
-      </div>
-      <button id="sendBtn" class="send-btn" title="Send">
-        <span id="sendIcon">➤</span>
-      </button>
-    </div>
-  </div>
+    <!-- ═══ TOAST NOTIFICATIONS ═══ -->
+    <div id="toastContainer" class="toast-container"></div>
 
-  <!-- ═══ IMAGE DISPLAY OVERLAY ═══ -->
-  <div id="imageDisplay" class="image-overlay" style="display:none;">
-    <div class="image-overlay-inner">
-      <img id="generatedImg" src="" alt="Generated Image">
-      <div id="imagePath"></div>
-      <div class="image-overlay-hint">TAP TO CLOSE</div>
-    </div>
-  </div>
-
-  <!-- ═══ TIMER FULL-SCREEN OVERLAY ═══ -->
-  <div id="timerOverlay" class="timer-overlay" style="display:none;">
-    <div class="timer-card">
-      <div class="timer-label" id="timerLabel">Timer</div>
-      <div class="timer-display" id="timerDisplay">00:00</div>
-      <div class="timer-progress" id="timerProgress">
-        <div class="timer-progress-bar" id="timerProgressBar"></div>
-      </div>
-      <button id="dismissTimerBtn" class="timer-dismiss-btn" style="display:none;" onclick="TimerManager.dismissAlert()">
-        ✕ Dismiss
-      </button>
-      <button id="cancelTimerBtn" class="timer-cancel-btn" onclick="TimerManager.cancelTimer()">
-        Cancel
-      </button>
-    </div>
-  </div>
-
-  <!-- ═══ TOAST NOTIFICATIONS ═══ -->
-  <div id="toastContainer" class="toast-container"></div>
-
-  <!-- ═══ YOUTUBE PLAYER ═══ -->
-  <div id="ytPlayer" class="yt-player" style="display:none;">
-    <div class="yt-header">
-      <span id="ytTitle">🎵 Playing...</span>
-      <button id="ytClose">✕</button>
-    </div>
-    <div class="yt-embed" id="ytEmbed"></div>
-  </div>
-
-  <!-- Scripts -->
-  <script src="device.js"></script>
-  <script src="timer.js"></script>
-  <script src="script.js"></script>
-  <script src="panel.js"></script>
-  <script src="jarvis_v2.js"></script>
+    <script src="device.js"></script>
+    <script src="timer.js"></script>
+    <script src="script.js"></script>
 </body>
-
 </html>

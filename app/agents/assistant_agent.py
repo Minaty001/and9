@@ -5,13 +5,15 @@ Routing is handled by the central LLMIntentRouter in orchestrator.
 This agent receives pre-classified intent and just executes.
 """
 from app.core.brain import ask_llm
-from app.skills.tasks import search_web, get_realtime_data, generate_image_task, handle_device_command
+from app.skills.tasks import search_web, get_realtime_data, handle_device_command
+from app.skills.pc_control import handle_pc_command
+from app.skills.audio_manager import handle_audio_command
 from app.skills.research import search_sources, synthesize_answer
 
 
 class AssistantAgent:
     name = "AssistantAgent"
-    description = "General assistant: search, reasoning, images, chat, device"
+    description = "General assistant: search, reasoning, chat, device, PC control, audio"
 
     def run(self, query: str, intent_name: str = "chat", intent_params: dict | None = None) -> dict:
         """Execute based on pre-classified intent (no keyword matching)."""
@@ -20,7 +22,8 @@ class AssistantAgent:
             "device_call":    self._handle_device,
             "device_control": self._handle_device,
             "device_storage": self._handle_device,
-            "image":          self._handle_image,
+            "pc":             self._handle_pc,
+            "audio":          self._handle_audio,
             "search":         self._handle_search,
             "research":       self._handle_research,
             "coding":         self._handle_reasoning,
@@ -50,16 +53,6 @@ class AssistantAgent:
         )
         return {"agent": self.name, "success": True, "result": response, "metadata": {"task": "reasoning"}}
 
-    def _handle_image(self, query: str, params: dict | None = None) -> dict:
-        prompt = (params or {}).get("prompt") or query
-        result = generate_image_task(prompt)
-        return {
-            "agent": self.name,
-            "success": True,
-            "result": result.get("result", "Image generation attempted."),
-            "metadata": {"task": "image", "image_url": result.get("image_url")},
-        }
-
     def _handle_chat(self, query: str, params: dict | None = None) -> dict:
         response = ask_llm([{"role": "user", "content": query}])
         return {"agent": self.name, "success": True, "result": response, "metadata": {"task": "chat"}}
@@ -78,4 +71,36 @@ class AssistantAgent:
             "success": True,
             "result": reply,
             "metadata": {"task": "device", "action": action, "payload": payload}
+        }
+
+    def _handle_pc(self, query: str, params: dict | None = None) -> dict:
+        result_dict = handle_pc_command(query)
+        if isinstance(result_dict, str):
+            return {"agent": self.name, "success": True, "result": result_dict, "metadata": {"task": "pc"}}
+
+        reply = result_dict.get("reply", "Executing PC command.")
+        action = result_dict.get("action", "")
+        payload = result_dict.get("payload", "")
+
+        return {
+            "agent": self.name,
+            "success": True,
+            "result": reply,
+            "metadata": {"task": "pc", "action": action, "payload": payload}
+        }
+
+    def _handle_audio(self, query: str, params: dict | None = None) -> dict:
+        result_dict = handle_audio_command(query)
+        if isinstance(result_dict, str):
+            return {"agent": self.name, "success": True, "result": result_dict, "metadata": {"task": "audio"}}
+
+        reply = result_dict.get("reply", "Executing audio command.")
+        action = result_dict.get("action", "")
+        payload = result_dict.get("payload", "")
+
+        return {
+            "agent": self.name,
+            "success": True,
+            "result": reply,
+            "metadata": {"task": "audio", "action": action, "payload": payload}
         }

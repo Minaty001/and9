@@ -33,7 +33,6 @@ class IntentRouter:
         "search":   ["find", "look up", "google", "news", "weather", "who is", "what is"],
         "research": ["in-depth", "comprehensive", "tell me everything about", "deep dive", "history of"],
         "coding":   ["code", "python", "javascript", "bug", "fix", "debug", "function", "refactor"],
-        "image":    ["generate image", "create image", "draw", "make a picture", "paint"],
         "music":    ["song", "gaana", "music", "gana", "sunna", "laga do", "bajao",
                      "play", "baja do", "track", "playlist", "singer", "soft song",
                      "sad song", "romantic", "sunao", "ghazal", "bhajan"],
@@ -49,6 +48,14 @@ class IntentRouter:
                      "camera", "photo", "youtube", "whatsapp", "chrome", "calculator",
                      "maps", "telegram", "spotify", "instagram", "alarm", "call", "dial",
                      "contact", "contacts", "file", "folder", "directory", "storage"],
+        "pc":       ["pc", "computer", "laptop", "desktop", "windows",
+                     "shutdown", "restart", "reboot", "screenshot", "lock pc",
+                     "open notepad", "open chrome", "type ", "write ",
+                     "list windows", "switch to", "system info", "pc info",
+                     "lock computer", "sleep", "hibernate"],
+        "audio":    ["bluetooth audio", "bluetooth mic", "bluetooth speaker",
+                     "auto detect bluetooth", "switch to bluetooth",
+                     "reset audio", "system audio", "audio status"],
     }
 
     def route(self, query: str) -> str:
@@ -56,10 +63,12 @@ class IntentRouter:
         if not q:
             return "chat"
 
-        if any(kw in q for kw in self.PATTERNS["image"]):
-            return "image"
         if any(kw in q for kw in self.PATTERNS["reflection"]):
             return "reflection"
+        if any(kw in q for kw in self.PATTERNS["audio"]):
+            return "audio"
+        if any(kw in q for kw in self.PATTERNS["pc"]):
+            return "pc"
         if any(kw in q for kw in self.PATTERNS["device"]):
             return "device"
         if any(kw in q for kw in self.PATTERNS["goal"]):
@@ -127,7 +136,6 @@ class Orchestrator:
         return [
             {"name": "chat",       "description": "General conversation and tasks"},
             {"name": "coding",     "description": "Write, debug, and explain code"},
-            {"name": "image",      "description": "Generate images from text prompts"},
             {"name": "research",   "description": "Multi-source research with citations"},
             {"name": "search",     "description": "Real-time web search and facts"},
             {"name": "music",      "description": "Search and play songs from YouTube"},
@@ -135,6 +143,8 @@ class Orchestrator:
             {"name": "reminder",   "description": "Set and manage reminders and events"},
             {"name": "reflection", "description": "Daily review and session summaries"},
             {"name": "device",     "description": "Control Android device features"},
+            {"name": "pc",         "description": "Control PC: volume, brightness, apps, screenshots, system"},
+            {"name": "audio",      "description": "Manage Bluetooth audio devices and settings"},
         ]
 
     def run(self, query: str) -> dict:
