@@ -46,6 +46,90 @@ body {
     overflow: hidden;
 }
 
+/* Mobile View Adjustments (< 1024px) */
+@media (max-width: 1023px) {
+    .hex-grid-all {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+        flex-wrap: wrap;
+        z-index: 5;
+    }
+    .hex-grid-all .hex-btn {
+        width: 58px;
+        height: 66px;
+    }
+    .hex-grid-all .hex-btn .hex-icon {
+        width: 18px;
+        height: 18px;
+    }
+    .hex-grid-all .hex-btn .hex-label {
+        font-size: 8px;
+    }
+    .hex-grid-left, .hex-grid-right {
+        display: contents; /* children are pulled into .hex-grid-all */
+    }
+    .center-orb-wrapper {
+        width: 170px;
+        height: 170px;
+        margin: 6px 0;
+    }
+    .center-orb-wrapper .layer-outer {
+        width: 162px;
+        height: 162px;
+    }
+    .center-orb-wrapper .layer-mid {
+        width: 134px;
+        height: 134px;
+    }
+    .center-orb-wrapper .layer-inner-tech {
+        width: 106px;
+        height: 106px;
+    }
+    .center-orb-wrapper .orb-core {
+        width: 54px;
+        height: 54px;
+    }
+    .tap-to-speak-container {
+        margin-top: 2px;
+    }
+    .tap-to-speak-container .tap-text {
+        font-size: 11px;
+    }
+    .system-status-panel {
+        padding: 10px;
+    }
+    .stats-grid {
+        gap: 5px;
+    }
+    .stat-card {
+        padding: 8px 2px;
+    }
+    .stat-label {
+        font-size: 7px;
+    }
+    .stat-value {
+        font-size: 10px;
+    }
+    .footer {
+        margin-top: 8px;
+        padding-top: 6px;
+    }
+    .header {
+        margin-bottom: 6px;
+    }
+    .brand-title {
+        font-size: 16px;
+    }
+    .welcome-text {
+        font-size: 14px;
+        margin-top: 8px;
+    }
+}
+
 /* Desktop View Adjustments */
 @media (min-width: 1024px) {
     .app-container {
@@ -165,10 +249,11 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     margin: 15px 0;
     position: relative;
+    gap: 10px;
 }
 
 /* Hexagonal Grid Setup */

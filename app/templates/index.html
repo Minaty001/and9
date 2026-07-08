@@ -39,26 +39,51 @@
 
         <main class="main-content">
             
-            <div class="hex-grid-left">
-                <div class="hex-btn" data-action="voice">
-                    <svg class="hex-svg" viewBox="0 0 100 115"><polygon points="50,5 95,30 95,85 50,110 5,85 5,30"/></svg>
-                    <div class="hex-inner">
-                        <svg class="hex-icon" viewBox="0 0 24 24"><path d="M12 1v22M17 5v14M7 5v14M22 9v6M2 9v6"/></svg>
-                        <div class="hex-label">Voice</div>
+            <div class="hex-grid-all">
+                <div class="hex-grid-left">
+                    <div class="hex-btn" data-action="voice">
+                        <svg class="hex-svg" viewBox="0 0 100 115"><polygon points="50,5 95,30 95,85 50,110 5,85 5,30"/></svg>
+                        <div class="hex-inner">
+                            <svg class="hex-icon" viewBox="0 0 24 24"><path d="M12 1v22M17 5v14M7 5v14M22 9v6M2 9v6"/></svg>
+                            <div class="hex-label">Voice</div>
+                        </div>
+                    </div>
+                    <div class="hex-btn" data-action="apps">
+                        <svg class="hex-svg" viewBox="0 0 100 115"><polygon points="50,5 95,30 95,85 50,110 5,85 5,30"/></svg>
+                        <div class="hex-inner">
+                            <svg class="hex-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            <div class="hex-label">Apps</div>
+                        </div>
+                    </div>
+                    <div class="hex-btn" data-action="browser">
+                        <svg class="hex-svg" viewBox="0 0 100 115"><polygon points="50,5 95,30 95,85 50,110 5,85 5,30"/></svg>
+                        <div class="hex-inner">
+                            <svg class="hex-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                            <div class="hex-label">Browser</div>
+                        </div>
                     </div>
                 </div>
-                <div class="hex-btn" data-action="apps">
-                    <svg class="hex-svg" viewBox="0 0 100 115"><polygon points="50,5 95,30 95,85 50,110 5,85 5,30"/></svg>
-                    <div class="hex-inner">
-                        <svg class="hex-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                        <div class="hex-label">Apps</div>
+                <div class="hex-grid-right">
+                    <div class="hex-btn" data-action="ai-chat">
+                        <svg class="hex-svg" viewBox="0 0 100 115"><polygon points="50,5 95,30 95,85 50,110 5,85 5,30"/></svg>
+                        <div class="hex-inner">
+                            <svg class="hex-icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            <div class="hex-label">AI Chat</div>
+                        </div>
                     </div>
-                </div>
-                <div class="hex-btn" data-action="browser">
-                    <svg class="hex-svg" viewBox="0 0 100 115"><polygon points="50,5 95,30 95,85 50,110 5,85 5,30"/></svg>
-                    <div class="hex-inner">
-                        <svg class="hex-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                        <div class="hex-label">Browser</div>
+                    <div class="hex-btn" data-action="tasks">
+                        <svg class="hex-svg" viewBox="0 0 100 115"><polygon points="50,5 95,30 95,85 50,110 5,85 5,30"/></svg>
+                        <div class="hex-inner">
+                            <svg class="hex-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/></svg>
+                            <div class="hex-label">Tasks</div>
+                        </div>
+                    </div>
+                    <div class="hex-btn" data-action="weather">
+                        <svg class="hex-svg" viewBox="0 0 100 115"><polygon points="50,5 95,30 95,85 50,110 5,85 5,30"/></svg>
+                        <div class="hex-inner">
+                            <svg class="hex-icon" viewBox="0 0 24 24"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                            <div class="hex-label">Weather</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -68,30 +93,6 @@
                 <div class="orb-layer layer-mid"></div>
                 <div class="orb-layer layer-inner-tech"></div>
                 <div class="orb-core" id="orb-core-engine"></div>
-            </div>
-
-            <div class="hex-grid-right">
-                <div class="hex-btn" data-action="ai-chat">
-                    <svg class="hex-svg" viewBox="0 0 100 115"><polygon points="50,5 95,30 95,85 50,110 5,85 5,30"/></svg>
-                    <div class="hex-inner">
-                        <svg class="hex-icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                        <div class="hex-label">AI Chat</div>
-                    </div>
-                </div>
-                <div class="hex-btn" data-action="tasks">
-                    <svg class="hex-svg" viewBox="0 0 100 115"><polygon points="50,5 95,30 95,85 50,110 5,85 5,30"/></svg>
-                    <div class="hex-inner">
-                        <svg class="hex-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/></svg>
-                        <div class="hex-label">Tasks</div>
-                    </div>
-                </div>
-                <div class="hex-btn" data-action="weather">
-                    <svg class="hex-svg" viewBox="0 0 100 115"><polygon points="50,5 95,30 95,85 50,110 5,85 5,30"/></svg>
-                    <div class="hex-inner">
-                        <svg class="hex-icon" viewBox="0 0 24 24"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-                        <div class="hex-label">Weather</div>
-                    </div>
-                </div>
             </div>
 
         </main>
