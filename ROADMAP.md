@@ -1,566 +1,422 @@
-# 🧠 JARVIS AI Operating System — Roadmap
+# AND9 — Master Development Roadmap & Engineering Specification
 
-> **Vision:** Not just an AI assistant — an AI Operating System that can think, plan, learn, execute tasks, control Android devices, write code, and improve itself over time.
-
----
-
-## Overview
-
-This roadmap is designed so each phase builds on the previous one, allowing incremental development while keeping the architecture modular and maintainable.
-
-| Phase | Focus | Status |
-|-------|-------|--------|
-| 0 | Foundation | 🔜 Planned |
-| 1 | Human Brain Architecture | 🔜 Planned |
-| 2 | Memory System | 🔜 Planned |
-| 3 | Multi-Agent System | 🔜 Planned |
-| 4 | Agent Orchestrator | 🔜 Planned |
-| 5 | Workflow Engine | 🔜 Planned |
-| 6 | Background Task Engine | 🔜 Planned |
-| 7 | Long-Term Planning | 🔜 Planned |
-| 8 | Learning Engine | 🔜 Planned |
-| 9 | Tool System | 🔜 Planned |
-| 10 | Android Controller | 🔜 Planned |
-| 11 | Voice System | 🔜 Planned |
-| 12 | Automation Engine | 🔜 Planned |
-| 13 | Dashboard | 🔜 Planned |
-| 14 | Coding Intelligence | 🔜 Planned |
-| 15 | Security & Production | 🔜 Planned |
+This document defines the roadmap, milestones, internal architecture, and engineering specifications for the development of AND9 (Jarvis-like Android AI Assistant).
 
 ---
 
-## Phase 0 — Foundation
+# Phase 1 — Core Foundation (System Stability)
 
-**Goal:** Build a stable, modular base.
+**Goal:** Build a reliable core that can hear, understand, and execute commands.
 
-### Core Architecture
+## Objectives
+* Fix speech pipeline
+* Improve wake word detection
+* Implement intent recognition
+* Build task execution engine
+* Create unified logging
+* Improve error handling
+* Optimize project structure
 
-- Modular architecture (no monolithic files)
-- Dependency Injection
-- Event Bus
-- Configuration Manager
-- Logging System
-- Error Handler
-- Plugin Loader
-- API Gateway
-- Service Registry
-- Health Monitor
-- Metrics Collection
-
-### Folder Structure
-
-```
-app/
- brain/
- agents/
- memory/
- planner/
- workflow/
- scheduler/
- automation/
- integrations/
- tools/
- voice/
- android/
- dashboard/
- database/
- api/
- events/
- security/
- utils/
- tests/
-```
-
-**Deliverable:** A clean, scalable foundation.
-
----
-
-## Phase 1 — Human Brain Architecture
-
-Instead of one LLM, divide intelligence into specialized systems.
-
-### Brain 1 — Reflex Brain
-
-**Purpose:** Instant actions.
-
-- Open YouTube
-- Increase volume
-- Turn flashlight on
-- Go Home
-- Lock phone
-
-**Characteristics:** No reasoning, very fast, rule-based.
-
-### Brain 2 — Habit Brain
-
-**Purpose:** Learn routines.
-
-- Morning routine
-- Daily reminders
-- Frequent apps
-- Favorite music
-- Preferred browser
-
-**Stores:** User habits, preferences, repeated workflows.
-
-### Brain 3 — Conscious Brain
-
-**Purpose:** Reasoning, planning, coding, research, problem solving.
-
-**Uses:** LLM, Memory, Planner, Tools.
-
-### Brain 4 — Reflection Brain
-
-**Purpose:** Improve itself.
-
-- Did I succeed?
-- What failed?
-- Can I improve?
-- Should memory be updated?
-
-**Deliverable:** Human-inspired cognitive architecture.
-
----
-
-## Phase 2 — Memory System
-
-Implement multiple memory types.
-
-| Memory Type | Purpose |
-|-------------|---------|
-| Working Memory | Current conversation |
-| Short-Term Memory | Today's events |
-| Long-Term Memory | Important user facts |
-| Episodic Memory | Past conversations |
-| Semantic Memory | Knowledge |
-| Procedural Memory | How to perform tasks |
-| Preference Memory | Favorite settings |
-| Project Memory | Project-specific knowledge |
-| Skill Memory | Generated skills |
-| Relationship Memory | Connections between memories |
-
-Each memory stores:
-
-- Importance
-- Confidence
-- Timestamp
-- Source
-- Embeddings
-- Tags
-- Summary
-- Related memories
-
-**Deliverable:** A complete memory engine.
-
----
-
-## Phase 3 — Multi-Agent System
-
-Instead of one AI, create many specialized agents.
-
-| Agent | Role |
-|-------|------|
-| Executive Agent | High-level coordination |
-| Conversation Agent | Natural dialogue |
-| Planning Agent | Goal decomposition |
-| Research Agent | Internet/domain research |
-| Coding Agent | Code generation |
-| Debug Agent | Bug finding & fixing |
-| Memory Agent | Memory management |
-| Learning Agent | Pattern discovery |
-| Android Agent | Device control |
-| Voice Agent | Speech I/O |
-| Browser Agent | Web automation |
-| Workflow Agent | Workflow execution |
-| Scheduler Agent | Timed tasks |
-| Automation Agent | Trigger-based actions |
-| Security Agent | Permissions & audit |
-| Reflection Agent | Self-improvement |
-| Tool Agent | Tool execution |
-| Integration Agent | External API integration |
-| Notification Agent | Alerts & notifications |
-| Health Monitor Agent | System health |
-
-Every agent has:
-
-- Role
-- Goal
-- Memory
-- Tools
-- Prompt
-- Confidence
-- Logs
-- Metrics
-- Health status
-
-**Deliverable:** A coordinated team of AI agents.
-
----
-
-## Phase 4 — Agent Orchestrator
-
-This becomes the "CEO."
-
-### Responsibilities
-
-- Receive user goal
-- Analyze request
-- Select agents
-- Split work
-- Run tasks in parallel
-- Merge results
-- Validate outputs
-- Retry failures
-- Return final answer
+### Modules
+* Voice Input
+* Speech-to-Text
+* Intent Router
+* Task Executor
+* Logger
+* Configuration Manager
+* Settings Manager
 
 ### Features
+* Wake word
+* Voice commands
+* Text commands
+* Basic conversation
+* Error recovery
+* Command history
 
-- Task queue
-- Priorities
-- Deadlock prevention
-- Timeout handling
-- Conflict resolution
+### Deliverables
+* Stable backend
+* Reliable command execution
+* Modular architecture
+* Production-ready project structure
 
-**Deliverable:** A scalable orchestration engine.
-
----
-
-## Phase 5 — Workflow Engine
-
-Enable complex task execution.
-
-### Supported Patterns
-
-- Sequential workflows
-- Parallel workflows
-- Conditional branches
-- Loops
-- Retries
-- Timeouts
-- Human approval
-- Reusable templates
-- Workflow versioning
-- Analytics
-
-### Example
-
-```
-Research topic
-  ↓
-Summarize
-  ↓
-Write code
-  ↓
-Test
-  ↓
-Deploy
-  ↓
-Notify
-```
-
-**Deliverable:** Enterprise-grade workflow system.
+**Progress Target:** **20%**
 
 ---
 
-## Phase 6 — Background Task Engine
+# Phase 2 — Android Automation & Device Control
 
-Runs continuously.
+**Goal:** Allow AND9 to fully interact with the Android device.
 
-### Capabilities
+## Objectives
+* Accessibility integration
+* Notification access
+* Storage access
+* Media control
+* App automation
+* System control
 
-- Reminders
-- Timers
-- Recurring jobs
-- Daily routines
-- Weekly jobs
-- Monthly jobs
-- Monitoring
-- Long-running tasks
-- Queue system
-- Persistence
-- Recovery after reboot
-- Network awareness
-- Battery optimization
-
-**Deliverable:** Reliable background execution.
-
----
-
-## Phase 7 — Long-Term Planning
-
-Teach JARVIS to think beyond the current chat.
-
-### Capabilities
-
-- Goal decomposition
-- Milestones
-- Progress tracking
-- Dependency management
-- Risk detection
-- Automatic replanning
-- Weeks-long projects
-- Months-long projects
-
-### Example
-
-```
-"Build an Android app"
-  ↓
-Research
-  ↓
-Architecture
-  ↓
-Coding
-  ↓
-Testing
-  ↓
-Deployment
-  ↓
-Maintenance
-```
-
-**Deliverable:** Goal-oriented planning.
-
----
-
-## Phase 8 — Learning Engine
-
-JARVIS improves continuously.
-
-### Learn From
-
-- Mistakes
-- Corrections
-- Successes
-- Repeated commands
-- Schedules
-- Projects
-- Coding patterns
-- Generated skills
-- New knowledge
-
-Automatically create reusable skills.
-
-**Deliverable:** Continuous self-improvement.
-
----
-
-## Phase 9 — Tool System
-
-Create a universal tool registry.
-
-### Planned Tools
-
-| Category | Tools |
-|----------|-------|
-| General | Calculator, Weather, Maps, Camera, Filesystem |
-| Dev/Code | GitHub, Docker, SQLite, Supabase |
-| Media | Chrome, YouTube, Spotify |
-| Communication | Telegram, WhatsApp, Gmail |
-| Calendar | Google Calendar |
-| Cloud | Render, OpenRouter |
-| AI | Groq, Ollama, SerpAPI |
-| Automation | Playwright, MCP Servers |
-
-### Requirements
-
-- Dynamic loading
-- Versioning
-- Permissions
-- Discovery
-- Health monitoring
-
-**Deliverable:** Extensible plugin ecosystem.
-
----
-
-## Phase 10 — Android Controller
-
-Build a dedicated Android service.
-
-### Capabilities
-
-- Launch apps
-- Close apps
-- Accessibility automation
-- Notifications
-- Clipboard
-- Contacts
-- SMS
-- Calls
-- Media controls
-- Wi-Fi
-- Bluetooth
-- Flashlight
-- Camera
-- Volume
-- Brightness
-- Screenshots
-- Sharing
-- Deep links
-- File management
-- Permissions
-- Foreground service
-
-**Deliverable:** Deep Android integration.
-
----
-
-## Phase 11 — Voice System
-
-### Pipeline
-
-```
-Wake detection (optional)
-  ↓
-Speech-to-Text
-  ↓
-Intent detection
-  ↓
-Reasoning
-  ↓
-Execution
-  ↓
-Text generation
-  ↓
-Text-to-Speech
-  ↓
-Conversation memory
-```
+### Modules
+* Accessibility Service
+* Device Controller
+* App Manager
+* File Manager
+* Notification Manager
+* Permission Manager
 
 ### Features
+* Open/close apps
+* Play music
+* Control volume
+* Brightness adjustment
+* Wi-Fi/Bluetooth control
+* File search
+* Camera launch
+* Gallery access
+* Clipboard access
+* Contacts
+* SMS
+* Calendar
+* Alarms
 
-- Streaming
-- Interruptions
-- Natural dialogue
-- Offline mode
-- Multiple TTS providers
+### Deliverables
+* Android automation layer
+* Device control APIs
+* Permission handling
 
-**Deliverable:** Natural voice interaction.
-
----
-
-## Phase 12 — Automation Engine
-
-### Triggers
-
-| Trigger Type | Examples |
-|-------------|----------|
-| Time | At 7 AM every weekday |
-| Location | When arriving home |
-| Battery | When battery < 20% |
-| Charging | When plugged in |
-| Wi-Fi | When connected to home network |
-| App Events | App opened/closed |
-| Notifications | When notification received |
-| Communication | SMS, phone call received |
-| Device State | Screen on/off, headphones plugged |
-| Custom Events | User-defined triggers |
-
-### Actions
-
-- Run workflow
-- Send notification
-- Launch app
-- Speak message
-- Execute tool
-- Store memory
-- Call API
-- Run agent
-
-**Deliverable:** Rule-based automation platform.
+**Progress Target:** **40%**
 
 ---
 
-## Phase 13 — Dashboard
+# Phase 3 — Brain System (Conscious + Subconscious)
 
-Build a modern dashboard with:
+**Goal:** Make the assistant behave intelligently by separating fast actions from complex reasoning.
 
-- Live chat
-- Agent monitor
-- Task manager
-- Workflow builder
-- Automation editor
-- Memory explorer
-- Reasoning timeline
-- Logs
-- Metrics (CPU, RAM, Storage, Network)
-- Plugin manager
-- Tool registry
-- API usage
-- LLM usage
-- Settings
-- Dark mode
-- Responsive design
+## Subconscious Brain
+Handles:
+* Daily commands
+* Repetitive tasks
+* Device control
+* Quick responses
+* App launching
+* Media control
+* Background monitoring
 
-**Deliverable:** A central control panel.
+## Conscious Brain
+Handles:
+* Coding
+* Research
+* Planning
+* Long conversations
+* Decision making
+* Complex reasoning
+* Multi-step workflows
 
----
+### Modules
+* Brain Manager
+* Conscious Engine
+* Subconscious Engine
+* Planner
+* Decision Engine
+* Workflow Engine
+* Reflection Engine
 
-## Phase 14 — Coding Intelligence
+### Features
+* Intent prioritization
+* Context awareness
+* Multi-step task planning
+* Self-correction
+* Task delegation
 
-### Capabilities
+### Deliverables
+* Dual-brain architecture
+* Intelligent task routing
+* Advanced reasoning engine
 
-- Project analysis
-- Code generation
-- Bug fixing
-- Refactoring
-- Testing
-- Documentation
-- Git integration
-- Repository understanding
-- Dependency analysis
-- Static analysis
-- Code review
-
-**Deliverable:** A coding assistant comparable to modern AI coding tools.
-
----
-
-## Phase 15 — Security & Production
-
-### Production Readiness
-
-- Authentication
-- Authorization
-- Secrets management
-- Permission system
-- Sandboxing
-- Rate limiting
-- Encrypted storage
-- Audit logs
-- Backup
-- Disaster recovery
-- Unit tests
-- Integration tests
-- Performance testing
-- CI/CD
-- Monitoring
-- Documentation
-
-**Deliverable:** A production-ready AI Operating System.
+**Progress Target:** **65%**
 
 ---
 
-## Final Vision
+# Phase 4 — Memory, Learning & Intelligence
 
-The end result is not a chatbot, but an **AI Operating System** composed of:
+**Goal:** Enable AND9 to remember, learn, and improve over time.
 
-| Layer | Count |
-|-------|-------|
-| Cognitive Brain Layers | 4 |
-| Specialized AI Agents | 20+ |
-| Workflow Engine | Enterprise-grade |
-| Background Task System | Persistent |
-| Long-Term Goal Planner | Multi-week/multi-month |
-| Continuous Learning Engine | Self-improving |
-| Tool & Integration Platform | Universal |
-| Android Device Controller | Deep integration |
-| Voice Interface | Natural |
-| Automation System | Rule-based |
-| Interactive Dashboard | Full-featured |
-| Security & Testing | Production-grade |
+## Memory Types
+* Working Memory
+* Short-Term Memory
+* Long-Term Memory
+* Semantic Memory
+* Conversation Memory
+* Task Memory
+
+### Modules
+* Memory Manager
+* Knowledge Base
+* Vector Store
+* Learning Engine
+* Context Manager
+* Cache Manager
+
+### Features
+* Remember conversations
+* Recall previous tasks
+* Learn user preferences
+* Context-aware responses
+* Automatic memory cleanup
+* Knowledge retrieval
+* Memory compression
+
+### Deliverables
+* Persistent memory system
+* Learning capabilities
+* Personalized interactions
+
+**Progress Target:** **85%**
 
 ---
 
-> **Built with love by Minaty001**
+# Phase 5 — Production, Optimization & Deployment
+
+**Goal:** Make the project production-ready and optimized for **Render Free Tier (300 MB RAM)**.
+
+## Objectives
+* Reduce RAM usage
+* Improve startup speed
+* Harden security
+* Add monitoring
+* Complete testing
+* Prepare deployment
+
+### Modules
+* Performance Optimizer
+* Security Manager
+* Deployment Manager
+* Monitoring System
+* Analytics
+* Test Suite
+
+### Features
+* Lazy loading
+* Memory cleanup
+* Request caching
+* Rate limiting
+* API authentication
+* Crash recovery
+* Health checks
+* Auto-restart
+* Performance metrics
+
+### Render Optimization
+* Gunicorn with **1 worker** and **2 threads**
+* Lazy imports
+* Bounded caches
+* Load AI models only when needed
+* Disable unused services
+* Keep idle RAM below **180 MB**
+* Peak RAM below **280 MB**
+
+### Deliverables
+* Production deployment
+* Stable performance
+* Security hardening
+* Complete documentation
+
+**Progress Target:** **100%**
+
+---
+
+# Overall Roadmap
+
+| Phase | Focus | Completion |
+| :--- | :--- | ---: |
+| **Phase 1** | Core Foundation | 20% |
+| **Phase 2** | Android Automation | 40% |
+| **Phase 3** | Conscious + Subconscious Brain | 65% |
+| **Phase 4** | Memory & Learning | 85% |
+| **Phase 5** | Optimization & Production Deployment | 100% |
+
+## Final Target
+By the end of Phase 5, AND9 should be capable of:
+* Natural voice and text conversations.
+* Fast execution of everyday Android tasks through the subconscious brain.
+* Complex reasoning, planning, coding, and research through the conscious brain.
+* Long-term memory with personalized interactions.
+* Secure Android automation with proper permission handling.
+* Stable deployment on **Render.com Free Tier** within the **300 MB RAM** constraint.
+* A modular, maintainable architecture that can be extended with new skills and capabilities without major redesign.
+
+---
+
+# Development Milestones
+
+```
+Project Start
+     │
+     ▼
+Phase 1: Core Foundation (v0.1 Alpha - Core Assistant)
+     │
+     ▼
+Phase 2: Android Automation (v0.3 Alpha - Android Assistant)
+     │
+     ▼
+Phase 3: Brain System (v0.6 Beta - Human Brain)
+     │
+     ▼
+Phase 4: Memory & Learning (v0.8 Beta - Learning AI)
+     │
+     ▼
+Phase 5: Optimization & Deployment (v1.0 Stable - Production)
+```
+
+## Version 0.1 — Core Assistant
+* **Goal:** A stable assistant that listens, understands, and executes basic commands.
+* **Features:** Voice input, text input, wake word, speech-to-text, intent detection, command execution, logging, configuration, basic API integration, error handling.
+* **Success Criteria:** 95%+ command recognition, no crashes during normal use, stable backend.
+
+## Version 0.3 — Android Assistant
+* **Goal:** Control Android like a real assistant.
+* **Features:** Open/close apps, notifications, file access, music control, camera, gallery, contacts, SMS, calls, clipboard, brightness, Wi-Fi, bluetooth, flashlight, volume.
+* **Success Criteria:** All permissions handled correctly, device control works reliably.
+
+## Version 0.6 — Human Brain
+* **Goal:** Separate fast actions from intelligent reasoning.
+* **Subconscious Brain:** Open apps, music, notifications, device settings, daily routines.
+* **Conscious Brain:** Research, coding, planning, analysis, long conversations, problem solving.
+* **Success Criteria:** Correct routing between subconscious and conscious processing, context-aware multi-step execution.
+
+## Version 0.8 — Learning AI
+* **Goal:** The assistant remembers and adapts.
+* **Features:** Working memory, short-term memory, long-term memory, conversation history, semantic search, user preferences, context retrieval, memory cleanup, knowledge storage.
+* **Success Criteria:** Personalization without excessive RAM usage, relevant memory retrieval.
+
+## Version 1.0 — Production Release
+* **Goal:** A polished, deployable assistant.
+* **Features:** Performance optimization, security, monitoring, automatic recovery, Render deployment, API rate limiting, health monitoring, backup & restore, complete documentation, comprehensive tests.
+* **Success Criteria:** Stable on Render Free (300 MB RAM), reliable uptime, production-ready codebase.
+
+---
+
+# Suggested Project Folder Structure
+
+```text
+and9/
+│
+├── app/
+├── api/
+├── brain/
+│   ├── conscious/
+│   ├── subconscious/
+│   └── planner/
+├── memory/
+├── intents/
+├── executor/
+├── skills/
+├── android/
+├── voice/
+├── security/
+├── storage/
+├── cache/
+├── config/
+├── utils/
+├── services/
+├── database/
+├── tests/
+├── docs/
+├── assets/
+├── scripts/
+└── deployment/
+```
+
+---
+
+# Long-Term Vision (Version 2.0)
+Once Version 1.0 is complete, expand AND9 with:
+* Multi-agent architecture (Planner, Researcher, Coder, Reviewer, Executor).
+* Autonomous task execution and goal-oriented planning.
+* Computer vision (camera understanding).
+* Local AI model support.
+* Plugin/skill marketplace.
+* Cross-device synchronization.
+* Web dashboard.
+* Self-improvement through user feedback.
+* Workflow automation & Trigger-based actions.
+* Smart home and IoT integration.
+* Multi-language voice conversations.
+* Offline mode for core features.
+
+---
+
+# AND9 Version 2.0 — Internal Architecture
+
+## Layer 1 — User Interface
+* **Purpose:** Receive and present information.
+* **Components:** Voice Input, Text Input, Chat UI, Notification UI, Overlay UI, Quick Actions, Accessibility Interface.
+
+## Layer 2 — Input Processing
+* **Purpose:** Convert raw input into structured commands.
+* **Modules:** Wake Word Detector, Speech-to-Text, Language Detection, Text Normalizer, Entity Extractor, Intent Classifier.
+
+## Layer 3 — Brain Manager
+* **Purpose:** The heart of AND9 that orchestrates Subconscious (fast, rule-based/regex < 300 ms) and Conscious (reasoning, planning, coding 1–10s) responses.
+
+## Layer 4 — Planner
+* **Purpose:** Decompose multi-step tasks into independent linear execute blocks.
+
+## Layer 5 — Skill System
+* **Purpose:** Dynamic registry instead of hardcoded features (App launcher, media, browser, etc.).
+
+## Layer 6 — Memory System
+* **Purpose:** Bounded memory types (Working, Short-Term, Long-Term, Knowledge Base) to prevent OOM errors.
+
+## Layer 7 — Security Layer
+* **Purpose:** Permission checks, authorization, validation, audit logs.
+
+## Layer 8 — Android Service Layer
+* **Purpose:** Isolated accessibility, SMS, media, and notification APIs.
+
+## Layer 9 — Cloud Layer (Render)
+* **Purpose:** Lightweight hosting (REST APIs, memory DBs, health checks) with strict RAM targets (Idle < 180MB, Peak < 280MB).
+
+## Layer 10 — Monitoring & Recovery
+* **Purpose:** Metric collection, transient retries, task queue self-healing, log rotation.
+
+---
+
+# AND9 Version 3.0 — Engineering Specification
+
+## Module Contract
+Every module should implement this lifecycle and expose:
+* `initialize()`
+* `health_check()`
+* `execute()`
+* `shutdown()`
+
+## Request Lifecycle
+```text
+User Input → Validation → Intent Detection → Planning → Authorization → Execution → Verification → Memory Update → Response
+```
+
+## Brain Decision Rules
+* **Subconscious:** Open app, settings, media, timers, alarms, volume, brightness. Latency < 300ms.
+* **Conscious:** Coding, research, planning, multi-step automation. Latency 1-10s.
+
+## Task Queue Priorities
+* **Critical:** Emergency stop, authentication.
+* **High:** Voice commands, app launch.
+* **Medium:** File operations.
+* **Low:** Background cleanup, indexing.
+
+## Memory Policy
+* **Working Memory:** Max 50 items.
+* **Short-Term Memory:** Max 500 items.
+* **Long-Term Memory:** Persistent.
+* **Cache:** Max 100 MB.
+
+## Performance Budget
+* Web server: 40 MB
+* AI client: 30 MB
+* Memory manager: 20 MB
+* Cache: 40 MB
+* Active request: 100 MB
+* Safety margin: 70 MB
+* **Total Budget:** Idle < 180 MB, Peak < 280 MB.
