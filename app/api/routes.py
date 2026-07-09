@@ -330,6 +330,51 @@ def reflect():
         return jsonify({"type": "daily", "review": review})
 
 
+@api_bp.route("/v5/chat", methods=["POST"])
+def v5_chat():
+    """POST /api/v5/chat — Route through the AND9 Kernel (v5.0).
+
+    Body JSON:
+        message (str) — User input.
+
+    Returns JSON with Kernel-processed response.
+    """
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    if not message:
+        return jsonify({"reply": "Please provide a message.", "status": "error"})
+
+    try:
+        from app.core.kernel import get_kernel
+        kernel = get_kernel()
+        if not hasattr(kernel, '_initialized') or not kernel._initialized:
+            kernel.boot()
+        result = kernel.handle_request(message)
+        return jsonify({
+            "reply":   result.get("response", ""),
+            "brain":   result.get("brain", "unknown"),
+            "success": result.get("success", True),
+            "status":  "ok",
+        })
+    except Exception as e:
+        logger.exception("v5 chat error")
+        return jsonify({"reply": f"Kernel error: {e}", "status": "error"}), 500
+
+
+@api_bp.route("/v5/health", methods=["GET"])
+def v5_health():
+    """GET /api/v5/health — Kernel health endpoint."""
+    try:
+        from app.core.kernel import _kernel as _global_kernel
+        kernel = _global_kernel
+        if kernel is None or not kernel._initialized:
+            return jsonify({"status": "not booted"})
+        health_data = kernel.health()
+        return jsonify(health_data)
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)})
+
+
 @api_bp.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})

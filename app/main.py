@@ -131,6 +131,15 @@ def create_app() -> Flask:
     # ── AND9 Startup Initialization (Phase 12, 15) ───────────────
     _init_and9(app)
 
+    # ── Boot AND9 Kernel (v5.0) ────────────────────────────────
+    try:
+        from app.core.kernel import get_kernel
+        kernel = get_kernel()
+        kernel.boot()
+        app.logger.info("AND9 Kernel booted successfully.")
+    except Exception as e:
+        app.logger.error("AND9 Kernel boot failed: %s", e)
+
     # ── Request ID ──────────────────────────────────────────────
     @app.before_request
     def set_request_id():
