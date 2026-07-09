@@ -420,3 +420,190 @@ User Input → Validation → Intent Detection → Planning → Authorization �
 * Active request: 100 MB
 * Safety margin: 70 MB
 * **Total Budget:** Idle < 180 MB, Peak < 280 MB.
+
+---
+
+# AND9 v5.0 — AI Operating System Architecture
+
+## Vision
+Instead of building "just another AI assistant," build an **AI Operating System (AIOS)** where every capability is a service managed by a central kernel.
+
+```text
+User
+   │
+   ▼
+AI Kernel
+   │
+──────────────────────────────────────
+│ Brain │ Skills │ Memory │ Security │
+──────────────────────────────────────
+   │
+Android + Cloud + AI
+```
+
+---
+
+## Layer 1 — AI Kernel
+The kernel is the heart of the system.
+
+### Responsibilities
+* Start all services
+* Stop services safely
+* Manage RAM
+* Schedule tasks
+* Route requests
+* Monitor health
+* Recover from failures
+
+No other module should communicate directly without going through the kernel.
+
+---
+
+## Layer 2 — Service Manager
+Every feature becomes a service.
+Examples:
+```text
+Voice Service
+Chat Service
+Memory Service
+Storage Service
+Media Service
+Browser Service
+Notification Service
+Calendar Service
+Camera Service
+Location Service
+Internet Service
+Security Service
+Automation Service
+```
+Services can be enabled or disabled dynamically to save RAM.
+
+---
+
+## Layer 3 — AI Agents
+Instead of one large AI, divide responsibilities among specialized agents.
+
+| Agent | Responsibility |
+| :--- | :--- |
+| Planner | Break goals into tasks |
+| Researcher | Gather information |
+| Coder | Generate and analyze code |
+| Reviewer | Validate outputs |
+| Memory | Retrieve relevant context |
+| Executor | Perform actions |
+| Scheduler | Run background jobs |
+| Security | Check permissions and risks |
+
+The Brain Manager decides which agents participate in each request.
+
+---
+
+## Layer 4 — Workflow Engine
+Support multi-step automation.
+Example:
+```text
+Download PDF → Rename → Move to Documents → Summarize → Share to Telegram → Notify User
+```
+Each step has its own status, can retry on failure, and can resume if interrupted.
+
+---
+
+## Layer 5 — Event Bus
+Avoid direct module-to-module calls.
+Instead:
+```text
+Voice → Event Bus → Intent → Planner → Executor
+```
+Benefits: loose coupling, easier testing, better scalability.
+
+---
+
+## Layer 6 — Plugin System
+Every new feature is installed as a plugin.
+Examples: Spotify, WhatsApp, Telegram, GitHub, Weather, Calculator, OCR, Camera.
+This allows adding or removing features without changing the kernel.
+
+---
+
+## Layer 7 — Memory Hierarchy
+```text
+Working Memory → Conversation Memory → Long-Term Memory → Knowledge Base → Archive
+```
+Each level has a maximum size, expiration policy, and cleanup rules.
+
+---
+
+## Layer 8 — Resource Manager
+The Resource Manager keeps Render stable.
+
+### Responsibilities
+* RAM monitoring
+* CPU monitoring
+* Queue monitoring
+* Automatic cleanup
+* Cache eviction
+* Idle service shutdown
+
+Suggested targets:
+* **Idle RAM:** < 180 MB
+* **Peak RAM:** < 280 MB
+* **CPU:** < 70% sustained
+* **Startup:** < 5 seconds
+
+---
+
+## Layer 9 — Security Manager
+Before executing any action:
+```text
+Input → Validation → Permission Check → Risk Assessment → Execution → Audit Log
+```
+Sensitive actions (delete files, send messages, modify settings) require explicit confirmation.
+
+---
+
+## Layer 10 — Observability
+Every service should expose:
+* Health status
+* Memory usage
+* CPU usage
+* Request count
+* Error count
+* Average latency
+
+This makes diagnosing problems much easier.
+
+---
+
+## Suggested Development Order
+1. Kernel
+2. Service Manager
+3. Event Bus
+4. Planner
+5. Executor
+6. Memory
+7. Plugin System
+8. Android Services
+9. Optimization
+10. Deployment
+
+---
+
+## Version Targets & Vision
+* **v1.0:** Stable assistant
+* **v2.0:** Android automation
+* **v3.0:** Conscious + Subconscious brain
+* **v4.0:** Memory and learning
+* **v5.0:** AI Operating System
+* **v6.0:** Multi-agent autonomous AI
+
+By **v6.0**, AND9 should function as a complete AI operating platform rather than a chatbot. It should:
+* Understand voice and text naturally.
+* Decide whether a task is simple (subconscious) or complex (conscious).
+* Plan and execute multi-step workflows.
+* Learn from past interactions while respecting memory limits.
+* Control Android through well-defined services.
+* Stay modular through a plugin architecture.
+* Run within the constraints of **Render Free (300 MB RAM)** by using lazy loading, bounded caches, and dynamic service management.
+* Allow future expansion without major architectural changes.
+
