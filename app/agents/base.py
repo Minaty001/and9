@@ -421,12 +421,12 @@ class AgentBase(ABC):
     def get_recent_logs(self, n: int = 10) -> list[dict]:
         """Get the N most recent log entries as dicts."""
         return [{
-            "timestamp": l.timestamp,
-            "action": l.action,
-            "success": l.success,
-            "latency_ms": round(l.latency_ms, 1),
-            "tool": l.tool,
-        } for l in self.logs[-n:]]
+            "timestamp": log.timestamp,
+            "action": log.action,
+            "success": log.success,
+            "latency_ms": round(log.latency_ms, 1),
+            "tool": log.tool,
+        } for log in self.logs[-n:]]
 
     # ── Execution Helpers ─────────────────────────────────────────
 
