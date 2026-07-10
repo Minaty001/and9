@@ -688,7 +688,7 @@
       <div class="arc arc-thin"></div>
       <div class="arc arc-dash"></div>
       
-      <div class="orb-core" id="orbCore">
+      <div class="orb-core" id="orbCore" role="button" tabindex="0" aria-label="Toggle voice input">
         <div class="orb-inner-glow"></div>
       </div>
       
@@ -714,9 +714,9 @@
         </div>
       </div>
       <div class="input-row">
-        <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command..." autocomplete="off">
-        <button class="send-btn" id="sendBtn" title="Send command">
-          <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+        <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command..." aria-label="Command input" autocomplete="off">
+        <button class="send-btn" id="sendBtn" title="Send command" aria-label="Send command">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
         </button>
       </div>
     </div>
@@ -1229,6 +1229,13 @@
       orbCore.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleVoice();
+      });
+      orbCore.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleVoice();
+        }
       });
 
       sendBtn.addEventListener('click', () => {
