@@ -39,9 +39,14 @@ logger = logging.getLogger(__name__)
 # Database path
 _DB_PATH = os.environ.get(
     "AND9_TRACES_DB",
-    "/app/.jarvis_data/intent_traces.db"
+    os.path.join(os.path.abspath(os.path.dirname(__file__)), "../../.jarvis_data/intent_traces.db")
 )
-os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+try:
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+except (PermissionError, OSError) as e:
+    logger.warning("Could not create trace DB directory %s: %s", os.path.dirname(_DB_PATH), e)
+    # Fallback to an in-memory database path or a temp directory if needed,
+    # but the DB initialization will probably catch it later.
 
 # Short-term memory buffer size
 MAX_SHORT_TERM_TRACES = int(os.environ.get("AND9_SHORT_TERM_SIZE", "50"))
