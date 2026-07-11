@@ -1,0 +1,3 @@
+## 2024-03-01 - Interactive Visual Components Need Keyboard Support
+**Learning:** Custom interactive components designed visually (like a glowing orb) are often missing basic keyboard accessibility. They may handle clicks but lack explicit ARIA roles, `tabindex` for focusability, and keyboard event handlers (`Enter` or `Space`), rendering them inaccessible to keyboard users and screen readers.
+**Action:** When inspecting visually complex or custom UI elements that serve as buttons or inputs, explicitly verify the presence of `role="button"`, `tabindex="0"`, `aria-label`, visible focus indicators (`:focus-visible`), and equivalent keyboard event listeners alongside their pointer event listeners.
