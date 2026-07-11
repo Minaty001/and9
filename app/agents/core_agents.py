@@ -52,11 +52,11 @@ class ExecutiveAgent(AgentBase):
         self._registry = None
         self._orchestrator = None
 
-    def set_registry(self, registry: 'AgentRegistry') -> None:
+    def set_registry(self, registry: Any) -> None:
         """Set reference to the agent registry for delegation."""
         self._registry = registry
 
-    def set_orchestrator(self, orchestrator: 'AgentOrchestrator') -> None:
+    def set_orchestrator(self, orchestrator: Any) -> None:
         """Set reference to the orchestrator for complex tasks."""
         self._orchestrator = orchestrator
 
