@@ -8,7 +8,6 @@ Checks system health, validates Android handlers, and attempts to find the root 
 import logging
 import os
 import sqlite3
-import traceback
 from typing import Dict, Any
 
 from app.android.validate_handlers import get_coverage_report

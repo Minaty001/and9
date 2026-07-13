@@ -15,7 +15,6 @@ Supported commands:
     play song / play music / gaana chalao / song bajao
 """
 import logging
-from typing import Optional
 from urllib.parse import quote_plus
 
 from app.core.config import YOUTUBE_PACKAGE, YOUTUBE_COMPONENT

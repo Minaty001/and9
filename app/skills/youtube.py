@@ -5,7 +5,6 @@ Searches YouTube without an API key using youtube-search-python.
 Returns the best matching video URL and metadata.
 """
 import logging
-import re
 from typing import Optional
 
 logger = logging.getLogger(__name__)

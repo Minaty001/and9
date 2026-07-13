@@ -5,7 +5,7 @@ Routing is handled by the central LLMIntentRouter in orchestrator.
 This agent receives pre-classified intent and just executes.
 """
 from app.core.brain import ask_llm
-from app.skills.tasks import search_web, get_realtime_data, handle_device_command
+from app.skills.tasks import get_realtime_data, handle_device_command
 from app.skills.pc_control import handle_pc_command
 from app.skills.audio_manager import handle_audio_command
 from app.skills.research import search_sources, synthesize_answer

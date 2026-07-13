@@ -17,7 +17,6 @@ Hinglish messages indicating the system is in degraded mode.
 """
 import logging
 import time
-from typing import Optional
 
 from app.brain.brain_types import BrainResult, BrainType, IntentType
 

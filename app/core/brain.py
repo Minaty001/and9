@@ -18,7 +18,6 @@ from app.core.config import (
     GROQ_API_KEY, GROQ_API_BASE, GROQ_CHAT_MODEL,
     OPENCODE_API_KEY, OPENCODE_API_BASE, OPENCODE_CHAT_MODEL,
 )
-from app.core.memory import Memory
 from app.core.personality import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)

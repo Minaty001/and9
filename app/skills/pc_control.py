@@ -10,7 +10,6 @@ import logging
 import subprocess
 import os
 import re
-from typing import Any
 
 from app.core.config import IS_WINDOWS
 
@@ -216,7 +215,7 @@ def pc_volume(level_or_updown: str | int) -> str:
         return "Invalid volume level."
 
     _run_powershell(ps)
-    return f"Adjusting system volume."
+    return "Adjusting system volume."
 
 
 def pc_mute() -> str:
@@ -436,7 +435,7 @@ def pc_screenshot(save_path: str | None = None) -> str:
     _run_powershell(ps, timeout=15)
     if os.path.exists(save_path):
         return f"Screenshot saved to {save_path}"
-    return f"Failed to take screenshot."
+    return "Failed to take screenshot."
 
 
 # ── Media Control ──────────────────────────────────────────────────
@@ -558,7 +557,7 @@ def pc_open_app(app_name: str) -> str:
     try:
         subprocess.Popen(["start", app_name], shell=True)
         return f"Opening {app_name}."
-    except Exception as e:
+    except Exception:
         return f"Could not find '{app_name}' to open."
 
 

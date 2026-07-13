@@ -14,7 +14,6 @@ Routing logic:
 
 import logging
 import time
-from typing import Optional
 from app.core.understanding import UnderstandingEngine
 from app.core.event_bus import EventBus, Event
 from app.core.task_queue import TaskQueue, Priority
@@ -66,13 +65,15 @@ class BrainManager:
 
         # 3. Execute through Task Queue
         if brain == "subconscious":
-            fn = lambda: self._subconscious.execute(
-                analysis.intent, analysis.entities
-            )
+            def fn():
+                return self._subconscious.execute(
+                            analysis.intent, analysis.entities
+                        )
         else:
-            fn = lambda: self._conscious.think(
-                text, analysis, session_id=session_id
-            )
+            def fn():
+                return self._conscious.think(
+                            text, analysis, session_id=session_id
+                        )
 
         task_id = self._queue.enqueue(
             fn=fn,

@@ -13,7 +13,7 @@ import logging
 import threading
 from enum import Enum
 from typing import Dict, Optional
-from app.core.event_bus import EventBus, Event
+from app.core.event_bus import EventBus
 
 logger = logging.getLogger(__name__)
 
