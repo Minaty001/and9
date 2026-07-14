@@ -551,7 +551,7 @@ class TestEdgeCases:
 
     def test_multiple_consecutive_same_intent(self, dm):
         """Multiple same-intent messages should continue the same task."""
-        dm.process("Play a song")
+        r1 = dm.process("Play a song")
         r2 = dm.process("Tum Hi Ho")
         # Should be the same task
         if r2.get("task_id"):

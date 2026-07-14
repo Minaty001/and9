@@ -66,15 +66,13 @@ class BrainManager:
 
         # 3. Execute through Task Queue
         if brain == "subconscious":
-            def fn():
-                return self._subconscious.execute(
-                            analysis.intent, analysis.entities
-                        )
+            fn = lambda: self._subconscious.execute(
+                analysis.intent, analysis.entities
+            )
         else:
-            def fn():
-                return self._conscious.think(
-                            text, analysis, session_id=session_id
-                        )
+            fn = lambda: self._conscious.think(
+                text, analysis, session_id=session_id
+            )
 
         task_id = self._queue.enqueue(
             fn=fn,

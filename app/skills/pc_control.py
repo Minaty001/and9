@@ -216,7 +216,7 @@ def pc_volume(level_or_updown: str | int) -> str:
         return "Invalid volume level."
 
     _run_powershell(ps)
-    return "Adjusting system volume."
+    return f"Adjusting system volume."
 
 
 def pc_mute() -> str:
@@ -436,7 +436,7 @@ def pc_screenshot(save_path: str | None = None) -> str:
     _run_powershell(ps, timeout=15)
     if os.path.exists(save_path):
         return f"Screenshot saved to {save_path}"
-    return "Failed to take screenshot."
+    return f"Failed to take screenshot."
 
 
 # ── Media Control ──────────────────────────────────────────────────
@@ -558,7 +558,7 @@ def pc_open_app(app_name: str) -> str:
     try:
         subprocess.Popen(["start", app_name], shell=True)
         return f"Opening {app_name}."
-    except Exception:
+    except Exception as e:
         return f"Could not find '{app_name}' to open."
 
 

@@ -300,7 +300,7 @@ class DependencyAnalyzer:
                 return rel
 
             # Check if this file is the module file
-            module_path + ".py"
+            mod_file = module_path + ".py"
             if mod == import_name:
                 return rel
 

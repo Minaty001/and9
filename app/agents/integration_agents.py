@@ -298,10 +298,10 @@ class WorkflowAgent(AgentBase):
         return AgentResult(
             success=True,
             response=(
-                "**Workflow Engine**\n\n"
-                "Workflow request received.\n"
-                "I'll orchestrate the multi-step execution across "
-                "the appropriate agents."
+                f"**Workflow Engine**\n\n"
+                f"Workflow request received.\n"
+                f"I'll orchestrate the multi-step execution across "
+                f"the appropriate agents."
             ),
             data={
                 "request": request[:200],

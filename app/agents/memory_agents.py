@@ -136,7 +136,7 @@ class MemoryAgent(AgentBase):
 
         return AgentResult(
             success=True,
-            response="Main ne note kar liya.",
+            response=f"Main ne note kar liya.",
             data={"stored": message, "memory_type": "working"},
             agent_name=self.name,
         )
@@ -216,14 +216,14 @@ class LearningAgent(AgentBase):
         return AgentResult(
             success=True,
             response=(
-                "**Learning Agent**\n\n"
-                "I analyze patterns in your usage to improve over time.\n"
-                "Currently tracking: actions, successes, failures, preferences.\n\n"
-                "I learn from:\n"
-                "- Repeated commands → routines\n"
-                "- Corrections → improved understanding\n"
-                "- Successes → reinforce strategies\n"
-                "- Failures → avoid mistakes\n"
+                f"**Learning Agent**\n\n"
+                f"I analyze patterns in your usage to improve over time.\n"
+                f"Currently tracking: actions, successes, failures, preferences.\n\n"
+                f"I learn from:\n"
+                f"- Repeated commands → routines\n"
+                f"- Corrections → improved understanding\n"
+                f"- Successes → reinforce strategies\n"
+                f"- Failures → avoid mistakes\n"
             ),
             data={
                 "patterns_detected": 0,

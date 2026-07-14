@@ -255,6 +255,7 @@ class ReferenceResolver:
                 if antecedent:
                     # Replace the reference with the concrete entity
                     # e.g., "play it" → "play <song_name>"
+                    replacement_fn = lambda m, ant=antecedent: ant  # noqa: E731
                     # Simple: replace full pattern match with just the antecedent
                     message = pattern.sub(antecedent, message)
                     resolved_refs.append((pattern.pattern[:20], antecedent))

@@ -174,6 +174,7 @@ class TaskQueue:
 
             # Check dependencies and priority order
             best = None
+            best_idx = -1
             for i, tid in enumerate(available):
                 task = self._tasks[tid]
                 # Check dependencies
@@ -182,6 +183,7 @@ class TaskQueue:
                 # Pick the highest priority; break ties by order (FIFO)
                 if best is None or task.priority.value < best.priority.value:
                     best = task
+                    best_idx = i
 
             if best is None:
                 return None

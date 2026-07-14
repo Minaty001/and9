@@ -175,7 +175,7 @@ class VoiceAgent(AgentBase):
     def process(self, input_data: Any,
                 context: Optional[dict] = None) -> AgentResult:
         """Process a voice-related request."""
-        str(input_data) if not isinstance(input_data, str) else input_data
+        request = str(input_data) if not isinstance(input_data, str) else input_data
 
         return AgentResult(
             success=True,

@@ -212,7 +212,7 @@ class DependencyGraph:
 
         for _ in range(max_iter):
             prev = scores.copy()
-            sum(prev.values())
+            total = sum(prev.values())
             dangling_contrib = sum(prev[nid] for nid in dangling) / n if n else 0
 
             for nid in self._nodes:
