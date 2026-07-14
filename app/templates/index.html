@@ -469,6 +469,10 @@
       background: rgba(255, 170, 0, 0.25);
       box-shadow: 0 0 20px #ff8800;
     }
+    .send-btn:focus-visible {
+      outline: 2px solid #ffaa00;
+      outline-offset: 2px;
+    }
     .send-btn svg {
       width: 14px;
       height: 14px;
@@ -579,8 +583,16 @@
     .timer-dismiss-btn:hover {
       background: rgba(255, 60, 60, 0.22);
     }
+    .timer-dismiss-btn:focus-visible {
+      outline: 2px solid #ff6666;
+      outline-offset: 2px;
+    }
     .timer-cancel-btn:hover {
       background: rgba(255, 255, 255, 0.1);
+    }
+    .timer-cancel-btn:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.6);
+      outline-offset: 2px;
     }
     .timer-cancel-btn:active, .timer-dismiss-btn:active {
       transform: scale(0.96);
@@ -714,9 +726,9 @@
         </div>
       </div>
       <div class="input-row">
-        <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command..." autocomplete="off">
-        <button class="send-btn" id="sendBtn" title="Send command">
-          <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+        <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command..." autocomplete="off" aria-label="Command input">
+        <button class="send-btn" id="sendBtn" title="Send command" aria-label="Send command">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
         </button>
       </div>
     </div>
