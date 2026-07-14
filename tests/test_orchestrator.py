@@ -480,7 +480,7 @@ class TestOrchestratorEdgeCases:
         start = time.perf_counter()
         task_ids = orchestrator.plan(subtasks)
         results = orchestrator._execute_batch(task_ids, context=None)
-        elapsed = time.perf_counter() - start
+        time.perf_counter() - start
         # All should complete
         assert len(results) == 3
 
