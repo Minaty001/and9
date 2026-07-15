@@ -42,7 +42,9 @@ _DB_PATH = os.environ.get(
     os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".jarvis_data", "intent_traces.db")
 )
 try:
-    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+    _dir = os.path.dirname(_DB_PATH)
+    if _dir:
+        os.makedirs(_dir, exist_ok=True)
 except Exception:
     pass
 
