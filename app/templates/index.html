@@ -232,6 +232,17 @@
       justify-content: center;
     }
 
+
+    .orb-core:focus-visible {
+      outline: 3px solid #ffaa00;
+      outline-offset: 4px;
+    }
+
+    .send-btn:focus-visible {
+      outline: 2px solid #ffaa00;
+      outline-offset: 2px;
+    }
+
     .orb-core.listening {
       animation: orbPulseListen 0.8s ease-in-out infinite;
     }
@@ -688,7 +699,7 @@
       <div class="arc arc-thin"></div>
       <div class="arc arc-dash"></div>
       
-      <div class="orb-core" id="orbCore">
+      <div class="orb-core" id="orbCore" role="button" aria-label="Toggle voice input" tabindex="0">
         <div class="orb-inner-glow"></div>
       </div>
       
@@ -714,8 +725,8 @@
         </div>
       </div>
       <div class="input-row">
-        <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command..." autocomplete="off">
-        <button class="send-btn" id="sendBtn" title="Send command">
+        <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command..." autocomplete="off" aria-label="Command input">
+        <button class="send-btn" id="sendBtn" title="Send command" aria-label="Send command">
           <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
         </button>
       </div>
@@ -1225,6 +1236,14 @@
           addMessage('jarvis', 'Voice input not supported. Use text commands.');
         }
       }
+
+
+      orbCore.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleVoice();
+        }
+      });
 
       orbCore.addEventListener('click', (e) => {
         e.stopPropagation();

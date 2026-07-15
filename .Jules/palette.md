@@ -1,0 +1,3 @@
+## 2024-05-24 - Accessibility for Custom Interactive Elements
+**Learning:** Adding `role`, `tabindex`, and keyboard event handlers to custom UI components (like a `div` acting as a voice toggle button) is necessary to ensure they are accessible for screen readers and keyboard navigation. Standard HTML elements like `<button>` provide these for free, but custom elements need manual implementation. Also added focus-visible styles.
+**Action:** Always add ARIA attributes, keyboard support, and `:focus-visible` styles when converting non-interactive elements (like `div` or `span`) into interactive controls.
