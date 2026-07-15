@@ -39,9 +39,12 @@ logger = logging.getLogger(__name__)
 # Database path
 _DB_PATH = os.environ.get(
     "AND9_TRACES_DB",
-    "/app/.jarvis_data/intent_traces.db"
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".jarvis_data", "intent_traces.db")
 )
-os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+try:
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+except Exception:
+    pass
 
 # Short-term memory buffer size
 MAX_SHORT_TERM_TRACES = int(os.environ.get("AND9_SHORT_TERM_SIZE", "50"))
