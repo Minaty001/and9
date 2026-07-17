@@ -8,7 +8,6 @@ YouTube URLs and intents.
 NEVER sends YouTube commands to Chrome or any browser.
 """
 import logging
-from typing import Optional
 
 from app.core.config import YOUTUBE_PACKAGE
 

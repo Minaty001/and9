@@ -18,12 +18,10 @@ Chrome Firewall Rule (Phase 17 — Final Rule):
     are blocked from opening Chrome.
 """
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from app.android.action_registry import (
-    REGISTRY,
     get_action,
-    is_whitelisted,
 )
 from app.android.chrome_firewall import assert_not_chrome, ChromeFirewallError
 

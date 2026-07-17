@@ -12,14 +12,13 @@ Constitution V3 processing flow:
 import time
 import logging
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
 
-from app.core.memory import Memory, get_memory
+from app.core.memory import get_memory
 from app.core.understanding import UnderstandingEngine, MessageAnalysis
 from app.core.context_builder import ContextBuilder
 from app.core.goal_tracker import GoalTracker
-from app.core.events import EventSystem, is_event_request
+from app.core.events import EventSystem
 from app.core.reflection import ReflectionEngine
 from app.core.truth_engine import verify_before_llm, cap_confidence
 
@@ -306,7 +305,7 @@ class Orchestrator:
     def _handle_music(self, query: str, analysis: MessageAnalysis,
                       memory_ctx: dict, context: str, start: float) -> dict:
         """Handle music/song requests via YouTube search."""
-        from app.skills.youtube import handle_music_request, is_music_request
+        from app.skills.youtube import handle_music_request
 
         # Check memory for favorite song preference
         profile = memory_ctx.get("user_profile", {})

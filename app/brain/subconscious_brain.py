@@ -22,12 +22,12 @@ records). In production, this should be persisted to disk or a database
 for cross-session pattern learning.
 """
 import logging
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 
-from app.brain.brain_types import BrainResult, BrainType, IntentType
+from app.brain.brain_types import BrainResult
 
 logger = logging.getLogger(__name__)
 

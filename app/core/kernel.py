@@ -20,7 +20,6 @@ Shutdown order: reverse of boot.
 
 import logging
 import threading
-import time
 from typing import Optional
 from datetime import datetime, timezone
 

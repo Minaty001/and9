@@ -27,8 +27,6 @@ from typing import Optional
 
 from app.dialogue_manager.intent_definitions import (
     get_intent_definition,
-    IntentDefinition,
-    SlotDefinition,
 )
 
 logger = logging.getLogger(__name__)

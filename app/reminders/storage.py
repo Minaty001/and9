@@ -17,7 +17,6 @@ Schema:
 import sqlite3
 import logging
 import os
-import time
 from datetime import datetime
 from contextlib import contextmanager
 from typing import Optional, List, Dict, Any
