@@ -442,7 +442,12 @@ class DialogueStateTracker:
         if not self._persist_path:
             return
         try:
-            os.makedirs(os.path.dirname(self._persist_path), exist_ok=True)
+            try:
+                os.makedirs(os.path.dirname(self._persist_path), exist_ok=True)
+            except PermissionError:
+                self._persist_path = os.path.join(os.getcwd(), ".jarvis_data", "jarvis_state.json")
+                os.makedirs(os.path.dirname(self._persist_path), exist_ok=True)
+
             with self._lock:
                 data = {
                     "task_counter": self._task_counter,

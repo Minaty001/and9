@@ -45,9 +45,19 @@ IS_WINDOWS = os.name == "nt"
 
 # ── Legacy aliases (some agents may import these) ──────────────
 MEMORY_DB  = None   # no SQLite
-NOTES_DIR  = "/tmp/.jarvis_data"
-STATE_FILE = "/tmp/.jarvis_data/jarvis_state.json"
-os.makedirs(NOTES_DIR, exist_ok=True)
+
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_fallback_dir = os.path.join(project_root, ".jarvis_data")
+
+NOTES_DIR  = os.environ.get("NOTES_DIR", _fallback_dir)
+STATE_FILE = os.environ.get("STATE_FILE", os.path.join(NOTES_DIR, "jarvis_state.json"))
+
+try:
+    os.makedirs(NOTES_DIR, exist_ok=True)
+except PermissionError:
+    NOTES_DIR = os.path.join(os.getcwd(), ".jarvis_data")
+    STATE_FILE = os.path.join(NOTES_DIR, "jarvis_state.json")
+    os.makedirs(NOTES_DIR, exist_ok=True)
 
 # ═══════════════════════════════════════════════════════════════
 # AND9 — Brain / Android-specific configuration

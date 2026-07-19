@@ -23,10 +23,16 @@ from typing import Optional, Dict, List
 logger = logging.getLogger(__name__)
 
 # Path where Android writes the installed apps cache
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 _INSTALLED_APPS_PATH = os.environ.get(
     "AND9_INSTALLED_APPS_PATH",
-    "/app/.jarvis_data/installed_apps.json"
+    os.path.join(project_root, ".jarvis_data", "installed_apps.json")
 )
+
+try:
+    os.makedirs(os.path.dirname(_INSTALLED_APPS_PATH), exist_ok=True)
+except PermissionError:
+    _INSTALLED_APPS_PATH = os.path.join(os.getcwd(), ".jarvis_data", "installed_apps.json")
 
 
 class PackageResolver:

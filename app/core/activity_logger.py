@@ -17,7 +17,12 @@ ACTIVITIES_DIR = os.path.abspath(
 class ActivityLogger:
 
     def __init__(self):
-        os.makedirs(ACTIVITIES_DIR, exist_ok=True)
+        global ACTIVITIES_DIR
+        try:
+            os.makedirs(ACTIVITIES_DIR, exist_ok=True)
+        except PermissionError:
+            ACTIVITIES_DIR = os.path.join(os.getcwd(), "activities")
+            os.makedirs(ACTIVITIES_DIR, exist_ok=True)
         self._lock = Lock()
 
     def log(self, query: str, response: str):
