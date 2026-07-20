@@ -17,7 +17,6 @@ Required Supabase tables (run once in SQL Editor):
     See: app/core/supabase_schema.sql
 """
 import logging
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 

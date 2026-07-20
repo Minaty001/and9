@@ -9,7 +9,6 @@ Constitution V3:
    Rule 4 — Honest memory boundaries: only what context contains
 """
 import logging
-from typing import Optional
 
 from app.core.personality import build_personality_prompt
 

@@ -16,7 +16,6 @@ Zero external dependencies. Supports Python 3.11+.
 import ast
 import logging
 import os
-import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional
@@ -300,7 +299,7 @@ class DependencyAnalyzer:
                 return rel
 
             # Check if this file is the module file
-            mod_file = module_path + ".py"
+            module_path + ".py"
             if mod == import_name:
                 return rel
 

@@ -12,7 +12,6 @@ Covers:
 
 import json
 import os
-import sys
 import tempfile
 import pytest
 
@@ -409,7 +408,7 @@ class TestProjectIntegration:
     def test_analyze_self(self):
         """Analyze the AND9 project itself."""
         project_root = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "..")
+            os.path.join(os.path.dirname(__file__), "..")
         )
         analyzer = DependencyAnalyzer(project_root)
         graph = analyzer.analyze()
@@ -422,7 +421,7 @@ class TestProjectIntegration:
     def test_dialogue_manager_dependencies(self):
         """Check that the dialogue_manager modules are properly connected."""
         project_root = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "..")
+            os.path.join(os.path.dirname(__file__), "..")
         )
         analyzer = DependencyAnalyzer(project_root)
         graph = analyzer.analyze()

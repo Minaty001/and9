@@ -16,8 +16,10 @@ from app.skills.youtube import (
 from app.skills.tasks import (
     search_web, get_realtime_data,
     get_time, get_time_date, get_system_info, get_news,
-    handle_device_command, handle_pc_command, handle_audio_command,
+    handle_device_command,
 )
+from app.skills.pc_control import handle_pc_command
+from app.skills.audio_manager import handle_audio_command
 
 # Research
 from app.skills.research import (

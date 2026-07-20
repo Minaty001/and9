@@ -5,14 +5,12 @@ FastAPI/Flask-compatible routes exposing the dependency graph
 analyzer and MCP server over HTTP.
 """
 
-import json
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
-from app.dependency_graph.analyzer import DependencyAnalyzer
 from app.dependency_graph.mcp_server import DependencyGraphMCPServer
 
 logger = logging.getLogger(__name__)

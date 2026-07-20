@@ -17,10 +17,10 @@ Design rules enforced:
     - Broken imports fixed (app.javis.* → app.skills.* / app.core.*)
 """
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from app.brain.orchestrator import Orchestrator
-from app.core.logger import get_logger, is_debug_enabled
+from app.core.logger import is_debug_enabled
 
 logger = logging.getLogger(__name__)
 

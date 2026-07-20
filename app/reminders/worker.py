@@ -21,11 +21,9 @@ Usage:
 """
 import logging
 import threading
-import time
 from typing import Callable, List, Optional
 
 from app.reminders import storage
-from app.reminders.scheduler import get_engine
 
 logger = logging.getLogger(__name__)
 

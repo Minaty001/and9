@@ -38,7 +38,6 @@ import threading
 from typing import Any, Optional
 
 from app.dialogue_manager.intent_definitions import (
-    get_intent_definition,
     get_required_slot_names,
     get_optional_slot_names,
     get_all_slot_names,

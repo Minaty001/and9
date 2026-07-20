@@ -24,7 +24,6 @@ from typing import Any, Optional
 
 from app.dialogue_manager.intent_definitions import (
     get_intent_definition,
-    IntentDefinition,
 )
 from app.dialogue_manager.state_manager import TaskState, TaskStatus
 

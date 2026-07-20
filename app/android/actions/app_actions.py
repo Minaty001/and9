@@ -9,7 +9,6 @@ Never hardcodes app names — always resolves through the
 package resolver layer.
 """
 import logging
-from typing import Optional
 
 from app.android.apps.package_resolver import get_resolver
 

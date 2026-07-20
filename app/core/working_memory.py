@@ -5,7 +5,6 @@ Working memory holds the immediate context: what the user is doing,
 what the current task is, the active focus area, and transient state
 that doesn't need to persist in long-term memory.
 """
-import json
 import logging
 from datetime import datetime, timezone
 from typing import Optional
