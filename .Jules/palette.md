@@ -1,3 +1,3 @@
-## 2025-02-28 - Custom Interactive Element Accessibility
-**Learning:** Custom UI elements like the holographic orb (`#orbCore`) and icon-only send buttons are completely invisible to screen readers without ARIA labels, roles, and keyboard event listeners, leading to poor keyboard navigation and zero assistive tech feedback in web-based conversational interfaces.
-**Action:** When building or enhancing custom interactive elements (e.g., custom voice toggles), always attach `role="button"`, `tabindex="0"`, an explicit `aria-label`, and a keyboard event listener for 'Enter' and 'Space' keys to ensure full interactivity for all users.
+## 2024-05-24 - Accessibility for Custom Interactive Elements
+**Learning:** Adding `role`, `tabindex`, and keyboard event handlers to custom UI components (like a `div` acting as a voice toggle button) is necessary to ensure they are accessible for screen readers and keyboard navigation. Standard HTML elements like `<button>` provide these for free, but custom elements need manual implementation. Also added focus-visible styles.
+**Action:** Always add ARIA attributes, keyboard support, and `:focus-visible` styles when converting non-interactive elements (like `div` or `span`) into interactive controls.
