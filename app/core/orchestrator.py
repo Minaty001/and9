@@ -248,6 +248,10 @@ class Orchestrator:
         if agent_name == "reflection":
             return self._handle_reflection(query, analysis, memory_ctx, context, start)
 
+        # Route device/PC actions through the AND9 brain (has Chrome firewall, intent router)
+        if agent_name in ("device", "pc"):
+            return self._handle_and9_device(query, analysis, memory_ctx, start)
+
         agent = self._get_agent(agent_name)
 
         if agent:
@@ -287,6 +291,36 @@ class Orchestrator:
                 "entities_found": len(analysis.entities),
                 "expertise_level": analysis.expertise_level,
                 "session_id": memory_ctx.get("session_id"),
+            },
+            "time_ms": elapsed,
+        }
+
+    # ── AND9 Device Handler ──────────────────────────────────────
+
+    def _handle_and9_device(self, query: str, analysis, memory_ctx: dict, start: float) -> dict:
+        """Route device/PC commands through the AND9 brain (intent router + Chrome firewall)."""
+        from app.brain import AND9
+        and9 = AND9(enable_patterns=False)
+        result = and9.process(query)
+        elapsed = int((time.time() - start) * 1000)
+        return {
+            "response": result.get("response", ""),
+            "agent":    "device",
+            "success":  result.get("success", True),
+            "metadata": {
+                "action": result.get("action"),
+                "payload": result.get("payload"),
+                "intent": result.get("intent"),
+                "failure_reason": result.get("metadata", {}).get("failure_reason"),
+            },
+            "brain": {
+                "intent":           analysis.intent,
+                "emotion_detected": analysis.emotion,
+                "emotion_intensity": analysis.emotion_intensity,
+                "topic":            analysis.topic,
+                "entities_found":   len(analysis.entities),
+                "expertise_level":  analysis.expertise_level,
+                "session_id":       memory_ctx.get("session_id"),
             },
             "time_ms": elapsed,
         }
