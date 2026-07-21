@@ -14,7 +14,7 @@ What it learns:
 
 import logging
 from collections import Counter, defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)

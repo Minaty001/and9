@@ -15,23 +15,19 @@ AND9 Cognitive Architecture — Execution Priority:
 Search is ALWAYS last. Device actions ALWAYS win.
 Chrome is NEVER opened except for SEARCH/NEWS/WEB_LOOKUP.
 """
-import re
 import logging
 from typing import Optional, Tuple
 
 from app.core.constants import ActionType
 from app.router.command_dictionary import (
     EMERGENCY,
-    CALL_CONTACT, CALL_NUMBER, IS_PHONE_NUMBER,
-    MESSAGE,
-    OPEN_APP_TRIGGERS, OPEN_APP_SPECIFIC,
-    CAMERA,
+    CALL_CONTACT, CALL_NUMBER, MESSAGE,
+    OPEN_APP_TRIGGERS, CAMERA,
     FLASHLIGHT, FLASHLIGHT_ON, FLASHLIGHT_OFF,
     BLUETOOTH, BLUETOOTH_SCAN, BLUETOOTH_PAIRED, TOGGLE_ON, TOGGLE_OFF,
     WIFI,
     VOLUME, VOLUME_UP, VOLUME_DOWN, VOLUME_MUTE, VOLUME_MAX,
-    YOUTUBE_TRIGGER, YOUTUBE_PLAY_TRIGGER, YOUTUBE_OPEN_ONLY,
-    MUSIC_TRIGGER,
+    YOUTUBE_TRIGGER, YOUTUBE_PLAY_TRIGGER, MUSIC_TRIGGER,
     ALARM_TRIGGER,
     REMINDER_TRIGGER,
     TIMER_TRIGGER,

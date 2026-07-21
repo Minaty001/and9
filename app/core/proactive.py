@@ -7,7 +7,7 @@ Designed for Android push-notification style delivery.
 """
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 logger = logging.getLogger(__name__)

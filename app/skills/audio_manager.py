@@ -7,7 +7,6 @@ and can switch the system default audio devices to them.
 
 import logging
 import subprocess
-import re
 from typing import Any
 
 from app.core.config import IS_WINDOWS

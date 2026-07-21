@@ -8,18 +8,14 @@ Constitution V3:
    Rule 5/6 — LLM never used for command parsing.
    Rule 8 — Source tracking for all decisions.
 """
-import os
-import sys
 import subprocess
 import json
 import logging
 import re
 from datetime import datetime
 
-from app.core.config import SERP_API_KEY, NEWS_API_KEY, NOTES_DIR, IS_TERMUX, IS_WINDOWS
+from app.core.config import SERP_API_KEY, NEWS_API_KEY, IS_TERMUX, IS_WINDOWS
 from app.skills.intent_executor import IntentExecutor
-from app.skills.pc_control import handle_pc_command
-from app.skills.audio_manager import handle_audio_command
 
 logger = logging.getLogger(__name__)
 

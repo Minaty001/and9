@@ -641,7 +641,6 @@ def get_and9():
     global _and9_instance
     if _and9_instance is None:
         from app.brain import AND9
-        from app.core.events import EventSystem
         _and9_instance = AND9(events_sys=get_events())
     return _and9_instance
 

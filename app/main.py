@@ -13,8 +13,7 @@ import os
 import time
 import uuid
 import logging
-from functools import wraps
-from flask import Flask, g, request, jsonify, render_template
+from flask import Flask, g, request, jsonify
 
 from app.api.routes import api_bp
 from app.api.web_routes import web_bp

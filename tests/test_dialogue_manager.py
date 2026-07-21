@@ -12,7 +12,6 @@ Covers:
   8. Edge cases — empty messages, invalid intents
 """
 
-import json
 import os
 import tempfile
 import time
@@ -21,11 +20,8 @@ import pytest
 from app.dialogue_manager import (
     DialogueManager,
     DialogueConfig,
-    TaskState,
     TaskStatus,
-    SlotDefinition,
 )
-from app.dialogue_manager.intent_definitions import IntentDefinition
 from app.dialogue_manager.state_manager import DialogueStateTracker
 from app.dialogue_manager.slot_filler import SlotFiller
 from app.dialogue_manager.reference_resolver import ReferenceResolver

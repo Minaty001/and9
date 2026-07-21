@@ -10,7 +10,6 @@ import logging
 import subprocess
 import os
 import re
-from typing import Any
 
 from app.core.config import IS_WINDOWS
 

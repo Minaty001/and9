@@ -33,7 +33,7 @@ from app.router.intent_router import detect_intent
 from app.router.intent_validator import validate_intent
 from app.android.executor import execute as execute_action
 from app.core.logger import get_logger, is_debug_enabled
-from app.core.intent_trace import TraceContext, log_trace
+from app.core.intent_trace import TraceContext
 from app.brain.subconscious_brain import SubconsciousBrain
 
 logger = logging.getLogger(__name__)

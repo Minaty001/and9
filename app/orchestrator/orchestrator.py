@@ -43,7 +43,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Optional
 
 from app.agents.base import AgentResult
 from app.agents.registry import AgentRegistry
@@ -51,7 +51,6 @@ from app.orchestrator.task_queue import (
     OrchestratorTask,
     TaskPriority,
     TaskQueue,
-    TaskStatus,
 )
 
 logger = logging.getLogger(__name__)

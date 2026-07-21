@@ -10,8 +10,7 @@ Used by the DependencyAnalyzer to model code dependencies.
 """
 
 import logging
-import math
-from collections import defaultdict, deque
+from collections import deque
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
