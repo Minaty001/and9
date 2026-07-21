@@ -1,3 +1,3 @@
-## 2026-07-18 - Adding Keyboard/Screen Reader A11y to Custom UI Components
-**Learning:** Using highly stylized `div` elements for core interactions (like the glowing orb) requires manual semantic roles, tab indexing, and keyboard event handlers to ensure they are accessible to screen reader or keyboard-only users.
-**Action:** Add `role="button"`, `tabindex="0"`, and `aria-label` alongside a `keydown` listener (Enter/Space) and a `:focus-visible` CSS rule to all custom interactive `div` elements going forward.
+## 2025-02-28 - Custom Interactive Element Accessibility
+**Learning:** Custom UI elements like the holographic orb (`#orbCore`) and icon-only send buttons are completely invisible to screen readers without ARIA labels, roles, and keyboard event listeners, leading to poor keyboard navigation and zero assistive tech feedback in web-based conversational interfaces.
+**Action:** When building or enhancing custom interactive elements (e.g., custom voice toggles), always attach `role="button"`, `tabindex="0"`, an explicit `aria-label`, and a keyboard event listener for 'Enter' and 'Space' keys to ensure full interactivity for all users.
