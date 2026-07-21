@@ -24,9 +24,8 @@ from app.dialogue_manager import (
 )
 from app.dialogue_manager.state_manager import DialogueStateTracker
 from app.dialogue_manager.slot_filler import SlotFiller
-from app.dialogue_manager.reference_resolver import ReferenceResolver
+from app.dialogue_manager.dialogue_manager import ReferenceResolver, TaskManager
 from app.dialogue_manager.working_memory import WorkingMemory, ShortTermMemory
-from app.dialogue_manager.task_manager import TaskManager
 from app.dialogue_manager.action_planner import ActionPlanner
 
 
@@ -670,7 +669,7 @@ class TestContextManager:
 
     def test_interruption_detection(self, dm):
         """Test that intent changes are detected as interruptions."""
-        from app.dialogue_manager.context_manager import ContextManager
+        from app.dialogue_manager.dialogue_manager import ContextManager
         cm = ContextManager(dm.working_memory, dm.short_term_memory)
 
         # No active task → no interruption

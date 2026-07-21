@@ -48,15 +48,12 @@ from app.dialogue_manager.state_manager import (
     TaskState,
     TaskStatus,
 )
-from app.dialogue_manager.task_manager import TaskManager
 from app.dialogue_manager.working_memory import (
     WorkingMemory,
     ShortTermMemory,
     ActiveTaskMemory,
     DialogueConfig,
 )
-from app.dialogue_manager.context_manager import ContextManager
-from app.dialogue_manager.reference_resolver import ReferenceResolver
 from app.dialogue_manager.action_planner import ActionPlanner, ExecutionPlan
 
 logger = logging.getLogger(__name__)
@@ -898,3 +895,734 @@ class DialogueManager:
         self.state_tracker = DialogueStateTracker()
         self.task_manager = TaskManager(self.state_tracker)
         logger.info("DialogueManager reset complete")
+
+
+class ReferenceResolver:
+    """Resolves references in user messages using conversation context.
+
+    Uses working memory to find antecedents for pronouns and other
+    referring expressions. Returns a resolved message string that
+    replaces references with their concrete antecedents.
+    """
+
+    # ── Pattern Groups ─────────────────────────────────────────────
+
+    # Patterns that signal a resume/continue request
+    RESUME_PATTERNS = [
+        re.compile(r'^\s*(continue|resume|go on|jari rakho|jaari rakho|phir se)\s*$', re.IGNORECASE),
+        re.compile(r'^\s*(continue|resume|jari rakho)\s+(that|the|us|with)\s', re.IGNORECASE),
+        re.compile(r'\b(?:now\s+)?(?:continue|resume)\s+(?:that|the|this|it)\b', re.IGNORECASE),
+        re.compile(r'\bnow\s+(?:continue|resume)\b', re.IGNORECASE),
+        re.compile(r'\b(same as before|same thing|wahi|wahi kaam)\b', re.IGNORECASE),
+        re.compile(r'\b(resume|continue)\s+(?:karo|karein|kar do|kardo)\b', re.IGNORECASE),
+    ]
+
+    # Patterns that signal cancellation
+    CANCEL_PATTERNS = [
+        re.compile(r'\b(?:cancel|stop|abort|halt|cancel karo|band karo|cancel kar do|'
+                   r'nahi (?:karna|kar|chahiye)|mat karo|rok do|hua|hoga)\b', re.IGNORECASE),
+        re.compile(r"\b(?:don't|dont|do not|dont't)\s+(?:play|want|need|like|karna|karo)\b", re.IGNORECASE),
+    ]
+
+    # Pronoun patterns
+    IT_PATTERN = re.compile(r'\bit\b', re.IGNORECASE)
+    THAT_PATTERN = re.compile(r'\bthat\b', re.IGNORECASE)
+    THIS_PATTERN = re.compile(r'\bthis\b', re.IGNORECASE)
+    THEM_PATTERN = re.compile(r'\bthem\b', re.IGNORECASE)
+    THOSE_PATTERN = re.compile(r'\bthose\b', re.IGNORECASE)
+    THESE_PATTERN = re.compile(r'\bthese\b', re.IGNORECASE)
+
+    # Action + reference patterns: "play it", "open it", "call them", etc.
+    ACTION_REF_PATTERNS = [
+        re.compile(r'\b(play|play karo|bajao|chalao|sunao)\s+(?:that|it|this)\b', re.IGNORECASE),
+        re.compile(r'\b(open|kholo|khol)\s+(?:that|it|this|them)\b', re.IGNORECASE),
+        re.compile(r'\b(call|phone|dial)\s+(?:them|that person|him|her|us)\b', re.IGNORECASE),
+        re.compile(r'\b(message|msg|text|sms)\s+(?:them|him|her|that person)\b', re.IGNORECASE),
+        re.compile(r'\b(search|find|dhundh|dhundo|search karo)\s+(?:that|it|this)\b', re.IGNORECASE),
+        re.compile(r'\b(set|lagao|daal do)\s+(?:that|it|this)\b', re.IGNORECASE),
+    ]
+
+    def __init__(self, working_memory: WorkingMemory,
+                 short_term_memory: ShortTermMemory):
+        self.wm = working_memory
+        self.stm = short_term_memory
+
+    def resolve(self, message: str) -> tuple[str, dict]:
+        """Resolve all references in a user message.
+
+        Args:
+            message: The raw user message.
+
+        Returns:
+            Tuple of (resolved_message, resolution_metadata).
+            resolution_metadata contains:
+              - resolved: bool — whether any resolution was applied
+              - resume_requested: bool
+              - cancel_requested: bool
+              - resolved_references: list of (reference, antecedent) pairs
+              - original_message: str
+        """
+        original = message.strip()
+        if not original:
+            return original, {
+                "resolved": False,
+                "resume_requested": False,
+                "cancel_requested": False,
+                "resolved_references": [],
+                "original_message": original,
+            }
+
+        resolved = original
+        resolved_refs = []
+        resume_requested = self._is_resume_request(original)
+        cancel_requested = self._is_cancel_request(original)
+
+        # 1. Resolve "it" → last action target
+        if self.IT_PATTERN.search(resolved):
+            antecedent = self._resolve_it()
+            if antecedent:
+                resolved = self.IT_PATTERN.sub(antecedent, resolved, count=1)
+                resolved_refs.append(("it", antecedent))
+
+        # 2. Resolve "that" → last mentioned entity
+        if self.THAT_PATTERN.search(resolved):
+            antecedent = self._resolve_that()
+            if antecedent:
+                resolved = self.THAT_PATTERN.sub(antecedent, resolved, count=1)
+                resolved_refs.append(("that", antecedent))
+
+        # 3. Resolve "this" → current context item
+        if self.THIS_PATTERN.search(resolved):
+            antecedent = self._resolve_this()
+            if antecedent:
+                resolved = self.THIS_PATTERN.sub(antecedent, resolved, count=1)
+                resolved_refs.append(("this", antecedent))
+
+        # 4. Resolve "them"/"those"/"these"
+        if self.THEM_PATTERN.search(resolved):
+            antecedent = self._resolve_them()
+            if antecedent:
+                resolved = self.THEM_PATTERN.sub(antecedent, resolved, count=1)
+                resolved_refs.append(("them", antecedent))
+
+        if self.THOSE_PATTERN.search(resolved):
+            antecedent = self._resolve_them()  # same logic
+            if antecedent:
+                resolved = self.THOSE_PATTERN.sub(antecedent, resolved, count=1)
+                resolved_refs.append(("those", antecedent))
+
+        if self.THESE_PATTERN.search(resolved):
+            antecedent = self._resolve_this()
+            if antecedent:
+                resolved = self.THESE_PATTERN.sub(antecedent, resolved, count=1)
+                resolved_refs.append(("these", antecedent))
+
+        # 5. Resolve action + reference patterns (e.g., "play it")
+        resolved, action_refs = self._resolve_action_references(resolved)
+        resolved_refs.extend(action_refs)
+
+        logger.debug("Reference resolution: '%s' → '%s' (refs=%s)",
+                     original, resolved, resolved_refs)
+
+        return resolved, {
+            "resolved": len(resolved_refs) > 0,
+            "resume_requested": resume_requested,
+            "cancel_requested": cancel_requested,
+            "resolved_references": resolved_refs,
+            "original_message": original,
+        }
+
+    def _is_resume_request(self, message: str) -> bool:
+        """Check if the message is a resume/continue request."""
+        return any(p.match(message) for p in self.RESUME_PATTERNS)
+
+    def _is_cancel_request(self, message: str) -> bool:
+        """Check if the message is a cancel/stop request."""
+        return any(p.search(message) for p in self.CANCEL_PATTERNS)
+
+    def _resolve_it(self) -> Optional[str]:
+        """Resolve 'it' — the last action's target entity.
+
+        Priority:
+          1. ShortTermMemory: last_action_target
+          2. WorkingMemory: last turn's entity
+          3. WorkingMemory: last mentioned content
+        """
+        # Check STM first
+        target = self.stm.recall("last_action_target")
+        if target:
+            return str(target)
+
+        # Check working memory for last entity
+        entities = self.wm.get_all_entities()
+        for key in ["search_query", "song_name", "app_name", "contact_name",
+                     "message_text", "query"]:
+            if key in entities:
+                return str(entities[key])
+
+        # Check last turn for any meaningful content
+        last_msg = self.wm.get_last_user_message()
+        if last_msg:
+            # Extract the last noun phrase (simple heuristic)
+            words = last_msg.split()
+            if words:
+                return words[-1]  # Last word as fallback
+
+        return None
+
+    def _resolve_that(self) -> Optional[str]:
+        """Resolve 'that' — previously mentioned entity.
+
+        Similar to 'it' but prefers the entity before the most recent one.
+        """
+        # Check STM for last_mentioned
+        target = self.stm.recall("last_referenced")
+        if target:
+            return str(target)
+
+        # Fall back to 'it' resolution
+        return self._resolve_it()
+
+    def _resolve_this(self) -> Optional[str]:
+        """Resolve 'this' — current context item.
+
+        Returns the current task's primary entity if available.
+        """
+        target = self.stm.recall("current_entity")
+        if target:
+            return str(target)
+        return self._resolve_it()
+
+    def _resolve_them(self) -> Optional[str]:
+        """Resolve 'them' — last plural reference.
+
+        Returns the last mentioned contact or group.
+        """
+        target = self.stm.recall("last_contact")
+        if target:
+            return str(target)
+
+        # Check for contact in entities
+        entities = self.wm.get_all_entities()
+        for key in ["contact_name"]:
+            if key in entities:
+                return str(entities[key])
+        return None
+
+    def _resolve_action_references(self, message: str) -> tuple[str, list]:
+        """Resolve action-reference combos like 'play it', 'open it'.
+
+        These are replaced with explicit action + entity descriptions.
+
+        Returns:
+            Tuple of (modified_message, list_of_(reference, antecedent)).
+        """
+        resolved_refs = []
+        for pattern in self.ACTION_REF_PATTERNS:
+            if pattern.search(message):
+                antecedent = self._resolve_it()
+                if antecedent:
+                    # Replace the reference with the concrete entity
+                    # e.g., "play it" → "play <song_name>"
+                    # Simple: replace full pattern match with just the antecedent
+                    message = pattern.sub(antecedent, message)
+                    resolved_refs.append((pattern.pattern[:20], antecedent))
+        return message, resolved_refs
+
+    # ── Convenience Methods ────────────────────────────────────────
+
+    def is_resume(self, message: str) -> bool:
+        """Quick check if message is a resume request."""
+        return self._is_resume_request(message)
+
+    def is_cancel(self, message: str) -> bool:
+        """Quick check if message is a cancel request."""
+        return self._is_cancel_request(message)
+
+    def extract_cancel_target(self, message: str) -> Optional[str]:
+        """Try to extract what the user wants to cancel.
+
+        E.g., "cancel music" → "music", "stop the alarm" → "alarm",
+        "don't play music" → "music".
+        """
+        cancel_patterns = [
+            re.compile(r'(?:cancel|stop|band karo|nahi)\s+(?:the\s+)?(\w+)', re.IGNORECASE),
+            re.compile(r'(\w+)\s+(?:cancel|stop|band karo|mat karo)', re.IGNORECASE),
+            re.compile(r"(?:don't|dont|do not)\s+(?:\w+\s+)?(\w+)", re.IGNORECASE),
+        ]
+        for pattern in cancel_patterns:
+            m = pattern.search(message)
+            if m:
+                target = m.group(1).lower().strip()
+                # Map to known intents
+                intent_map = {
+                    "song": "music",
+                    "music": "music",
+                    "gaana": "music",
+                    "youtube": "youtube",
+                    "video": "youtube",
+                    "alarm": "alarm",
+                    "timer": "timer",
+                    "reminder": "reminder",
+                    "remind": "reminder",
+                    "call": "call",
+                    "message": "message",
+                    "search": "search",
+                    "app": "open_app",
+                }
+                return intent_map.get(target, target)
+        return None
+
+
+_INSTANT_INTENTS = {
+    "flashlight", "volume", "wifi", "bluetooth",
+    "camera", "home", "go_home",
+}
+
+# Intents that are long-running and more likely to be interrupted
+_LONG_RUNNING_INTENTS = {
+    "youtube", "music", "call", "message",
+    "alarm", "timer", "reminder", "search",
+    "open_app",
+}
+
+
+class ContextManager:
+    """Manages conversation context across turns.
+
+    Detects interruptions, assembles context for the planner,
+    and maintains conversation coherence.
+    """
+
+    def __init__(self, working_memory: WorkingMemory,
+                 short_term_memory: ShortTermMemory):
+        self.wm = working_memory
+        self.stm = short_term_memory
+        self._consecutive_same_intent = 0
+
+    def detect_interruption(self, new_intent: str,
+                            active_task_intent: Optional[str]) -> bool:
+        """Detect if the user is switching topics (interrupting).
+
+        An interruption is when:
+          - There's an active task waiting for info, AND
+          - The new intent is different from the active task intent, AND
+          - The new intent is not an instant action (flashlight, etc.)
+
+        Args:
+            new_intent: The intent of the new message.
+            active_task_intent: The intent of the currently active task.
+
+        Returns:
+            True if this is an interruption.
+        """
+        if not active_task_intent:
+            return False
+
+        if new_intent == active_task_intent:
+            self._consecutive_same_intent += 1
+            return False
+
+        # Reset counter on intent change
+        self._consecutive_same_intent = 0
+
+        # If active task is still pending/waiting and new intent is different
+        if new_intent != active_task_intent:
+            # Don't flag interruptions for instant actions
+            if new_intent in _INSTANT_INTENTS:
+                return False
+            # Chat is not an interruption — it's the default
+            if new_intent == "chat" and active_task_intent != "chat":
+                # User asking a casual question mid-task
+                return True
+            return True
+
+        return False
+
+    def detect_resume(self, message: str) -> bool:
+        """Detect if the user is asking to resume a paused task.
+
+        Checks for explicit resume keywords.
+        """
+        resume_keywords = [
+            r'\b(continue|resume|go on|jari rakho|jaari rakho)\b',
+            r'\b(phir se|again|same as before|same thing)\b',
+            r'\b(wahi|wahi kaam|waisa hi)\b',
+            r'\b(ab continue|ab resume|ab jari)\b',
+        ]
+        msg_lower = message.lower().strip()
+        for pattern in resume_keywords:
+            if re.search(pattern, msg_lower):
+                return True
+
+        # Very short affirmative messages after context switch signal resume
+        if msg_lower in ("yes", "haan", "ha", "hmm", "ok", "okay", "theek hai"):
+            # Check if there are paused tasks
+            return True
+
+        return False
+
+    def update_context(self, user_message: str, assistant_response: str,
+                       intent: str, task_id: str,
+                       entities: Optional[dict[str, str]] = None):
+        """Update all context stores after a turn.
+
+        Args:
+            user_message: The user's input.
+            assistant_response: The assistant's reply.
+            intent: Detected intent.
+            task_id: Active task ID.
+            entities: Optional entities extracted.
+        """
+        # Add to working memory
+        self.wm.add_turn(
+            user_message=user_message,
+            assistant_message=assistant_response,
+            intent=intent,
+            task_id=task_id,
+            entities=entities or {},
+        )
+
+        # Update short-term memory with entities
+        if entities:
+            for key, value in entities.items():
+                self.stm.remember(key, value)
+
+        # Always remember last intent for context
+        self.stm.remember("last_intent", intent, ttl=60)
+
+        # Store the last action target for reference resolution
+        if entities:
+            for target_key in ("search_query", "song_name", "app_name",
+                                "contact_name", "query"):
+                if target_key in entities:
+                    self.stm.remember("last_action_target",
+                                      entities[target_key], ttl=120)
+                    break
+
+        logger.debug("Context updated: intent=%s task=%s entities=%s",
+                     intent, task_id, entities)
+
+    def build_context_summary(self, active_task=None,
+                              paused_tasks: Optional[list] = None) -> str:
+        """Build a natural-language summary of the current context.
+
+        Used for logging and for the conscious brain to understand
+        the current dialogue state.
+
+        Args:
+            active_task: The currently active task.
+            paused_tasks: List of paused tasks.
+
+        Returns:
+            A formatted context summary string.
+        """
+        parts = []
+
+        if active_task:
+            task_info = (
+                f"Current Task: {active_task.intent} (ID: {active_task.task_id})\n"
+                f"Status: {active_task.status.value}\n"
+                f"Filled: {active_task.filled_slots}\n"
+                f"Missing: {active_task.missing_slots}\n"
+            )
+            if active_task.waiting_for:
+                task_info += f"Waiting for: {active_task.waiting_for}\n"
+            parts.append(task_info)
+
+        if paused_tasks:
+            paused_info = "Paused Tasks:\n"
+            for task in paused_tasks[-3:]:  # Show last 3
+                paused_info += (
+                    f"  - {task.intent} (ID: {task.task_id}, "
+                    f"filled: {len(task.filled_slots)}/{len(task.required_slots)})\n"
+                )
+            parts.append(paused_info)
+
+        recent_turns = self.wm.get_last_n(5)
+        if recent_turns:
+            turns_info = "Recent Conversation:\n"
+            for t in recent_turns:
+                turns_info += f"  User: {t.user_message[:80]}\n"
+                turns_info += f"  Assistant: {t.assistant_message[:80]}\n"
+            parts.append(turns_info)
+
+        return "\n".join(parts)
+
+    def should_execute(self, active_task) -> bool:
+        """Determine if the active task should be executed now.
+
+        Rules:
+          1. All required slots must be filled
+          2. Status must be READY_TO_EXECUTE
+          3. Task must not be paused or cancelled
+
+        Args:
+            active_task: The task to check.
+
+        Returns:
+            True if execution should proceed.
+        """
+        from app.dialogue_manager.state_manager import TaskStatus
+        if not active_task:
+            return False
+        if active_task.status == TaskStatus.CANCELLED:
+            return False
+        if active_task.status == TaskStatus.PAUSED:
+            return False
+        return len(active_task.missing_slots) == 0
+
+    def get_conversation_summary(self, max_turns: int = 10) -> str:
+        """Get a concise summary of the recent conversation.
+
+        Args:
+            max_turns: Maximum turns to include.
+
+        Returns:
+            A formatted summary string.
+        """
+        turns = self.wm.get_last_n(max_turns)
+        if not turns:
+            return "No conversation history."
+
+        lines = []
+        for t in turns:
+            lines.append(f"User: {t.user_message}")
+            lines.append(f"Assistant: {t.assistant_message}")
+        return "\n".join(lines)
+
+
+_INTENT_PRIORITY = {
+    "emergency": 1,
+    "call": 2,
+    "message": 3,
+    "alarm": 4,
+    "timer": 5,
+    "reminder": 6,
+    "open_app": 7,
+    "youtube": 8,
+    "music": 9,
+    "flashlight": 10,
+    "volume": 11,
+    "wifi": 12,
+    "bluetooth": 13,
+    "search": 14,
+    "chat": 15,
+}
+
+
+class TaskManager:
+    """High-level task orchestration.
+
+    Manages the lifecycle and coordination of all active dialogue tasks.
+    """
+
+    def __init__(self, state_tracker: DialogueStateTracker):
+        self.tracker = state_tracker
+
+    def create_and_activate(self, intent: str,
+                            required_slots: list[str],
+                            optional_slots: list[str] | None = None,
+                            parent_task_id: str | None = None) -> TaskState:
+        """Create a new task and make it active.
+
+        Args:
+            intent: Intent name.
+            required_slots: Required slot names.
+            optional_slots: Optional slot names.
+            parent_task_id: Optional parent task for interruption linking.
+
+        Returns:
+            The newly created TaskState.
+        """
+        return self.tracker.create_task(
+            intent=intent,
+            required_slots=required_slots,
+            optional_slots=optional_slots or [],
+            parent_task_id=parent_task_id,
+        )
+
+    def switch_to_task(self, task_id: str) -> bool:
+        """Switch the active task to a different one.
+
+        Args:
+            task_id: Task to make active.
+
+        Returns:
+            True if the switch succeeded.
+        """
+        task = self.tracker.get_task(task_id)
+        if not task:
+            return False
+
+        # Pause the current active task if it's still in progress
+        current_active = self.tracker.get_active_task()
+        if current_active and current_active.task_id != task_id:
+            if current_active.is_active and current_active.status not in (
+                TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.FAILED
+            ):
+                self.tracker.pause_task(current_active.task_id)
+                logger.info("Paused task %s while switching to %s",
+                            current_active.task_id, task_id)
+
+        return self.tracker.set_active_task(task_id)
+
+    def get_next_actionable_task(self) -> Optional[TaskState]:
+        """Get the highest-priority task that is ready to execute.
+
+        Scans all active tasks for one that is READY_TO_EXECUTE.
+        Returns the one with highest priority (lowest priority number).
+
+        Returns:
+            TaskState that is ready, or None.
+        """
+        active = self.tracker.get_active_tasks()
+        ready = [t for t in active if t.status == TaskStatus.READY_TO_EXECUTE]
+        if not ready:
+            return None
+
+        # Sort by intent priority, then by creation time (oldest first)
+        ready.sort(key=lambda t: (_INTENT_PRIORITY.get(t.intent, 99), t.created_at))
+        return ready[0]
+
+    def handle_interruption(self, current_message: str,
+                            new_intent: str) -> tuple[Optional[TaskState], Optional[TaskState]]:
+        """Handle an interruption where the user switches to a new task.
+
+        Args:
+            current_message: The user's message.
+            new_intent: The newly detected intent.
+
+        Returns:
+            Tuple of (paused_task, new_task).
+            paused_task is the task that was interrupted (or None).
+            new_task is the newly created task for the interruption (or None).
+        """
+        active_task = self.tracker.get_active_task()
+
+        # If there's an active task that's in-progress, pause it
+        paused_task = None
+        if active_task and active_task.is_active and active_task.status not in (
+            TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.FAILED
+        ):
+            self.tracker.pause_task(active_task.task_id)
+            paused_task = active_task
+            logger.info("Interruption: paused task %s for new intent '%s'",
+                        active_task.task_id, new_intent)
+
+        return paused_task, None
+
+    def handle_resume(self, message: str) -> Optional[TaskState]:
+        """Handle a resume request from the user.
+
+        Args:
+            message: The user's message (checked for resume keywords).
+
+        Returns:
+            The resumed TaskState, or None if no resume occurred.
+        """
+        task = self.tracker.find_task_for_resume(message)
+        if task:
+            self.tracker.resume_task(task.task_id)
+            logger.info("Resumed task %s (intent=%s)", task.task_id, task.intent)
+            return task
+        return None
+
+    def cancel_current_task(self) -> Optional[TaskState]:
+        """Cancel the currently active task.
+
+        Returns:
+            The cancelled task, or None if no active task.
+        """
+        active = self.tracker.get_active_task()
+        if active and active.is_active:
+            self.tracker.mark_cancelled(active.task_id)
+            # Switch to the next paused task if any
+            paused = self.tracker.get_paused_tasks()
+            if paused:
+                self.tracker.resume_task(paused[-1].task_id)
+            return active
+        return None
+
+    def complete_and_continue(self, task_id: str,
+                              completion_status: str = "success") -> Optional[TaskState]:
+        """Complete a task and resume the next paused task if any.
+
+        Args:
+            task_id: Task to mark as completed.
+            completion_status: Status string (default "success").
+
+        Returns:
+            The next task that was resumed, or None.
+        """
+        self.tracker.mark_completed(task_id, completion_status)
+
+        # Check if this task has linked interrupted tasks or parent
+        task = self.tracker.get_task(task_id)
+        next_task = None
+        if task:
+            # Try to resume the parent task (the one that was interrupted)
+            if task.parent_task_id:
+                parent = self.tracker.get_task(task.parent_task_id)
+                if parent and parent.status == TaskStatus.PAUSED:
+                    self.tracker.resume_task(parent.task_id)
+                    next_task = parent
+
+        if not next_task:
+            # Resume any other paused task
+            paused = self.tracker.get_paused_tasks()
+            if paused:
+                self.tracker.resume_task(paused[-1].task_id)
+                next_task = paused[-1]
+
+        return next_task
+
+    def pause_all_active(self) -> int:
+        """Pause all active (non-terminal) tasks.
+
+        Returns:
+            Number of tasks paused.
+        """
+        count = 0
+        active = self.tracker.get_active_tasks()
+        for task in active:
+            if task.status not in (TaskStatus.PAUSED, TaskStatus.COMPLETED,
+                                    TaskStatus.CANCELLED, TaskStatus.FAILED):
+                self.tracker.pause_task(task.task_id)
+                count += 1
+        return count
+
+    def resume_most_recent_paused(self) -> Optional[TaskState]:
+        """Resume the most recently paused task.
+
+        Returns:
+            The resumed task, or None.
+        """
+        paused = self.tracker.get_paused_tasks()
+        if paused:
+            task = paused[-1]
+            self.tracker.resume_task(task.task_id)
+            return task
+        return None
+
+    def get_active_count(self) -> int:
+        """Get the number of currently active tasks."""
+        return len(self.tracker.get_active_tasks())
+
+    def get_summary(self) -> dict:
+        """Get a human-readable summary of all tasks."""
+        stats = self.tracker.get_stats()
+        active_task = self.tracker.get_active_task()
+        return {
+            "stats": stats,
+            "current_task": active_task.to_dict() if active_task else None,
+            "paused_tasks": [
+                {
+                    "task_id": t.task_id,
+                    "intent": t.intent,
+                    "missing_slots": t.missing_slots,
+                    "waiting_for": t.waiting_for,
+                }
+                for t in self.tracker.get_paused_tasks()
+            ],
+        }
