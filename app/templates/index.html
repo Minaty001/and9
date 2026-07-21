@@ -244,6 +244,10 @@
       background: radial-gradient(circle at 40% 30%, #ffffff, #ffcc00, #ff5500, #220800);
       box-shadow: 0 0 100px #fff, 0 0 200px #ffcc00, 0 0 300px #ff8800;
     }
+    .orb-core:focus-visible {
+      outline: 2px solid #ffaa00;
+      outline-offset: 4px;
+    }
     @keyframes orbPulseListen {
       0%,100% { transform: scale(1); box-shadow: 0 0 80px #ffcc00, 0 0 160px #ff8800, 0 0 240px #ff4400; }
       50% { transform: scale(1.06); box-shadow: 0 0 120px #ffdd00, 0 0 200px #ffaa00, 0 0 300px #ff5500; }
@@ -469,6 +473,10 @@
       background: rgba(255, 170, 0, 0.25);
       box-shadow: 0 0 20px #ff8800;
     }
+    .send-btn:focus-visible {
+      outline: 2px solid #ffaa00;
+      outline-offset: 2px;
+    }
     .send-btn svg {
       width: 14px;
       height: 14px;
@@ -688,7 +696,7 @@
       <div class="arc arc-thin"></div>
       <div class="arc arc-dash"></div>
       
-      <div class="orb-core" id="orbCore">
+      <div class="orb-core" id="orbCore" role="button" tabindex="0" aria-label="Toggle voice input" title="Toggle voice input (Ctrl+Space)">
         <div class="orb-inner-glow"></div>
       </div>
       
@@ -714,8 +722,8 @@
         </div>
       </div>
       <div class="input-row">
-        <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command..." autocomplete="off">
-        <button class="send-btn" id="sendBtn" title="Send command">
+        <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command..." autocomplete="off" aria-label="Enter command">
+        <button class="send-btn" id="sendBtn" title="Send command" aria-label="Send command">
           <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
         </button>
       </div>
@@ -1229,6 +1237,14 @@
       orbCore.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleVoice();
+      });
+
+      orbCore.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleVoice();
+        }
       });
 
       sendBtn.addEventListener('click', () => {
