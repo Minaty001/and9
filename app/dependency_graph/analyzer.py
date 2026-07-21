@@ -230,22 +230,37 @@ class DependencyAnalyzer:
         py_files = []
         root = Path(self.root_path)
 
-        for dirpath, dirnames, filenames in os.walk(str(root)):
-            # Skip specific directories in place
-            dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not dirpath.startswith("/proc")]
-
-            for file in filenames:
-                if file.endswith(".py"):
-                    entry = Path(dirpath) / file
-                    fp = str(entry)
-                    # Apply include/exclude patterns if specified
-                    if self.include_patterns:
-                        if not any(entry.match(p) for p in self.include_patterns):
-                            continue
-                    if self.exclude_patterns:
-                        if any(entry.match(p) for p in self.exclude_patterns):
-                            continue
-                    py_files.append(fp)
+        try:
+            for entry in root.rglob("*.py"):
+                # Skip directories
+                if any(skip in entry.parts for skip in SKIP_DIRS):
+                    continue
+                fp = str(entry)
+                # Apply include/exclude patterns if specified
+                if self.include_patterns:
+                    if not any(entry.match(p) for p in self.include_patterns):
+                        continue
+                if self.exclude_patterns:
+                    if any(entry.match(p) for p in self.exclude_patterns):
+                        continue
+                py_files.append(fp)
+        except PermissionError:
+            import os
+            # Fallback to os.walk which can ignore permission errors
+            for dirpath, dirnames, filenames in os.walk(self.root_path):
+                # Filter directories in place to avoid walking them
+                dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith('.')]
+                for filename in filenames:
+                    if filename.endswith(".py"):
+                        entry = Path(os.path.join(dirpath, filename))
+                        fp = str(entry)
+                        if self.include_patterns:
+                            if not any(entry.match(p) for p in self.include_patterns):
+                                continue
+                        if self.exclude_patterns:
+                            if any(entry.match(p) for p in self.exclude_patterns):
+                                continue
+                        py_files.append(fp)
 
         return sorted(py_files)
 

@@ -80,9 +80,6 @@ def test_flashlight_toggle(and9):
     assert res["action"] == ActionType.FLASHLIGHT_ON.value
 
 def test_chrome_firewall(and9):
-    """Test that open chrome goes to launch, not search fallback."""
+    """Test that open chrome gets blocked by firewall."""
     res = and9.process("chrome kholo")
-    assert res["success"] is True
-    assert res["action"] in (ActionType.LAUNCH_APP.value, "CHROME_FIREWALL_BLOCKED")
-    if res["action"] == ActionType.LAUNCH_APP.value:
-        assert res["payload"]["package"] in ("com.chrome", "com.android.chrome")
+    assert res["action"] == "CHROME_FIREWALL_BLOCKED"

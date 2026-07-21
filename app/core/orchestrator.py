@@ -49,7 +49,7 @@ class IntentRouter:
                      "contact", "contacts", "file", "folder", "directory", "storage"],
         "pc":       ["pc", "computer", "laptop", "desktop", "windows",
                      "shutdown", "restart", "reboot", "screenshot", "lock pc",
-                     "open notepad", "open chrome", "type ", "write ",
+                     "open notepad", "open chrome",
                      "list windows", "switch to", "system info", "pc info",
                      "lock computer", "sleep", "hibernate"],
         "audio":    ["bluetooth audio", "bluetooth mic", "bluetooth speaker",

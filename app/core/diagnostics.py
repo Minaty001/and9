@@ -15,9 +15,10 @@ from app.android.validate_handlers import get_coverage_report
 logger = logging.getLogger(__name__)
 
 # Paths for checking permissions/locks
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _DB_PATH = os.environ.get(
     "AND9_REMINDERS_STORAGE_DB",
-    "/app/.jarvis_data/reminders_engine.db"
+    os.path.join(project_root, ".jarvis_data", "reminders_engine.db")
 )
 
 

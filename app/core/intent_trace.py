@@ -37,16 +37,18 @@ from typing import Optional, List, Dict, Any
 logger = logging.getLogger(__name__)
 
 # Database path
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _DB_PATH = os.environ.get(
     "AND9_TRACES_DB",
-    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".jarvis_data", "intent_traces.db")
+    os.path.join(project_root, ".jarvis_data", "intent_traces.db")
 )
+
 try:
-    _dir = os.path.dirname(_DB_PATH)
-    if _dir:
-        os.makedirs(_dir, exist_ok=True)
-except Exception:
-    pass
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+except PermissionError:
+    # Fallback to local directory if permission denied
+    _DB_PATH = os.path.join(os.getcwd(), ".jarvis_data", "intent_traces.db")
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
 
 # Short-term memory buffer size
 MAX_SHORT_TERM_TRACES = int(os.environ.get("AND9_SHORT_TERM_SIZE", "50"))

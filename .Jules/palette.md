@@ -1,3 +1,3 @@
-## 2024-05-24 - Accessibility for Custom Interactive Elements
-**Learning:** Adding `role`, `tabindex`, and keyboard event handlers to custom UI components (like a `div` acting as a voice toggle button) is necessary to ensure they are accessible for screen readers and keyboard navigation. Standard HTML elements like `<button>` provide these for free, but custom elements need manual implementation. Also added focus-visible styles.
-**Action:** Always add ARIA attributes, keyboard support, and `:focus-visible` styles when converting non-interactive elements (like `div` or `span`) into interactive controls.
+## 2024-03-24 - Interactive Div Accessibility
+**Learning:** Custom `div` elements used as interactive components (like the orbCore button) require complete semantic setup to be accessible. This includes `role="button"`, `tabindex="0"`, `:focus-visible` styles, and keyboard event handlers for both `Enter` and `Space` keys to match native button behavior.
+**Action:** Always use native `<button>` elements when possible. When custom `div` elements must be used for complex UI interactions, ensure the full suite of ARIA attributes, focus management, and keyboard handlers are implemented.

@@ -249,6 +249,11 @@
       outline-offset: 2px;
     }
 
+    .orb-core:focus-visible {
+      outline: 2px solid #ffaa00;
+      outline-offset: 6px;
+    }
+
     .orb-core.listening {
       animation: orbPulseListen 0.8s ease-in-out infinite;
     }
@@ -721,7 +726,7 @@
       <div class="arc arc-thin"></div>
       <div class="arc arc-dash"></div>
       
-      <div class="orb-core" id="orbCore" role="button" aria-label="Toggle voice input" tabindex="0">
+      <div class="orb-core" id="orbCore" role="button" tabindex="0" aria-label="Toggle voice input">
         <div class="orb-inner-glow"></div>
       </div>
       
@@ -1271,6 +1276,14 @@
         e.stopPropagation();
         toggleVoice();
       });
+      orbCore.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleVoice();
+        }
+      });
+
       orbCore.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
