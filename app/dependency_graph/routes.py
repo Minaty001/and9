@@ -2,36 +2,36 @@
 AND9 — Dependency Graph API Routes.
 
 FastAPI/Flask-compatible routes exposing the dependency graph
-analyzer and MCP server over HTTP.
+analyzer directly (no MCP layer).
 """
 
 import logging
+import os
 from typing import Optional
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
-from app.dependency_graph.mcp_server import DependencyGraphMCPServer
+from app.dependency_graph.analyzer import DependencyAnalyzer
+from app.dependency_graph.graph import DependencyGraph
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/dependency-graph", tags=["dependency-graph"])
 
-# Global server instance (initialized lazily)
-_server: Optional[DependencyGraphMCPServer] = None
+# Global graph cache (initialized lazily)
+_graph: Optional[DependencyGraph] = None
+_analyzer: Optional[DependencyAnalyzer] = None
 
 
-def get_server() -> DependencyGraphMCPServer:
-    """Get or create the dependency graph MCP server.
-    
-    Uses the project root as the analysis target.
-    """
-    global _server
-    if _server is None:
-        import os
-        root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-        _server = DependencyGraphMCPServer(root_path=root)
-    return _server
+def _ensure_graph(reanalyze: bool = False) -> DependencyGraph:
+    """Get or create the dependency graph."""
+    global _graph, _analyzer
+    if _graph is None or reanalyze:
+        root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        _analyzer = DependencyAnalyzer(root_path=root)
+        _graph = _analyzer.analyze()
+    return _graph
 
 
 # ── Request/Response Models ──────────────────────────────────────
@@ -61,8 +61,7 @@ class PageRankQuery(BaseModel):
 @router.get("/analyze", response_model=AnalyzeResponse)
 async def analyze(reanalyze: bool = Query(False, description="Force reanalysis")):
     """Analyze the project and build the dependency graph."""
-    server = get_server()
-    graph = server.ensure_graph(reanalyze=reanalyze)
+    graph = _ensure_graph(reanalyze)
     return AnalyzeResponse(
         node_count=graph.node_count,
         edge_count=graph.edge_count,
@@ -74,71 +73,110 @@ async def analyze(reanalyze: bool = Query(False, description="Force reanalysis")
 @router.get("/graph")
 async def get_graph(reanalyze: bool = Query(False)):
     """Get the full dependency graph."""
-    server = get_server()
-    return server.handle_tool_call("get_dependency_graph", {"reanalyze": reanalyze})
+    graph = _ensure_graph(reanalyze)
+    return graph.to_dict()
 
 
 @router.post("/callers")
 async def get_callers(query: FileQuery):
     """Get all files that depend on the given file."""
-    server = get_server()
-    return server.handle_tool_call("get_callers", {"filepath": query.filepath})
+    graph = _ensure_graph()
+    dependents = graph.get_dependents(query.filepath)
+    return {
+        "file": query.filepath,
+        "caller_count": len(dependents),
+        "callers": dependents,
+    }
 
 
 @router.post("/callees")
 async def get_callees(query: FileQuery):
     """Get all files that the given file depends on."""
-    server = get_server()
-    return server.handle_tool_call("get_callees", {"filepath": query.filepath})
+    graph = _ensure_graph()
+    dependencies = graph.get_dependencies(query.filepath)
+    return {
+        "file": query.filepath,
+        "dependency_count": len(dependencies),
+        "dependencies": dependencies,
+    }
 
 
 @router.post("/impact")
 async def impact_analysis(query: ImpactQuery):
     """Analyze the impact of changes to a file (transitive dependents)."""
-    server = get_server()
-    return server.handle_tool_call(
-        "impact_analysis",
-        {"filepath": query.filepath, "max_depth": query.max_depth},
-    )
+    graph = _ensure_graph()
+    transitive = graph.get_transitive_dependents(query.filepath, query.max_depth)
+    return {
+        "file": query.filepath,
+        "max_depth": query.max_depth,
+        "affected_count": len(transitive),
+        "affected_files": transitive,
+    }
 
 
 @router.get("/orphans")
 async def find_orphans():
     """Find files with no dependents."""
-    server = get_server()
-    return server.handle_tool_call("find_orphans", {})
+    graph = _ensure_graph()
+    orphans = graph.find_orphans()
+    return {"orphan_count": len(orphans), "orphans": orphans}
 
 
 @router.get("/leaves")
 async def find_leaves():
     """Find files with no dependencies."""
-    server = get_server()
-    return server.handle_tool_call("find_leaves", {})
+    graph = _ensure_graph()
+    leaves = graph.find_leaves()
+    return {"leaf_count": len(leaves), "leaves": leaves}
 
 
 @router.get("/pagerank")
 async def pagerank(top_n: int = Query(20, description="Number of top results")):
     """Compute PageRank scores for all files."""
-    server = get_server()
-    return server.handle_tool_call("pagerank", {"top_n": top_n})
+    graph = _ensure_graph()
+    scores = graph.pagerank()
+    sorted_scores = sorted(scores.items(), key=lambda x: -x[1])
+    if top_n > 0:
+        sorted_scores = sorted_scores[:top_n]
+    return {
+        "total_nodes": len(scores),
+        "top_n": top_n if top_n > 0 else len(scores),
+        "scores": {k: round(v, 6) for k, v in sorted_scores},
+    }
 
 
 @router.get("/export/mermaid")
 async def export_mermaid():
     """Export the dependency graph as Mermaid.js flowchart."""
-    server = get_server()
-    return server.handle_tool_call("export_mermaid", {})
+    graph = _ensure_graph()
+    return graph.to_mermaid()
 
 
 @router.get("/export/d3")
 async def export_d3():
     """Export as D3.js force-directed graph JSON."""
-    server = get_server()
-    return server.handle_tool_call("export_d3", {})
+    graph = _ensure_graph()
+    return graph.to_d3_json()
 
 
 @router.post("/module")
 async def module_info(query: FileQuery):
     """Get detailed information about a specific module."""
-    server = get_server()
-    return server.handle_tool_call("module_info", {"filepath": query.filepath})
+    graph = _ensure_graph()
+    node = graph.get_node(query.filepath)
+    if not node:
+        return {"error": f"File not found in graph: {query.filepath}"}
+    callers = graph.get_dependents(query.filepath)
+    callees = graph.get_dependencies(query.filepath)
+    transitive_callers = graph.get_transitive_dependents(query.filepath)
+    return {
+        "file": query.filepath,
+        "module": node.get("module", ""),
+        "functions": node.get("functions", []),
+        "classes": node.get("classes", []),
+        "line_count": node.get("line_count", 0),
+        "file_size": node.get("file_size", 0),
+        "callers": callers,
+        "callees": callees,
+        "transitive_impact_count": len(transitive_callers),
+    }

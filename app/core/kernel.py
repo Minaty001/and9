@@ -22,6 +22,7 @@ import logging
 import threading
 from typing import Optional
 from datetime import datetime, timezone
+from app.core.service_manager import BaseService
 
 logger = logging.getLogger(__name__)
 
@@ -91,14 +92,41 @@ class AND9Kernel:
 
     def _register_services(self) -> None:
         """Register all AND9 services with the ServiceManager."""
-        from app.services.memory_service import MemoryService
-        from app.services.chat_service import ChatService
-        from app.services.intent_service import IntentService
+        from app.core.memory import get_memory
+        from app.core.understanding import UnderstandingEngine
 
-        self.service_manager.register(MemoryService())
-        self.service_manager.register(ChatService())
-        self.service_manager.register(IntentService())
-        # More services added as phases progress
+        class _MemoryService(BaseService):
+            name = "MemoryService"
+            lazy = False
+            ram_estimate_mb = 20
+            def initialize(self):
+                self._mem = get_memory()
+            def health_check(self) -> bool:
+                return self._mem is not None
+            def shutdown(self):
+                pass
+
+        class _ChatService(BaseService):
+            name = "ChatService"
+            lazy = False
+            ram_estimate_mb = 10
+            def initialize(self):
+                pass
+            def health_check(self) -> bool:
+                return True
+
+        class _IntentService(BaseService):
+            name = "IntentService"
+            lazy = False
+            ram_estimate_mb = 5
+            def initialize(self):
+                self._engine = UnderstandingEngine()
+            def health_check(self) -> bool:
+                return self._engine is not None
+
+        self.service_manager.register(_MemoryService())
+        self.service_manager.register(_ChatService())
+        self.service_manager.register(_IntentService())
 
     def handle_request(self, text: str, source: str = "text") -> dict:
         """

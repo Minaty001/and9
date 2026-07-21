@@ -6,18 +6,15 @@ Covers:
   2. AST-based dependency analysis
   3. PageRank computation
   4. Impact analysis (transitive dependents)
-  5. MCP server tool handlers
-  6. Edge cases (empty project, single file, circular deps)
+  5. Edge cases (empty project, single file, circular deps)
 """
 
-import json
 import os
 import tempfile
 import pytest
 
 from app.dependency_graph.graph import DependencyGraph
 from app.dependency_graph.analyzer import DependencyAnalyzer, FileVisitor
-from app.dependency_graph.mcp_server import DependencyGraphMCPServer
 
 
 # ── Helper ───────────────────────────────────────────────────────
@@ -304,105 +301,7 @@ class Dog(Animal):
         assert "Animal" in dog.get("bases", [])
 
 
-# ── Test 3: MCP Server ──────────────────────────────────────────
-
-class TestMCPServer:
-    def test_tools_list(self):
-        server = DependencyGraphMCPServer("/tmp")
-        resp = server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/list",
-            "params": {},
-        })
-        assert resp is not None
-        assert "result" in resp
-        assert "tools" in resp["result"]
-        tool_names = [t["name"] for t in resp["result"]["tools"]]
-        assert "get_dependency_graph" in tool_names
-        assert "get_callers" in tool_names
-        assert "get_callees" in tool_names
-        assert "impact_analysis" in tool_names
-        assert "find_orphans" in tool_names
-        assert "pagerank" in tool_names
-        assert "module_info" in tool_names
-
-    def test_initialize(self):
-        server = DependencyGraphMCPServer("/tmp")
-        resp = server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {},
-        })
-        assert resp is not None
-        assert resp["result"]["serverInfo"]["name"] == "and9-dependency-graph"
-
-    def test_unknown_method(self):
-        server = DependencyGraphMCPServer("/tmp")
-        resp = server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "unknown_method",
-            "params": {},
-        })
-        assert resp is not None
-        assert "error" in resp
-        assert resp["error"]["code"] == -32601
-
-    def test_unknown_tool(self):
-        server = DependencyGraphMCPServer("/tmp")
-        resp = server.handle_request({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {
-                "name": "nonexistent_tool",
-                "arguments": {},
-            },
-        })
-        assert resp is not None
-        assert "error" in resp
-
-    def test_tool_call_with_project(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            for path, content in SAMPLE_PROJECT.items():
-                full_path = os.path.join(tmpdir, path)
-                os.makedirs(os.path.dirname(full_path), exist_ok=True)
-                with open(full_path, "w") as f:
-                    f.write(content)
-
-            server = DependencyGraphMCPServer(tmpdir)
-            # Test get_graph
-            resp = server.handle_request({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "tools/call",
-                "params": {
-                    "name": "get_dependency_graph",
-                    "arguments": {"reanalyze": True},
-                },
-            })
-            assert resp is not None
-            assert resp["result"]["content"][0]["type"] == "text"
-            data = json.loads(resp["result"]["content"][0]["text"])
-            assert data["node_count"] >= 5
-
-            # Test find_orphans
-            resp = server.handle_request({
-                "jsonrpc": "2.0",
-                "id": 2,
-                "method": "tools/call",
-                "params": {
-                    "name": "find_orphans",
-                    "arguments": {},
-                },
-            })
-            data = json.loads(resp["result"]["content"][0]["text"])
-            assert data["orphan_count"] >= 1  # orphan_module.py
-
-
-# ── Test 4: Integration with the Project ────────────────────────
+# ── Test 3: Integration with the Project ────────────────────────
 
 class TestProjectIntegration:
     def test_analyze_self(self):

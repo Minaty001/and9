@@ -881,32 +881,29 @@ def dialogue_reset():
 # Dependency Graph API — Code Analysis & MCP Tools
 # ═══════════════════════════════════════════════════════════════
 
-_depgraph_server = None
+_depgraph = None  # type: ignore
 _depgraph_lock = threading.Lock()
 
 
-def get_depgraph_server():
-    """Lazy-init singleton DependencyGraphMCPServer instance."""
-    global _depgraph_server
-    if _depgraph_server is None:
+def _get_depgraph() -> 'DependencyGraph':
+    """Lazy-init singleton DependencyGraph instance."""
+    global _depgraph
+    if _depgraph is None:
         with _depgraph_lock:
-            if _depgraph_server is None:
-                from app.dependency_graph.mcp_server import DependencyGraphMCPServer
-                _depgraph_server = DependencyGraphMCPServer(
-                    root_path=os.path.abspath(
-                        os.path.join(os.path.dirname(__file__), "..", "..")
-                    ),
-                )
-    return _depgraph_server
+            if _depgraph is None:
+                from app.dependency_graph.analyzer import DependencyAnalyzer
+                from app.dependency_graph.graph import DependencyGraph
+                root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+                analyzer = DependencyAnalyzer(root_path=root)
+                _depgraph = analyzer.analyze()
+    return _depgraph
 
 
 @api_bp.route("/depgraph/analyze", methods=["GET"])
 def depgraph_analyze():
     """GET /api/depgraph/analyze?reanalyze=true — Build/rebuild dependency graph."""
     try:
-        server = get_depgraph_server()
-        reanalyze = request.args.get("reanalyze", "").lower() in ("true", "1", "yes")
-        graph = server.ensure_graph(reanalyze=reanalyze)
+        graph = _get_depgraph()
         return jsonify({
             "node_count": graph.node_count,
             "edge_count": graph.edge_count,
@@ -921,9 +918,8 @@ def depgraph_analyze():
 def depgraph_graph():
     """GET /api/depgraph/graph — Get the full dependency graph."""
     try:
-        server = get_depgraph_server()
-        result = server.handle_tool_call("get_dependency_graph", {})
-        return jsonify(result)
+        graph = _get_depgraph()
+        return jsonify(graph.to_dict())
     except Exception as e:
         logger.exception("Depgraph graph error")
         return jsonify({"error": str(e)}), 500
@@ -937,9 +933,9 @@ def depgraph_callers():
         filepath = data.get("filepath", "").strip()
         if not filepath:
             return jsonify({"error": "filepath is required"}), 400
-        server = get_depgraph_server()
-        result = server.handle_tool_call("get_callers", {"filepath": filepath})
-        return jsonify(result)
+        graph = _get_depgraph()
+        dependents = graph.get_dependents(filepath)
+        return jsonify({"file": filepath, "caller_count": len(dependents), "callers": dependents})
     except Exception as e:
         logger.exception("Depgraph callers error")
         return jsonify({"error": str(e)}), 500
@@ -953,9 +949,9 @@ def depgraph_callees():
         filepath = data.get("filepath", "").strip()
         if not filepath:
             return jsonify({"error": "filepath is required"}), 400
-        server = get_depgraph_server()
-        result = server.handle_tool_call("get_callees", {"filepath": filepath})
-        return jsonify(result)
+        graph = _get_depgraph()
+        dependencies = graph.get_dependencies(filepath)
+        return jsonify({"file": filepath, "dependency_count": len(dependencies), "dependencies": dependencies})
     except Exception as e:
         logger.exception("Depgraph callees error")
         return jsonify({"error": str(e)}), 500
@@ -970,11 +966,9 @@ def depgraph_impact():
         if not filepath:
             return jsonify({"error": "filepath is required"}), 400
         max_depth = int(data.get("max_depth", 10))
-        server = get_depgraph_server()
-        result = server.handle_tool_call("impact_analysis", {
-            "filepath": filepath, "max_depth": max_depth,
-        })
-        return jsonify(result)
+        graph = _get_depgraph()
+        transitive = graph.get_transitive_dependents(filepath, max_depth)
+        return jsonify({"file": filepath, "max_depth": max_depth, "affected_count": len(transitive), "affected_files": transitive})
     except Exception as e:
         logger.exception("Depgraph impact error")
         return jsonify({"error": str(e)}), 500
@@ -984,9 +978,9 @@ def depgraph_impact():
 def depgraph_orphans():
     """GET /api/depgraph/orphans — Find files with no dependents."""
     try:
-        server = get_depgraph_server()
-        result = server.handle_tool_call("find_orphans", {})
-        return jsonify(result)
+        graph = _get_depgraph()
+        orphans = graph.find_orphans()
+        return jsonify({"orphan_count": len(orphans), "orphans": orphans})
     except Exception as e:
         logger.exception("Depgraph orphans error")
         return jsonify({"error": str(e)}), 500
@@ -996,9 +990,9 @@ def depgraph_orphans():
 def depgraph_leaves():
     """GET /api/depgraph/leaves — Find files with no dependencies."""
     try:
-        server = get_depgraph_server()
-        result = server.handle_tool_call("find_leaves", {})
-        return jsonify(result)
+        graph = _get_depgraph()
+        leaves = graph.find_leaves()
+        return jsonify({"leaf_count": len(leaves), "leaves": leaves})
     except Exception as e:
         logger.exception("Depgraph leaves error")
         return jsonify({"error": str(e)}), 500
@@ -1009,9 +1003,12 @@ def depgraph_pagerank():
     """GET /api/depgraph/pagerank?top_n=20 — PageRank scores."""
     try:
         top_n = int(request.args.get("top_n", 20))
-        server = get_depgraph_server()
-        result = server.handle_tool_call("pagerank", {"top_n": top_n})
-        return jsonify(result)
+        graph = _get_depgraph()
+        scores = graph.pagerank()
+        sorted_scores = sorted(scores.items(), key=lambda x: -x[1])
+        if top_n > 0:
+            sorted_scores = sorted_scores[:top_n]
+        return jsonify({"total_nodes": len(scores), "top_n": top_n if top_n > 0 else len(scores), "scores": {k: round(v, 6) for k, v in sorted_scores}})
     except Exception as e:
         logger.exception("Depgraph pagerank error")
         return jsonify({"error": str(e)}), 500
@@ -1021,9 +1018,8 @@ def depgraph_pagerank():
 def depgraph_mermaid():
     """GET /api/depgraph/mermaid — Export as Mermaid.js flowchart."""
     try:
-        server = get_depgraph_server()
-        mermaid = server.handle_tool_call("export_mermaid", {})
-        return mermaid, 200, {"Content-Type": "text/plain; charset=utf-8"}
+        graph = _get_depgraph()
+        return graph.to_mermaid(), 200, {"Content-Type": "text/plain; charset=utf-8"}
     except Exception as e:
         logger.exception("Depgraph mermaid error")
         return jsonify({"error": str(e)}), 500
@@ -1033,9 +1029,8 @@ def depgraph_mermaid():
 def depgraph_d3():
     """GET /api/depgraph/d3 — Export as D3.js force-directed graph JSON."""
     try:
-        server = get_depgraph_server()
-        result = server.handle_tool_call("export_d3", {})
-        return jsonify(result)
+        graph = _get_depgraph()
+        return jsonify(graph.to_d3_json())
     except Exception as e:
         logger.exception("Depgraph d3 error")
         return jsonify({"error": str(e)}), 500
@@ -1049,9 +1044,24 @@ def depgraph_module():
         filepath = data.get("filepath", "").strip()
         if not filepath:
             return jsonify({"error": "filepath is required"}), 400
-        server = get_depgraph_server()
-        result = server.handle_tool_call("module_info", {"filepath": filepath})
-        return jsonify(result)
+        graph = _get_depgraph()
+        node = graph.get_node(filepath)
+        if not node:
+            return jsonify({"error": f"File not found in graph: {filepath}"}), 404
+        callers = graph.get_dependents(filepath)
+        callees = graph.get_dependencies(filepath)
+        transitive = graph.get_transitive_dependents(filepath)
+        return jsonify({
+            "file": filepath,
+            "module": node.get("module", ""),
+            "functions": node.get("functions", []),
+            "classes": node.get("classes", []),
+            "line_count": node.get("line_count", 0),
+            "file_size": node.get("file_size", 0),
+            "callers": callers,
+            "callees": callees,
+            "transitive_impact_count": len(transitive),
+        })
     except Exception as e:
         logger.exception("Depgraph module error")
         return jsonify({"error": str(e)}), 500

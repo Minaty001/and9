@@ -1,32 +1,8 @@
 """
 AND9 — Agent Base: Abstract Base Class for All AI Agents.
 
-Defines the core contract that every agent in the system must fulfill.
 Each agent has a role, goal, memory, tools, confidence tracking, logging,
 metrics, and health status — forming a self-contained cognitive unit.
-
-Architecture:
-    AgentBase (abstract)
-        ├── ExecutiveAgent      (CEO — orchestrates swarm)
-        ├── ConversationAgent   (natural dialogue)
-        ├── PlanningAgent       (task decomposition)
-        ├── ResearchAgent       (web research)
-        ├── CodingAgent         (code generation)
-        ├── DebugAgent          (bug analysis)
-        ├── AndroidAgent        (device control)
-        ├── MemoryAgent         (memory management)
-        ├── LearningAgent       (pattern learning)
-        ├── VoiceAgent          (speech I/O)
-        ├── BrowserAgent        (browser automation)
-        ├── WorkflowAgent       (workflow execution)
-        ├── SchedulerAgent      (scheduling)
-        ├── AutomationAgent     (rule automation)
-        ├── SecurityAgent       (security checks)
-        ├── ReflectionAgent     (self-improvement)
-        ├── ToolAgent           (tool management)
-        ├── IntegrationAgent    (external integrations)
-        ├── NotificationAgent   (notifications)
-        └── HealthAgent         (system monitoring)
 """
 
 import logging
