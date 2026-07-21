@@ -235,6 +235,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      outline: none;
+    }
+
+    .orb-core:focus-visible {
+      box-shadow: 0 0 0 4px #030101, 0 0 0 8px #ffaa00, 0 0 100px rgba(255, 200, 0, 0.8);
     }
 
     .orb-core:focus-visible {
@@ -739,9 +744,9 @@
         </div>
       </div>
       <div class="input-row">
-        <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command..." autocomplete="off" aria-label="Command input">
+        <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command..." aria-label="Terminal command input" autocomplete="off">
         <button class="send-btn" id="sendBtn" title="Send command" aria-label="Send command">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
         </button>
       </div>
     </div>

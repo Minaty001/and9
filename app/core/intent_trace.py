@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 # Database path
 _DB_PATH = os.environ.get(
     "AND9_TRACES_DB",
-    "/app/.jarvis_data/intent_traces.db"
+    os.path.join(os.getcwd(), ".jarvis_data", "intent_traces.db")
 )
 os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
 

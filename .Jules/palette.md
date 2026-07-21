@@ -1,3 +1,3 @@
-## 2024-03-01 - Interactive Visual Components Need Keyboard Support
-**Learning:** Custom interactive components designed visually (like a glowing orb) are often missing basic keyboard accessibility. They may handle clicks but lack explicit ARIA roles, `tabindex` for focusability, and keyboard event handlers (`Enter` or `Space`), rendering them inaccessible to keyboard users and screen readers.
-**Action:** When inspecting visually complex or custom UI elements that serve as buttons or inputs, explicitly verify the presence of `role="button"`, `tabindex="0"`, `aria-label`, visible focus indicators (`:focus-visible`), and equivalent keyboard event listeners alongside their pointer event listeners.
+## 2026-07-18 - Adding Keyboard/Screen Reader A11y to Custom UI Components
+**Learning:** Using highly stylized `div` elements for core interactions (like the glowing orb) requires manual semantic roles, tab indexing, and keyboard event handlers to ensure they are accessible to screen reader or keyboard-only users.
+**Action:** Add `role="button"`, `tabindex="0"`, and `aria-label` alongside a `keydown` listener (Enter/Space) and a `:focus-visible` CSS rule to all custom interactive `div` elements going forward.
