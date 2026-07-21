@@ -1,3 +1,3 @@
-## 2024-07-14 - Keyboard Accessibility and Icon Buttons in Main Interface
-**Learning:** Found that the primary interaction buttons on the main interface (like the send command button and timer buttons) lacked proper ARIA labels and `:focus-visible` styles, making keyboard navigation difficult and screen readers unable to interpret the icon-only send button.
-**Action:** Always verify keyboard focus states (`:focus-visible`) and ensure icon-only buttons have descriptive `aria-label`s and `aria-hidden="true"` on their SVGs to improve accessibility.
+## 2024-07-21 - Interactive Semantic Elements
+**Learning:** Adding interactive behavior (like `addEventListener('click')`) to non-interactive semantic elements like `<div>` makes them inaccessible to screen readers and keyboard users.
+**Action:** When turning non-interactive elements into buttons or actionable controls, always add `role="button"`, `tabindex="0"`, `aria-label`, and a keyboard event listener (to handle 'Enter' and 'Space') to ensure full accessibility. Also include a `:focus-visible` CSS rule for visual feedback during keyboard navigation.
