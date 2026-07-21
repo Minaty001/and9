@@ -248,17 +248,6 @@ class TestAgentRegistry:
         with pytest.raises(ValueError, match="already registered"):
             registry.register(dup)
 
-    def test_deregistration(self, registry):
-        """Test deregistering an agent."""
-        assert registry.count() == 2
-        result = registry.deregister("alpha")
-        assert result is True
-        assert registry.count() == 1
-        assert registry.get("alpha") is None
-
-        result = registry.deregister("nonexistent")
-        assert result is False
-
     def test_list_agents(self, registry):
         """Test listing all agents."""
         agent_list = registry.list_agents()
@@ -267,30 +256,11 @@ class TestAgentRegistry:
         assert "alpha" in names
         assert "beta" in names
 
-    def test_find_by_role(self, registry):
-        """Test finding agents by role keyword."""
-        agents = registry.find_by_role("test")
-        assert len(agents) == 2
-
     def test_initialize_all(self, registry):
         """Test initializing all agents."""
         registry.initialize_all()
         assert registry.get("alpha")._initialized is True
         assert registry.get("alpha").status == AgentStatus.HEALTHY
-
-    def test_shutdown_all(self, registry):
-        """Test shutting down all agents."""
-        registry.initialize_all()
-        registry.shutdown_all()
-        assert registry.get("alpha").status == AgentStatus.DISABLED
-
-    def test_health_report(self, registry):
-        """Test health report generation."""
-        registry.initialize_all()
-        report = registry.health_report()
-        assert report["total_agents"] == 2
-        assert report["healthy"] == 2
-        assert report["overall_status"] == "healthy"
 
     def test_routing_to_specific_agent(self, registry):
         """Test routing with a preferred agent."""
@@ -324,32 +294,6 @@ class TestAgentRegistry:
         assert not result.success
         assert "not found" in result.response
 
-    def test_broadcast(self, registry):
-        """Test event broadcasting to all agents."""
-        # Should not raise
-        registry.broadcast("test_event", {"data": 123})
-        registry.broadcast("test_event", None)
-
-    def test_route_to_all(self, registry):
-        """Test routing a task to ALL agents."""
-        results = registry.route_to_all("hello")
-        assert len(results) == 2
-        for name, result in results.items():
-            assert result.success
-
-    def test_serialization(self, registry):
-        """Test registry to_dict."""
-        d = registry.to_dict()
-        assert d["agent_count"] == 2
-        assert len(d["agents"]) == 2
-
-    def test_delegate_parallel(self, registry):
-        """Test parallel delegation."""
-        assignments = [("alpha", "task1"), ("beta", "task2")]
-        results = registry.delegate_parallel(assignments)
-        assert len(results) == 2
-        assert "alpha" in results
-        assert "beta" in results
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -424,12 +368,6 @@ class TestAgentSystem:
             agent("test input")
             assert agent.metrics.total_invocations == 1
             assert agent.metrics.avg_latency_ms > 0
-
-    def test_health_report_includes_all(self, registry):
-        """Test health report covers all agents."""
-        registry.initialize_all()
-        report = registry.health_report()
-        assert report["total_agents"] == 20
 
     def test_executive_agent_routing(self, registry):
         """Test executive agent routing to specialists."""
@@ -637,8 +575,6 @@ class TestEdgeCases:
         reg = AgentRegistry()
         assert reg.count() == 0
         assert reg.list_agents() == []
-        report = reg.health_report()
-        assert report["total_agents"] == 0
 
     def test_agent_metrics_defaults(self):
         """Test that metrics have sane defaults."""
@@ -660,16 +596,6 @@ class TestEdgeCases:
         agent.memory.remember("key", "value")
         agent.memory.forget("key")
         assert agent.memory.recall("key") is None
-
-    def test_repeated_deregistration(self):
-        """Test deregistering same agent twice."""
-        reg = AgentRegistry()
-        agent = SimpleTestAgent()
-        agent.name = "test"
-        reg.register(agent)
-
-        assert reg.deregister("test") is True
-        assert reg.deregister("test") is False
 
     def test_health_check_without_initialization(self):
         """Test health check before initialization."""

@@ -509,7 +509,7 @@ def test_orchestrator_routing():
     from app.core.orchestrator import IntentRouter
     router = IntentRouter()
     assert router.route("search for python tutorials") == "search"
-    assert router.route("write code to sort a list") == "pc"
+    assert router.route("write code to sort a list") == "coding"
     assert router.route("generate image of a cat") == "chat"
     assert router.route("calculate 15% of 3500") == "chat"
     assert router.route("research the history of AI") in ["research", "search", "chat"]
