@@ -53,7 +53,7 @@ class ExecutiveAgent(AgentBase):
         self._registry = None
         self._orchestrator = None
 
-    def set_registry(self, registry: 'Any') -> None:
+    def set_registry(self, registry: "AgentRegistry") -> None:  # noqa: F821
         """Set reference to the agent registry for delegation."""
         self._registry = registry
 

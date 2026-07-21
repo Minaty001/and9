@@ -728,7 +728,7 @@
       <div class="panel-header">
         <span class="header-dot"></span> NEURAL COMMS LOG
       </div>
-      <div class="chat-log" id="chatLog">
+      <div class="chat-log" id="chatLog" aria-live="polite">
         <div class="msg-line jarvis">
           <span class="msg-tag">JARVIS</span>
           <span class="msg-content">Neural network integrated. Golden cores synchronized.</span>
@@ -737,7 +737,7 @@
       <div class="input-row">
         <input type="text" class="cmd-input" id="cmdInput" placeholder="Enter command..." autocomplete="off" aria-label="Command input">
         <button class="send-btn" id="sendBtn" title="Send command" aria-label="Send command">
-          <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
         </button>
       </div>
     </div>

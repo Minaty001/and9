@@ -1,3 +1,3 @@
-## 2026-07-08 - Icon-Only Button Accessibility Pattern
-**Learning:** Found a common pattern in the JARVIS v2 Android UI template where utility buttons (close, add, search, send, voice note) rely solely on Unicode characters or CSS icons without accessible names, rendering them silent or ambiguous to screen readers.
-**Action:** Always verify icon-only interactive elements (`<button>`, `<a>`) across all new and existing templates and proactively inject descriptive `aria-label` attributes to ensure keyboard and screen-reader accessibility.
+## 2024-05-24 - Accessibility Enhancements to Custom Interactive Elements
+**Learning:** Custom div-based interactive elements (like custom voice orbs or buttons) lack native accessibility features, and developers frequently omit them. It is critical to add `role="button"`, `tabindex="0"`, and ARIA labels. Furthermore, adding click handlers isn't enough; they must be fully navigable via keyboard by listening to 'Enter' and 'Space' `keydown` events. Also learned that `aria-live="polite"` is an effective way to have screen readers announce updates to dynamic chat logs automatically.
+**Action:** Always verify keyboard accessibility on any custom interactive element created via `<div>` or `<span>`, ensuring 'Enter'/'Space' triggering is implemented, along with `role`, `tabindex`, and appropriate ARIA attributes.
