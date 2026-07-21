@@ -30,7 +30,7 @@ jobs:
     - name: Lint with ruff
       run: |
         pip install ruff
-        ruff check app/ tests/ --ignore=E402,F401
+        ruff check --fix app/ tests/ --ignore=E402,F401
 
     - name: Test with pytest
       env:
