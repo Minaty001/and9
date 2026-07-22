@@ -7,6 +7,7 @@ import logging
 import os
 import threading
 import time
+from typing import TYPE_CHECKING
 from flask import Blueprint, request, jsonify, Response
 
 from app.core.orchestrator import Orchestrator
@@ -15,6 +16,9 @@ from app.core.goal_tracker import GoalTracker
 from app.core.events import EventSystem
 from app.core.reflection import ReflectionEngine
 from app.core.proactive import ProactiveEngine
+
+if TYPE_CHECKING:
+    from app.dependency_graph.graph import DependencyGraph
 
 logger = logging.getLogger(__name__)
 api_bp = Blueprint("api", __name__)
