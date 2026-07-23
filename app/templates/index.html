@@ -737,7 +737,7 @@
         </div>
       </div>
       
-      <div class="status-text" id="orbStatus">J.A.R.V.I.S. ONLINE</div>
+      <div class="status-text" id="orbStatus" aria-live="polite" aria-atomic="true">J.A.R.V.I.S. ONLINE</div>
     </div>
 
     <!-- Terminal -->
@@ -774,7 +774,7 @@
   </div>
 
   <!-- IMAGE OVERLAY -->
-  <div id="imageDisplay" class="image-overlay" style="display:none;">
+  <div id="imageDisplay" class="image-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Image Viewer" tabindex="-1">
     <div class="image-overlay-inner">
       <img id="generatedImg" src="" alt="Generated Image">
       <div class="image-overlay-hint">TAP TO CLOSE</div>
@@ -1121,7 +1121,7 @@
 
       // Main processor hooked up to the Flask APIs
       async function processUserInput(text) {
-        if (!text.trim()) return;
+        if (!text.trim() || isProcessing) return;
         addMessage('user', text.trim());
         cmdInput.value = '';
         
@@ -1208,10 +1208,22 @@
       function showImage(url) {
         generatedImg.src = url;
         imageDisplay.style.display = 'flex';
+        imageDisplay.focus();
       }
-      imageDisplay.addEventListener('click', () => {
+
+      function closeImageDisplay() {
         imageDisplay.style.display = 'none';
         generatedImg.src = '';
+        cmdInput.focus();
+      }
+
+      imageDisplay.addEventListener('click', closeImageDisplay);
+
+      imageDisplay.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          closeImageDisplay();
+        }
       });
 
       function initRecognition() {
@@ -1268,6 +1280,7 @@
       orbCore.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
+          e.stopPropagation();
           toggleVoice();
         }
       });
@@ -1275,29 +1288,6 @@
       orbCore.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleVoice();
-      });
-      orbCore.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleVoice();
-        }
-      });
-
-      orbCore.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleVoice();
-        }
-      });
-
-      orbCore.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleVoice();
-        }
       });
 
       sendBtn.addEventListener('click', () => {
