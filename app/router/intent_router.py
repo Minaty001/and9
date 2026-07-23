@@ -36,6 +36,12 @@ from app.router.command_dictionary import (
     SEARCH_TRIGGER,
     GO_HOME,
     AIRPLANE_MODE,
+    ACCESSIBILITY_SCREEN_DESCRIBE,
+    ACCESSIBILITY_CLICK_ELEMENT,
+    ACCESSIBILITY_TYPE_TEXT,
+    ACCESSIBILITY_SCROLL,
+    ACCESSIBILITY_LIST_ELEMENTS,
+    ACCESSIBILITY_CURRENT_APP,
 )
 from app.router.entity_extractor import extract_entities
 
@@ -213,6 +219,20 @@ def detect_intent(query: str) -> Tuple[Optional[str], Optional[str], dict]:
     # ── Priority 16: AUTOMATION ──────────────────────────────────
     if AUTOMATION_TRIGGER.search(q):
         return 'automation', ActionType.CHAT.value, {'query': q}
+
+    # ── Accessibility intents (between Automation and Search) ────
+    if ACCESSIBILITY_SCREEN_DESCRIBE.search(q):
+        return 'describe_screen', ActionType.DESCRIBE_SCREEN.value, {'query': q}
+    if ACCESSIBILITY_LIST_ELEMENTS.search(q):
+        return 'list_elements', ActionType.LIST_ELEMENTS.value, {'query': q}
+    if ACCESSIBILITY_CURRENT_APP.search(q):
+        return 'get_current_app', ActionType.GET_CURRENT_APP.value, {'query': q}
+    if ACCESSIBILITY_SCROLL.search(q):
+        return 'scroll', ActionType.SCREEN_SCROLL.value, {'query': q}
+    if ACCESSIBILITY_CLICK_ELEMENT.search(q):
+        return 'click_element', ActionType.CLICK_ELEMENT.value, {'query': q}
+    if ACCESSIBILITY_TYPE_TEXT.search(q):
+        return 'type_text', ActionType.TYPE_TEXT.value, {'query': q}
 
     # ── Priority 17: SEARCH (LAST for device actions) ────────────
     if SEARCH_TRIGGER.search(q):

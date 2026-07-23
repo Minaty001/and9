@@ -48,17 +48,49 @@ class JarvisBackendClient(private val context: Context) {
      */
     fun chat(text: String, onResult: (String, JSONObject?) -> Unit) {
         DebugLogger.log(TAG, "User: $text")
-        chatCustomBackend(text, onResult)
+        chatCustomBackend(text, null, onResult)
     }
+
+    /**
+     * Send [text] along with current [screenContext] (screen description
+     * + foreground app) so the backend can tailor responses based on
+     * what the user is seeing.
+     *
+     * The backend receives `"screen_context"` and `"current_app"` fields
+     * alongside the message. Both are optional and fully backwards-compatible.
+     */
+    fun chatWithScreenContext(
+        text: String,
+        screenContext: String?,
+        currentApp: String?,
+        onResult: (String, JSONObject?) -> Unit
+    ) {
+        DebugLogger.log(TAG, "User: $text | Screen: ${currentApp ?: "?"}")
+        chatCustomBackend(text, ScreenContextData(screenContext, currentApp), onResult)
+    }
+
+    private data class ScreenContextData(
+        val screenDescription: String?,
+        val currentApp: String?
+    )
 
     // ── Custom Flask Backend (only provider) ───────────────────────
 
-    private fun chatCustomBackend(text: String, onResult: (String, JSONObject?) -> Unit) {
+    private fun chatCustomBackend(
+        text: String,
+        screenContext: ScreenContextData?,
+        onResult: (String, JSONObject?) -> Unit
+    ) {
         val url = if (baseUrl.endsWith("/")) "${baseUrl}chat" else "$baseUrl/chat"
         DebugLogger.log(TAG, "Calling backend: $url")
 
-        val json = JSONObject().put("message", text).toString()
-        val body = json.toRequestBody("application/json".toMediaType())
+        val json = JSONObject().put("message", text)
+        // Attach optional screen context for accessibility-aware responses
+        screenContext?.let { ctx ->
+            ctx.screenDescription?.let { json.put("screen_context", it) }
+            ctx.currentApp?.let { json.put("current_app", it) }
+        }
+        val body = json.toString().toRequestBody("application/json".toMediaType())
 
         val request = Request.Builder()
             .url(url)

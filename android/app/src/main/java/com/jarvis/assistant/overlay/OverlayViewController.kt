@@ -87,6 +87,9 @@ class OverlayViewController(
             "youtube_search", "youtube_play",
             // Contact lookup (server-initiated)
             "contacts_lookup",
+            // Accessibility (Phase 1+2)
+            "describe_screen", "click_element", "type_text", "scroll",
+            "list_elements", "get_current_app",
         )
 
         // ── DANGEROUS ACTIONS — require explicit user confirmation ──
@@ -339,7 +342,16 @@ class OverlayViewController(
     private fun sendToBackend(text: String) {
         showStatus("⏳ Thinking...")
         DebugLogger.log(TAG, "Sending to backend: $text")
-        backend.chat(text) { reply, jsonResponse ->
+
+        // Attach screen context for accessibility-aware responses
+        val screenDesc = try {
+            JarvisAccessibilityService.describeScreen()
+        } catch (_: Exception) { null }
+        val currentApp = try {
+            JarvisAccessibilityService.getCurrentApp()
+        } catch (_: Exception) { null }
+
+        backend.chatWithScreenContext(text, screenDesc, currentApp) { reply, jsonResponse ->
             mainHandler.post {
                 if (isDestroyedOrDismissed) return@post
                 DebugLogger.log(TAG, "Backend reply: $reply")
@@ -533,6 +545,53 @@ class OverlayViewController(
             "screenshot" -> takeScreenshot()
             "notification", "notifications" -> openNotifications()
             "vibrate" -> triggerVibrate()
+            // ── Accessibility Actions (Phase 1+2) ─────────────────
+            "describe_screen" -> {
+                val desc = JarvisAccessibilityService.describeScreen()
+                val short = desc.split("\n").take(5).joinToString("\n")
+                showStatus(short)
+                speakReply(short)
+            }
+            "click_element" -> {
+                val target = payload.ifEmpty { metadata.optString("text", "") }
+                if (target.isNotEmpty()) {
+                    val clicked = JarvisAccessibilityService.clickElement(mapOf("text" to target))
+                    if (clicked) {
+                        showStatus("Clicked: $target 👆")
+                    } else {
+                        showStatus("Nahi mila: $target")
+                        speakReply("$target nahi mila.")
+                    }
+                }
+            }
+            "type_text" -> {
+                val inputText = payload.ifEmpty { metadata.optString("text", "") }
+                val fieldHint = metadata.optString("field", "")
+                if (inputText.isNotEmpty()) {
+                    val selector = if (fieldHint.isNotEmpty())
+                        mapOf("description" to fieldHint) else mapOf("className" to "EditText")
+                    val typed = JarvisAccessibilityService.typeText(selector, inputText)
+                    if (typed) {
+                        showStatus("Typed: $inputText ⌨️")
+                    } else {
+                        showStatus("Type karne me problem hui.")
+                    }
+                }
+            }
+            "scroll" -> {
+                val dir = payload.ifEmpty { "forward" }
+                JarvisAccessibilityService.scroll(dir)
+                showStatus("Scrolled $dir 📜")
+            }
+            "list_elements" -> {
+                val elements = JarvisAccessibilityService.describeScreen()
+                speakReply(elements)
+            }
+            "get_current_app" -> {
+                val app = JarvisAccessibilityService.getCurrentApp() ?: "unknown"
+                showStatus("Current app: $app")
+                speakReply("$app app khula hai.")
+            }
         }
     }
 

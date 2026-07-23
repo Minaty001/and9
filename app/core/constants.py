@@ -53,6 +53,14 @@ class ActionType(str, Enum):
     # ── Emergency ──────────────────────────────────────────────
     EMERGENCY = "emergency"
 
+    # ── Accessibility ─────────────────────────────────────────
+    DESCRIBE_SCREEN = "describe_screen"
+    CLICK_ELEMENT = "click_element"
+    TYPE_TEXT = "type_text"
+    SCREEN_SCROLL = "scroll"
+    LIST_ELEMENTS = "list_elements"
+    GET_CURRENT_APP = "get_current_app"
+
     # ── Fallback ───────────────────────────────────────────────
     SEARCH = "search"
     CHAT = "chat"

@@ -47,6 +47,14 @@ _REQUIRED_ACTIONS = frozenset({
     "airplane_mode",
     "emergency",
     "search",
+
+    # ── Accessibility ────────────────────────────────────────
+    "describe_screen",
+    "click_element",
+    "type_text",
+    "scroll",
+    "list_elements",
+    "get_current_app",
 })
 
 
@@ -268,6 +276,50 @@ REGISTRY: Dict[str, Dict[str, Any]] = {
         "params": ["query"],
         "whitelisted": True,
         "chrome_allowed": True,
+    },
+
+    # ── Accessibility ─────────────────────────────────────────
+    "describe_screen": {
+        "handler": "actions.accessibility_actions.describe_screen",
+        "android_intent": "AND9_INTERNAL",
+        "description": "Describe the current screen contents",
+        "params": ["query"],
+        "whitelisted": True,
+    },
+    "click_element": {
+        "handler": "actions.accessibility_actions.click_element",
+        "android_intent": "AND9_INTERNAL",
+        "description": "Click a UI element by text or description",
+        "params": ["query", "text"],
+        "whitelisted": True,
+    },
+    "type_text": {
+        "handler": "actions.accessibility_actions.type_text",
+        "android_intent": "AND9_INTERNAL",
+        "description": "Type text into an input field",
+        "params": ["query", "text", "field"],
+        "whitelisted": True,
+    },
+    "scroll": {
+        "handler": "actions.accessibility_actions.scroll",
+        "android_intent": "AND9_INTERNAL",
+        "description": "Scroll the current screen in a direction",
+        "params": ["query", "direction"],
+        "whitelisted": True,
+    },
+    "list_elements": {
+        "handler": "actions.accessibility_actions.list_elements",
+        "android_intent": "AND9_INTERNAL",
+        "description": "List all actionable UI elements on screen",
+        "params": ["query"],
+        "whitelisted": True,
+    },
+    "get_current_app": {
+        "handler": "actions.accessibility_actions.get_current_app",
+        "android_intent": "AND9_INTERNAL",
+        "description": "Get the current foreground app package",
+        "params": ["query"],
+        "whitelisted": True,
     },
 
     # ── Chat ───────────────────────────────────────────────────

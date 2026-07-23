@@ -373,6 +373,47 @@ AIRPLANE_MODE: Pattern = _c(r'\b(airplane\s*mode|flight\s*mode|aeroplane\s*mode)
 
 
 # ══════════════════════════════════════════════════════════════════
+# ACCESSIBILITY INTENTS (between Automation and Search)
+# ══════════════════════════════════════════════════════════════════
+
+# "screen pe kya hai" / "describe screen" / "what is on screen"
+ACCESSIBILITY_SCREEN_DESCRIBE: Pattern = _c(
+    r'\b(describe\s+screen|screen\s+describe|screen\s+pe\s+kya\s+hai|'
+    r'what.*on\s+(the\s+)?screen|screen\s+dikhao|kya\s+dikh\s+raha|'
+    r'current\s+screen|batao\s+screen|screen\s+batao)\b'
+)
+
+# "click X" / "tap X" / "press X" / "X dabao"
+ACCESSIBILITY_CLICK_ELEMENT: Pattern = _c(
+    r'\b(click|tap|press|dabao|click\s+karo|tap\s+karo|'
+    r'press\s+karo|daba\s+do|click\s+kar)\b'
+)
+
+# "type X" / "write X" / "enter X" / "X likho"
+ACCESSIBILITY_TYPE_TEXT: Pattern = _c(
+    r'\b(type|write|enter|likho|type\s+karo|daalo|'
+    r'input|text\s+daalo|type\s+kar)\b'
+)
+
+# "scroll up/down" / "swipe" / "upar jao" / "neeche jao"
+ACCESSIBILITY_SCROLL: Pattern = _c(
+    r'\b(scroll|swipe|upar|neeche|niche|scroll\s+karo|'
+    r'swipe\s+karo|page\s+up|page\s+down)\b'
+)
+
+ACCESSIBILITY_LIST_ELEMENTS: Pattern = _c(
+    r'\b(list|buttons|options|menu|kya\s+kuch\s+hai|'
+    r'saare\s+options|dikhao\s+buttons|show.*buttons|'
+    r'list.*elements|list.*options)\b'
+)
+
+ACCESSIBILITY_CURRENT_APP: Pattern = _c(
+    r'\b(current\s+app|kaunsi\s+app|kon\s+sa\s+app|'
+    r'foreground\s+app|kya\s+app\s+khula|kaun\s+si\s+app)\b'
+)
+
+
+# ══════════════════════════════════════════════════════════════════
 # UTILITY — Noise Words for Entity Cleaning
 # ══════════════════════════════════════════════════════════════════
 

@@ -92,6 +92,14 @@ register_skill("volume_mute", "app.android.actions.device_actions", "handle_volu
 register_skill("volume_max", "app.android.actions.device_actions", "handle_volume", lambda p, e: {"query": "max"})
 register_skill("chat", "app.android.actions.device_actions", "handle_chat", lambda p, e: {"query": p.get("query", "")})
 
+# ── Accessibility Skills ────────────────────────────────────────
+register_skill("describe_screen", "app.android.actions.accessibility_actions", "describe_screen", lambda p, e: {"query": p.get("query", "")})
+register_skill("click_element", "app.android.actions.accessibility_actions", "click_element", lambda p, e: {"query": p.get("query", ""), "text": p.get("text", p.get("query", ""))})
+register_skill("type_text", "app.android.actions.accessibility_actions", "type_text", lambda p, e: {"query": p.get("query", ""), "text": p.get("text", p.get("query", "")), "field": p.get("field", "")})
+register_skill("scroll", "app.android.actions.accessibility_actions", "scroll", lambda p, e: {"query": p.get("query", ""), "direction": p.get("direction", p.get("query", ""))})
+register_skill("list_elements", "app.android.actions.accessibility_actions", "list_elements", lambda p, e: {"query": p.get("query", "")})
+register_skill("get_current_app", "app.android.actions.accessibility_actions", "get_current_app", lambda p, e: {})
+
 
 def execute_skill(action_type: str, params: dict, events_sys: Any = None) -> dict:
     """Execute a skill from the registry.
