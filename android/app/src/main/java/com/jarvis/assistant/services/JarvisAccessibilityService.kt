@@ -404,8 +404,15 @@ class JarvisAccessibilityService : AccessibilityService() {
          */
         fun focusNext(): Boolean {
             val service = instance ?: return false
-            return service.performGlobalAction(GLOBAL_ACTION_NEXT_TEXT)
-                || service.performGlobalAction(GLOBAL_ACTION_NEXT_BUTTON)
+            // GLOBAL_ACTION_NEXT_TEXT/BUTTON added in API 35 — define locally for compilation
+            if (Build.VERSION.SDK_INT >= 35) {
+                val GLOBAL_ACTION_NEXT_TEXT = 54
+                val GLOBAL_ACTION_NEXT_BUTTON = 55
+                return service.performGlobalAction(GLOBAL_ACTION_NEXT_TEXT)
+                    || service.performGlobalAction(GLOBAL_ACTION_NEXT_BUTTON)
+            }
+            // Fallback on older devices
+            return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_DPAD_DOWN)
         }
 
         /**
@@ -414,8 +421,13 @@ class JarvisAccessibilityService : AccessibilityService() {
          */
         fun focusPrevious(): Boolean {
             val service = instance ?: return false
-            return service.performGlobalAction(GLOBAL_ACTION_PREVIOUS_TEXT)
-                || service.performGlobalAction(GLOBAL_ACTION_PREVIOUS_BUTTON)
+            if (Build.VERSION.SDK_INT >= 35) {
+                val GLOBAL_ACTION_PREVIOUS_TEXT = 56
+                val GLOBAL_ACTION_PREVIOUS_BUTTON = 57
+                return service.performGlobalAction(GLOBAL_ACTION_PREVIOUS_TEXT)
+                    || service.performGlobalAction(GLOBAL_ACTION_PREVIOUS_BUTTON)
+            }
+            return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_DPAD_UP)
         }
 
         // ── Existing Public API ───────────────────────────────────

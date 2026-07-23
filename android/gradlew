@@ -12,10 +12,12 @@ else
     JAVA_CMD=java
 fi
 
-if [ -f "$CLASSPATH" ] && [ -f "$SHARED_JAR" ]; then
-    exec "$JAVA_CMD" -Xmx64m -Xms64m -classpath "$CLASSPATH:$SHARED_JAR" org.gradle.wrapper.GradleWrapperMain "$@"
+if [ -f "$CLASSPATH" ]; then
+    if [ -f "$SHARED_JAR" ]; then
+        exec "$JAVA_CMD" -Xmx64m -Xms64m -classpath "$CLASSPATH:$SHARED_JAR" org.gradle.wrapper.GradleWrapperMain "$@"
+    fi
+    exec "$JAVA_CMD" -Xmx64m -Xms64m -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
 fi
 
 echo "[ERROR] Gradle wrapper JAR not found at $CLASSPATH"
-echo "[ERROR] Gradle wrapper shared JAR not found at $SHARED_JAR"
 exit 1
