@@ -376,9 +376,9 @@ AIRPLANE_MODE: Pattern = _c(r'\b(airplane\s*mode|flight\s*mode|aeroplane\s*mode)
 # ACCESSIBILITY INTENTS (between Automation and Search)
 # ══════════════════════════════════════════════════════════════════
 
-# "screen pe kya hai" / "describe screen" / "what is on screen"
+# "screen pe kya hai" / "describe the screen" / "what is on screen"
 ACCESSIBILITY_SCREEN_DESCRIBE: Pattern = _c(
-    r'\b(describe\s+screen|screen\s+describe|screen\s+pe\s+kya\s+hai|'
+    r'\b(describe\s+\w*\s*screen|screen\s+describe|screen\s+pe\s+kya\s+hai|'
     r'what.*on\s+(the\s+)?screen|screen\s+dikhao|kya\s+dikh\s+raha|'
     r'current\s+screen|batao\s+screen|screen\s+batao)\b'
 )
