@@ -881,6 +881,10 @@ def dialogue_reset():
 # Dependency Graph API — Code Analysis & MCP Tools
 # ═══════════════════════════════════════════════════════════════
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.dependency_graph.graph import DependencyGraph
+
 _depgraph = None  # type: ignore
 _depgraph_lock = threading.Lock()
 
