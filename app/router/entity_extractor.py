@@ -245,7 +245,7 @@ def extract_youtube(query: str) -> dict:
 
 
 # Import shared media query cleaner from the action handler module
-from app.android.actions.youtube_actions import _clean_media_query  # noqa: F811
+from app.android.actions.youtube_actions import _clean_media_query
 
 
 # ── ALARM ─────────────────────────────────────────────────────────
