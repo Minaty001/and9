@@ -1,3 +1,6 @@
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.dependency_graph.graph import DependencyGraph
 """
 app/api/routes.py — JSON API endpoints for the chat interface.
 """
@@ -885,7 +888,7 @@ _depgraph = None  # type: ignore
 _depgraph_lock = threading.Lock()
 
 
-def _get_depgraph() -> 'DependencyGraph':
+def _get_depgraph() -> "DependencyGraph":
     """Lazy-init singleton DependencyGraph instance."""
     global _depgraph
     if _depgraph is None:
