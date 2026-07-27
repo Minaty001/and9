@@ -37,7 +37,8 @@
             background: rgba(255,165,0,0.15); color: #FFA500; font-weight: 600; cursor: pointer;
             transition: all 0.3s;
         }
-        .login-box button:hover { background: rgba(255,165,0,0.3); }
+        .login-box button:hover:not(:disabled) { background: rgba(255,165,0,0.3); }
+        .login-box button:disabled { opacity: 0.7; cursor: not-allowed; }
         .login-error { color: #ff4444; margin-top: 15px; font-size: 0.85rem; min-height: 20px; }
 
         /* ── Top Bar ── */
@@ -171,7 +172,7 @@
     <div class="login-sub">AUTHENTICATION REQUIRED</div>
     <div class="login-box">
         <input type="password" id="loginPassword" placeholder="Enter admin password" aria-label="Admin password" autofocus>
-        <button onclick="doLogin()">AUTHENTICATE</button>
+        <button id="loginBtn" onclick="doLogin()">AUTHENTICATE</button>
     </div>
     <div class="login-error" id="loginError"></div>
 </div>
@@ -281,7 +282,14 @@ async function checkAuth() {
 async function doLogin() {
     const pw = document.getElementById('loginPassword').value.trim();
     const err = document.getElementById('loginError');
+    const btn = document.getElementById('loginBtn');
+
+    err.textContent = '';
     if (!pw) { err.textContent = 'Enter password'; return; }
+
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'AUTHENTICATING...';
 
     try {
         const r = await fetch(`${API}/auth`, {
@@ -298,6 +306,9 @@ async function doLogin() {
         }
     } catch(e) {
         err.textContent = 'Connection failed';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
     }
 }
 
