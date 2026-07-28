@@ -114,9 +114,9 @@ def has_relevant_memory(memory_ctx: dict, query: str = "") -> bool:
     """
     # Check user profile
     profile = memory_ctx.get("user_profile", {}) or {}
-    for _cat, facts in profile.items():
+    for facts in profile.values():
         if isinstance(facts, dict) and facts:
-            for _key, val in facts.items():
+            for val in facts.values():
                 if val and str(val).strip():
                     return True
 

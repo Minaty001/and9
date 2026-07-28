@@ -247,7 +247,7 @@ class AgentOrchestrator:
                 logger.info("Retrying %d failed tasks...", len(failed))
                 retry_results = self.retry(failed, context)
                 all_results.update(retry_results)
-                passed, failed = self.validate(all_results)
+                _passed, failed = self.validate(all_results)
 
             # Step 8: Merge results
             final_result = self.merge(

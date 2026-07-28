@@ -644,7 +644,7 @@ class DialogueManager:
             from app.router.normalizer import QueryNormalizer
             normalizer = QueryNormalizer()
             normalized, _ = normalizer.normalize(message)
-            intent_name, action_type, params = detect_intent(normalized)
+            intent_name, _action_type, params = detect_intent(normalized)
 
             # If AND9 returns "chat", try fallback to catch
             # reconstructed references like "play" in "Play Tum Hi Ho again"

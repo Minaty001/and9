@@ -323,21 +323,21 @@ def test_emotion_happy():
 def test_emotion_sad():
     from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
-    emotion, intensity = ue.detect_emotion("feeling very sad today")
+    emotion, _intensity = ue.detect_emotion("feeling very sad today")
     assert emotion == "sad"
 
 
 def test_emotion_angry():
     from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
-    emotion, intensity = ue.detect_emotion("bahut gussa aa raha hai")
+    emotion, _intensity = ue.detect_emotion("bahut gussa aa raha hai")
     assert emotion == "angry"
 
 
 def test_emotion_neutral():
     from app.core.understanding import UnderstandingEngine
     ue = UnderstandingEngine()
-    emotion, intensity = ue.detect_emotion("tell me about the weather")
+    emotion, _intensity = ue.detect_emotion("tell me about the weather")
     assert emotion == "neutral"
 
 
