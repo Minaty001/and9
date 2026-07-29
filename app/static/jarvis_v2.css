@@ -318,8 +318,9 @@ body.android-ui {
   padding-bottom: var(--safe-bottom);
 }
 
+div#bottomChips,
 .bottom-chips {
-  display: flex;
+  display: none;
   gap: 6px;
   padding: 8px 12px 4px;
   overflow-x: auto;

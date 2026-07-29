@@ -29,7 +29,11 @@ _DB_PATH = os.environ.get(
     "/app/.jarvis_data/reminders_engine.db",
 )
 
-os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+try:
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+except OSError:
+    _DB_PATH = os.path.join(os.getcwd(), ".jarvis_data", "reminders_engine.db")
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS reminders (

@@ -27,14 +27,16 @@ from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-# Database path (configurable via environment)
 _DB_PATH = os.environ.get(
     "AND9_REMINDERS_DB",
     "/app/.jarvis_data/reminders.db"
 )
 
-# Ensure the directory exists
-os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+try:
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+except OSError:
+    _DB_PATH = os.path.join(os.getcwd(), ".jarvis_data", "reminders.db")
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS reminders (

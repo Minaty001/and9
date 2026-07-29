@@ -36,12 +36,15 @@ from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-# Database path
 _DB_PATH = os.environ.get(
     "AND9_TRACES_DB",
     "/app/.jarvis_data/intent_traces.db"
 )
-os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+try:
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
+except OSError:
+    _DB_PATH = os.path.join(os.getcwd(), ".jarvis_data", "intent_traces.db")
+    os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
 
 # Short-term memory buffer size
 MAX_SHORT_TERM_TRACES = int(os.environ.get("AND9_SHORT_TERM_SIZE", "50"))
