@@ -391,7 +391,7 @@ class TestStateTracker:
 
     def test_get_active_tasks(self, state_tracker):
         t1 = state_tracker.create_task("youtube", ["search_query"])
-        t2 = state_tracker.create_task("device", ["action"])
+        state_tracker.create_task("device", ["action"])
 
         active = state_tracker.get_active_tasks()
         assert len(active) >= 1
