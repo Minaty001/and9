@@ -9,17 +9,6 @@ the AgentRegistry provides full lifecycle management.
 from app.agents.coding_agent import CodingAgent
 from app.agents.research_agent import ResearchAgent
 from app.agents.assistant_agent import AssistantAgent
-
-# Original JARVIS agent registry (simple name-based routing)
-AGENT_REGISTRY = {
-    "coding": CodingAgent,
-    "research": ResearchAgent,
-    "search": AssistantAgent,
-    "chat": AssistantAgent,
-    "device": AssistantAgent,
-}
-
-# AND9 AgentBase system (full lifecycle, metrics, tool binding)
 from app.agents.base import AgentBase, AgentResult, AgentStatus, AgentMemory
 from app.agents.registry import AgentRegistry
 from app.agents.core_agents import (
@@ -38,6 +27,17 @@ from app.agents.system_agents import (
 from app.agents.integration_agents import (
     ToolAgent, IntegrationAgent, WorkflowAgent, NotificationAgent,
 )
+
+# Original JARVIS agent registry (simple name-based routing)
+AGENT_REGISTRY = {
+    "coding": CodingAgent,
+    "research": ResearchAgent,
+    "search": AssistantAgent,
+    "chat": AssistantAgent,
+    "device": AssistantAgent,
+}
+
+# AND9 AgentBase system (full lifecycle, metrics, tool binding)
 
 
 def create_agent_system(auto_init: bool = False,

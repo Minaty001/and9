@@ -22,6 +22,8 @@ import re
 import logging
 from typing import Optional
 
+from app.android.actions.youtube_actions import _clean_media_query
+
 from app.router.command_dictionary import (
     CALL_CONTACT,
     CALL_NUMBER,
@@ -242,10 +244,6 @@ def extract_youtube(query: str) -> dict:
 
     # Default: search with full query
     return {"action": "search", "query": _clean_media_query(q)}
-
-
-# Import shared media query cleaner from the action handler module
-from app.android.actions.youtube_actions import _clean_media_query  # noqa: F811
 
 
 # ── ALARM ─────────────────────────────────────────────────────────
