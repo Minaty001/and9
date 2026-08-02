@@ -1,3 +1,7 @@
 ## 2024-03-24 - Interactive Div Accessibility
 **Learning:** Custom `div` elements used as interactive components (like the orbCore button) require complete semantic setup to be accessible. This includes `role="button"`, `tabindex="0"`, `:focus-visible` styles, and keyboard event handlers for both `Enter` and `Space` keys to match native button behavior.
 **Action:** Always use native `<button>` elements when possible. When custom `div` elements must be used for complex UI interactions, ensure the full suite of ARIA attributes, focus management, and keyboard handlers are implemented.
+
+## 2024-08-02 - Native Elements Over Custom ARIA Implementations
+**Learning:** The previous implementation used a custom `div` element as an interactive button (`orbCore`), which necessitated adding `role="button"`, `tabindex="0"`, custom `:focus-visible` styles, and multiple JavaScript event listeners for both `Enter` and `Space` key presses to handle accessibility correctly. This led to redundant and harder-to-maintain code, including duplicated CSS rules and JS handlers.
+**Action:** Always prefer native HTML interactive elements, such as `<button>`, which inherently manage keyboard accessibility, focus states, and click events without requiring manual ARIA attributes or custom keyboard event listeners. Use simple CSS resets like `appearance: none; border: none; padding: 0;` to style them effectively while retaining their built-in accessibility features.
