@@ -332,5 +332,4 @@ class TestProjectIntegration:
 
 
 if __name__ == "__main__":
-    import json
     pytest.main([__file__, "-v", "--tb=short"])
