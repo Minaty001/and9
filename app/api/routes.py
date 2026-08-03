@@ -7,9 +7,13 @@ import logging
 import os
 import threading
 import time
+from typing import TYPE_CHECKING
 from flask import Blueprint, request, jsonify, Response
 
 from app.core.orchestrator import Orchestrator
+
+if TYPE_CHECKING:
+    from app.dependency_graph.graph import DependencyGraph
 from app.core.memory import Memory
 from app.core.goal_tracker import GoalTracker
 from app.core.events import EventSystem
