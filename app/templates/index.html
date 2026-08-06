@@ -123,11 +123,6 @@
       justify-content: center;
     }
 
-    .orb-core:focus-visible {
-      outline: 2px solid #ffaa00;
-      outline-offset: 4px;
-    }
-
     /* Concentric Orange/Gold Rings */
     .ring {
       position: absolute;
@@ -236,22 +231,19 @@
       align-items: center;
       justify-content: center;
       outline: none;
+      appearance: none;
+      border: none;
+      padding: 0;
     }
 
-
     .orb-core:focus-visible {
-      outline: 3px solid #ffaa00;
+      outline: 2px solid #ffaa00;
       outline-offset: 4px;
     }
 
     .send-btn:focus-visible {
       outline: 2px solid #ffaa00;
       outline-offset: 2px;
-    }
-
-    .orb-core:focus-visible {
-      outline: 2px solid #ffaa00;
-      outline-offset: 6px;
     }
 
     .orb-core.listening {
@@ -265,10 +257,6 @@
       animation: orbPulseIntegrate 0.2s ease-in-out infinite;
       background: radial-gradient(circle at 40% 30%, #ffffff, #ffcc00, #ff5500, #220800);
       box-shadow: 0 0 100px #fff, 0 0 200px #ffcc00, 0 0 300px #ff8800;
-    }
-    .orb-core:focus-visible {
-      outline: 2px solid #ffaa00;
-      outline-offset: 4px;
     }
     @keyframes orbPulseListen {
       0%,100% { transform: scale(1); box-shadow: 0 0 80px #ffcc00, 0 0 160px #ff8800, 0 0 240px #ff4400; }
@@ -726,9 +714,9 @@
       <div class="arc arc-thin"></div>
       <div class="arc arc-dash"></div>
       
-      <div class="orb-core" id="orbCore" role="button" tabindex="0" aria-label="Toggle voice input">
+      <button class="orb-core" id="orbCore" aria-label="Toggle voice input">
         <div class="orb-inner-glow"></div>
-      </div>
+      </button>
       
       <div class="waveform-ring">
         <div class="waveform-bars" id="waveformBars">
@@ -1265,39 +1253,9 @@
       }
 
 
-      orbCore.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          toggleVoice();
-        }
-      });
-
       orbCore.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleVoice();
-      });
-      orbCore.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleVoice();
-        }
-      });
-
-      orbCore.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleVoice();
-        }
-      });
-
-      orbCore.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleVoice();
-        }
       });
 
       sendBtn.addEventListener('click', () => {
