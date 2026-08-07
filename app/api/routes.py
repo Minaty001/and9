@@ -885,14 +885,13 @@ _depgraph = None  # type: ignore
 _depgraph_lock = threading.Lock()
 
 
-def _get_depgraph() -> "DependencyGraph":  # noqa: F821
+def _get_depgraph() -> 'DependencyGraph':  # noqa: F821
     """Lazy-init singleton DependencyGraph instance."""
     global _depgraph
     if _depgraph is None:
         with _depgraph_lock:
             if _depgraph is None:
                 from app.dependency_graph.analyzer import DependencyAnalyzer
-                from app.dependency_graph.graph import DependencyGraph
                 root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
                 analyzer = DependencyAnalyzer(root_path=root)
                 _depgraph = analyzer.analyze()
