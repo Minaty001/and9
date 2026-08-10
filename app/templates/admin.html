@@ -73,8 +73,12 @@
             display: flex; align-items: center; gap: 10px;
             padding: 10px 14px; border-radius: 6px; cursor: pointer;
             transition: background 0.2s; border: 1px solid transparent;
+            /* Reset button styles */
+            appearance: none; background: transparent; width: 100%;
+            text-align: left; color: inherit; font-family: inherit;
         }
         .file-item:hover { background: #1a1a2a; border-color: #2a2a3a; }
+        .file-item:focus-visible { outline: 2px solid #FFA500; outline-offset: -2px; background: #1a1a2a; }
         .file-item .icon { font-size: 1.1rem; width: 24px; text-align: center; }
         .file-item .name { flex: 1; font-family: monospace; font-size: 0.9rem; }
         .file-item .size { color: #555; font-size: 0.75rem; font-family: monospace; }
@@ -348,9 +352,9 @@ async function loadFiles(path) {
         let html = '';
         if (d.path !== '.') {
             const parent = parts.slice(0, -1).join('/') || '.';
-            html += `<div class="file-item" onclick="loadFiles('${parent}')">
+            html += `<button class="file-item" onclick="loadFiles('${parent}')">
                 <span class="icon">⬆️</span><span class="name">..</span><span class="size">parent</span>
-            </div>`;
+            </button>`;
         }
         d.items.forEach(item => {
             const icon = item.is_dir ? '📁' : getFileIcon(item.name);
@@ -358,11 +362,11 @@ async function loadFiles(path) {
             const click = item.is_dir
                 ? `onclick="loadFiles('${item.path}')"`
                 : `onclick="openFile('${item.path}')"`;
-            html += `<div class="file-item" ${click}>
+            html += `<button class="file-item" ${click}>
                 <span class="icon">${icon}</span>
                 <span class="name">${item.name}</span>
                 <span class="size">${size}</span>
-            </div>`;
+            </button>`;
         });
         document.getElementById('fileList').innerHTML = html || '<div class="empty-msg">Empty directory</div>';
     } catch(e) {
