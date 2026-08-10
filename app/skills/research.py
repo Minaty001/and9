@@ -33,7 +33,7 @@ def search_sources(query: str, num: int = 5) -> list:
                 {"title": item.get("title", ""), "link": item.get("link", ""), "snippet": item.get("snippet", "")}
                 for item in data.get("organic_results", [])
             ]
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"Search failed: {e}")
     return []
 
@@ -55,7 +55,7 @@ def fetch_page(url: str, max_chars: int = 4000) -> str:
         except ImportError:
             text = re.sub(r"<[^>]+>", " ", resp.text)
         return re.sub(r"\s+", " ", text).strip()[:max_chars]
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"Fetch failed: {url[:50]}... {e}")
         return ""
 
@@ -71,7 +71,7 @@ def summarize_source(content: str, query: str, source_num: int = 1) -> str:
         )
         if summary and not summary.startswith("["):
             return summary
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     return content[:400]
 

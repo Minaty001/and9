@@ -12,7 +12,7 @@ import subprocess
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.config import SERP_API_KEY, NEWS_API_KEY, IS_TERMUX, IS_WINDOWS
 from app.skills.intent_executor import IntentExecutor
@@ -40,7 +40,7 @@ def search_web(query: str) -> str:
         if results:
             return results[0].get("snippet", "") or results[0].get("title", "")
         return f"No results for '{query}'."
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"Search failed: {e}")
         return f"Search error: {e}"
 
@@ -68,14 +68,14 @@ def get_realtime_data(query: str) -> str:
             if snippets:
                 return " | ".join(snippets)
         return f"No data found for '{query}'."
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"Search error: {e}"
 
 
 # ── Time & Info ───────────────────────────────────────────────
 
 def get_time() -> str:
-    return datetime.now().strftime("%I:%M %p, %A %B %d, %Y")
+    return datetime.now(timezone.utc).strftime("%I:%M %p, %A %B %d, %Y")
 
 
 def get_time_date() -> str:
@@ -113,7 +113,7 @@ def get_news(topic: str = "") -> str:
         return "Latest News:\n" + "\n".join(
             f"{i}. {a.get('title', '')}" for i, a in enumerate(articles[:5], 1)
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"News error: {e}"
 
 
@@ -160,9 +160,9 @@ def handle_device_command(query: str) -> dict:
         is_on = bool(re.search(r"\b(on|enable|start|turn on|switch on)\b", q))
         if IS_TERMUX:
             try:
-                subprocess.run(["termux-torch", "on" if is_on else "off"], capture_output=True, timeout=5)
+                subprocess.run(["termux-torch", "on" if is_on else "off"], check=False, capture_output=True, timeout=5)
                 return {"reply": f"Flashlight turned {'on' if is_on else 'off'}.", "action": "none"}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 return {"reply": f"Failed to toggle flashlight: {e}", "action": "none"}
         return {"reply": f"Turning {'on' if is_on else 'off'} the flashlight.", "action": "torch", "payload": "on" if is_on else "off"}
 
@@ -171,9 +171,9 @@ def handle_device_command(query: str) -> dict:
         is_on = bool(re.search(r"\b(on|enable|start|turn on|switch on)\b", q))
         if IS_TERMUX:
             try:
-                subprocess.run(["termux-wifi-enable", "true" if is_on else "false"], capture_output=True, timeout=5)
+                subprocess.run(["termux-wifi-enable", "true" if is_on else "false"], check=False, capture_output=True, timeout=5)
                 return {"reply": f"Wi-Fi turned {'on' if is_on else 'off'}.", "action": "none"}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 return {"reply": f"Failed to toggle Wi-Fi: {e}", "action": "none"}
         return {"reply": "Opening Wi-Fi settings.", "action": "wifi", "payload": "open_settings"}
 
@@ -181,12 +181,12 @@ def handle_device_command(query: str) -> dict:
     if "battery" in q:
         if IS_TERMUX:
             try:
-                res = subprocess.run(["termux-battery-status"], capture_output=True, text=True, timeout=5)
+                res = subprocess.run(["termux-battery-status"], check=False, capture_output=True, text=True, timeout=5)
                 data = json.loads(res.stdout)
                 perc = data.get("percentage", "unknown")
                 status = data.get("status", "unknown")
                 return {"reply": f"Battery is at {perc}%, and is currently {status}.", "action": "none"}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 return {"reply": f"Failed to read battery status: {e}", "action": "none"}
         return {"reply": "Sorry, battery status is only available locally.", "action": "none"}
 
@@ -196,12 +196,12 @@ def handle_device_command(query: str) -> dict:
             is_up = bool(re.search(r"\b(up|increase|raise|louder)\b", q))
             try:
                 if is_up:
-                    subprocess.run(["termux-volume", "music", "max"], capture_output=True, timeout=5)
+                    subprocess.run(["termux-volume", "music", "max"], check=False, capture_output=True, timeout=5)
                     return {"reply": "Volume increased.", "action": "none"}
                 else:
-                    subprocess.run(["termux-volume", "music", "5"], capture_output=True, timeout=5)
+                    subprocess.run(["termux-volume", "music", "5"], check=False, capture_output=True, timeout=5)
                     return {"reply": "Volume decreased.", "action": "none"}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 return {"reply": f"Failed to adjust volume: {e}", "action": "none"}
         if IS_WINDOWS:
             from app.skills.pc_control import pc_volume
@@ -264,9 +264,9 @@ def handle_device_command(query: str) -> dict:
         if target:
             if IS_TERMUX:
                 try:
-                    subprocess.run(["monkey", "-p", target, "-c", "android.intent.category.LAUNCHER", "1"], capture_output=True, timeout=5)
+                    subprocess.run(["monkey", "-p", target, "-c", "android.intent.category.LAUNCHER", "1"], check=False, capture_output=True, timeout=5)
                     return {"reply": f"Opening {app_name}...", "action": "none"}
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     return {"reply": f"Failed to open {app_name}: {e}", "action": "none"}
             return {"reply": f"Opening {app_name}.", "action": "open_app", "payload": target}
         else:

@@ -81,12 +81,12 @@ def _run_powershell(script: str, timeout: int = 10) -> str:
     try:
         result = subprocess.run(
             ["powershell", "-NoProfile", "-Command", script],
-            capture_output=True, text=True, timeout=timeout,
+            capture_output=True, text=True, timeout=timeout, check=False
         )
         return result.stdout.strip()
     except subprocess.TimeoutExpired:
         return ""
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"PowerShell error: {e}")
         return ""
 
@@ -113,7 +113,7 @@ def pc_volume(level_or_updown: str | int) -> str:
         volume = ctypes.cast(interface, ctypes.POINTER(IAudioEndpointVolume))
     except ImportError:
         volume = None
-    except Exception:
+    except Exception:  # noqa: BLE001
         volume = None
 
     if volume is not None:
@@ -148,7 +148,7 @@ def pc_volume(level_or_updown: str | int) -> str:
             volume.SetMasterVolumeLevelScalar(new_scalar, None)
             pct = int(new_scalar * 100)
             return f"Volume set to {pct}%."
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning(f"pycav volume failed: {e}")
             # Fall through to PowerShell
 
@@ -266,7 +266,7 @@ def pc_brightness(level_or_updown: str | int) -> str:
 
             sbc.set_brightness(new_val)
             return f"Brightness set to {new_val}%."
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning(f"sbc brightness failed: {e}")
             # Fall through to PowerShell
 
@@ -317,9 +317,9 @@ def pc_lock() -> str:
     if err:
         return err
     try:
-        subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"], timeout=5)
+        subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"], check=False, timeout=5)
         return "Workstation locked."
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"Failed to lock: {e}"
 
 
@@ -331,11 +331,11 @@ def pc_shutdown(delay: int = 60) -> str:
     if delay < 0:
         delay = 0
     try:
-        subprocess.run(["shutdown", "/s", "/t", str(delay), "/c", "JARVIS initiated shutdown"], timeout=5)
+        subprocess.run(["shutdown", "/s", "/t", str(delay), "/c", "JARVIS initiated shutdown"], check=False, timeout=5)
         if delay > 0:
             return f"Shutdown scheduled in {delay} seconds. Run 'abort shutdown' to cancel."
         return "Shutting down now."
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"Failed to initiate shutdown: {e}"
 
 
@@ -347,11 +347,11 @@ def pc_restart(delay: int = 60) -> str:
     if delay < 0:
         delay = 0
     try:
-        subprocess.run(["shutdown", "/r", "/t", str(delay), "/c", "JARVIS initiated restart"], timeout=5)
+        subprocess.run(["shutdown", "/r", "/t", str(delay), "/c", "JARVIS initiated restart"], check=False, timeout=5)
         if delay > 0:
             return f"Restart scheduled in {delay} seconds. Run 'abort shutdown' to cancel."
         return "Restarting now."
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"Failed to initiate restart: {e}"
 
 
@@ -361,9 +361,9 @@ def pc_abort_shutdown() -> str:
     if err:
         return err
     try:
-        subprocess.run(["shutdown", "/a"], capture_output=True, timeout=5)
+        subprocess.run(["shutdown", "/a"], check=False, capture_output=True, timeout=5)
         return "Shutdown cancelled."
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"Failed to cancel shutdown: {e}"
 
 
@@ -375,7 +375,7 @@ def pc_sleep() -> str:
     try:
         _run_powershell("(Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Sleep', $false, $false))")
         return "Putting PC to sleep."
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"Failed to sleep: {e}"
 
 
@@ -387,7 +387,7 @@ def pc_hibernate() -> str:
     try:
         _run_powershell("(Add-Type -Assembly System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Hibernate', $false, $false))")
         return "Hibernating PC."
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"Failed to hibernate: {e}"
 
 
@@ -407,8 +407,8 @@ def pc_screenshot(save_path: str | None = None) -> str:
     if save_path is None:
         screenshot_dir = os.path.join(os.environ.get("TEMP", "/tmp"), "jarvis_screenshots")
         os.makedirs(screenshot_dir, exist_ok=True)
-        from datetime import datetime
-        filename = f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        from datetime import datetime, timezone
+        filename = f"screenshot_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.png"
         save_path = os.path.join(screenshot_dir, filename)
 
     pg = _lazy_import_pyautogui()
@@ -417,7 +417,7 @@ def pc_screenshot(save_path: str | None = None) -> str:
             img = pg.screenshot()
             img.save(save_path)
             return f"Screenshot saved to {save_path}"
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning(f"pyautogui screenshot failed: {e}")
 
     # PowerShell fallback
@@ -447,7 +447,7 @@ def pc_media_play_pause() -> str:
         try:
             kb.send("play/pause media")
             return "Toggled play/pause."
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
     # Fallback: PowerShell via Shell.Application
     _run_powershell("""
@@ -464,14 +464,14 @@ def pc_media_next() -> str:
         try:
             kb.send("next track")
             return "Skipped to next track."
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
     # Fallback: send media next scan code
     import ctypes
     try:
         ctypes.windll.user32.keybd_event(0xB0, 0, 0, 0)  # VK_MEDIA_NEXT_TRACK
         ctypes.windll.user32.keybd_event(0xB0, 0, 2, 0)
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     return "Next track."
 
@@ -483,13 +483,13 @@ def pc_media_prev() -> str:
         try:
             kb.send("previous track")
             return "Went to previous track."
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
     try:
         import ctypes
         ctypes.windll.user32.keybd_event(0xB1, 0, 0, 0)  # VK_MEDIA_PREV_TRACK
         ctypes.windll.user32.keybd_event(0xB1, 0, 2, 0)
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     return "Previous track."
 
@@ -550,14 +550,14 @@ def pc_open_app(app_name: str) -> str:
                 else:
                     subprocess.Popen([exec_path])
                 return f"Opening {app_name}."
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 return f"Failed to open {app_name}: {e}"
 
     # Try 'start' as fallback
     try:
         subprocess.Popen(["start", app_name], shell=True)
         return f"Opening {app_name}."
-    except Exception:
+    except Exception:  # noqa: BLE001
         return f"Could not find '{app_name}' to open."
 
 
@@ -577,7 +577,7 @@ def pc_type_text(text: str) -> str:
         try:
             pg.typewrite(text, interval=0.02)
             return f"Typed: {text[:50]}{'...' if len(text) > 50 else ''}"
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     kb = _lazy_import_keyboard()
@@ -585,7 +585,7 @@ def pc_type_text(text: str) -> str:
         try:
             kb.write(text, delay=0.02)
             return f"Typed: {text[:50]}{'...' if len(text) > 50 else ''}"
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     return "Could not type text (pyautogui/keyboard not installed)."
@@ -607,7 +607,7 @@ def pc_list_windows() -> str:
             if not open_wins:
                 return "No open windows found."
             return "Open windows:\n" + "\n".join(f"  {i}. {w}" for i, w in enumerate(open_wins[:20], 1))
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     # PowerShell fallback
@@ -636,7 +636,7 @@ def pc_activate_window(title: str) -> str:
             if windows:
                 windows[0].activate()
                 return f"Switched to {title}."
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     # PowerShell fallback

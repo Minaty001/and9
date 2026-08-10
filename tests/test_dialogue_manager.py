@@ -199,7 +199,7 @@ class TestReferenceResolution:
     def test_resolve_that(self, resolver, short_term_memory):
         """Test resolving 'that' to a previously mentioned entity."""
         short_term_memory.remember("last_referenced", "WhatsApp", ttl=120)
-        resolved, meta = resolver.resolve("Open that")
+        _, meta = resolver.resolve("Open that")
         assert meta["resolved"] is True
 
     def test_continue_resume_detection(self, resolver):
@@ -515,7 +515,7 @@ class TestEdgeCases:
 
     def test_empty_message(self, dm):
         result = dm.process("")
-        assert "kuch" in result["response"].lower() or not result["response"] == ""
+        assert "kuch" in result["response"].lower() or result["response"] != ""
 
     def test_whitespace_message(self, dm):
         result = dm.process("   ")

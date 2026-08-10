@@ -297,7 +297,7 @@ class Dog(Animal):
         assert "Animal" in names
         assert "Dog" in names
         # Dog inherits from Animal
-        dog = [c for c in visitor.classes if c["name"] == "Dog"][0]
+        dog = next(c for c in visitor.classes if c["name"] == "Dog")
         assert "Animal" in dog.get("bases", [])
 
 

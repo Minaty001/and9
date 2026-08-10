@@ -30,7 +30,7 @@ Returns:
 """
 import re
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -181,7 +181,7 @@ def _parse_relative(q: str) -> Optional[dict]:
             unit = m.group(2).lower()
             multiplier = _UNIT_SECONDS.get(unit, 1)
             total_seconds = int(num * multiplier)
-            now = datetime.now()
+            now = datetime.now(timezone.utc)
             trigger = now + timedelta(seconds=total_seconds)
             return {
                 "type": "relative",
@@ -253,7 +253,7 @@ def _parse_absolute(q: str) -> Optional[dict]:
     if _TOMORROW_KW.search(q):
         day_offset = 1
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     trigger = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
     trigger += timedelta(days=day_offset)
 

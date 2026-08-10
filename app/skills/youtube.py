@@ -95,7 +95,7 @@ def search_youtube(query: str, max_results: int = 1) -> Optional[dict]:
             "duration":  best.get("duration", ""),
             "thumbnail": (best.get("thumbnails") or [{}])[0].get("url", ""),
         }
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"YouTube search failed: {e}")
         return None
 
