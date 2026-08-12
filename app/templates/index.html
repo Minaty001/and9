@@ -214,6 +214,10 @@
 
     /* Central Glowing Orb Core */
     .orb-core {
+      appearance: none;
+      background: transparent;
+      border: none;
+      padding: 0;
       position: absolute;
       width: 24%;
       height: 24%;
@@ -726,9 +730,9 @@
       <div class="arc arc-thin"></div>
       <div class="arc arc-dash"></div>
       
-      <div class="orb-core" id="orbCore" role="button" tabindex="0" aria-label="Toggle voice input">
+      <button class="orb-core" id="orbCore" type="button" aria-label="Toggle voice input">
         <div class="orb-inner-glow"></div>
-      </div>
+      </button>
       
       <div class="waveform-ring">
         <div class="waveform-bars" id="waveformBars">
@@ -1265,39 +1269,9 @@
       }
 
 
-      orbCore.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          toggleVoice();
-        }
-      });
-
       orbCore.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleVoice();
-      });
-      orbCore.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleVoice();
-        }
-      });
-
-      orbCore.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleVoice();
-        }
-      });
-
-      orbCore.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleVoice();
-        }
       });
 
       sendBtn.addEventListener('click', () => {
