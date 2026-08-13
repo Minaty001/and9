@@ -64,16 +64,22 @@
             display: flex; gap: 4px; align-items: center; padding: 10px 0;
             font-family: monospace; font-size: 0.85rem; flex-wrap: wrap;
         }
-        .breadcrumb span { color: #666; cursor: pointer; transition: color 0.2s; }
-        .breadcrumb span:hover { color: #FFA500; }
-        .breadcrumb span.current { color: #FFA500; }
+        .breadcrumb button {
+            color: #666; cursor: pointer; transition: color 0.2s;
+            appearance: none; background: transparent; border: none; padding: 0; font-family: inherit; font-size: inherit;
+        }
+        .breadcrumb button:focus-visible { outline: 2px solid #FFA500; border-radius: 2px; }
+        .breadcrumb button:hover { color: #FFA500; }
+        .breadcrumb button.current { color: #FFA500; }
 
         .file-list { display: flex; flex-direction: column; gap: 2px; }
         .file-item {
             display: flex; align-items: center; gap: 10px;
             padding: 10px 14px; border-radius: 6px; cursor: pointer;
             transition: background 0.2s; border: 1px solid transparent;
+            appearance: none; background: transparent; color: inherit; font: inherit; text-align: left; width: 100%;
         }
+        .file-item:focus-visible { outline: 2px solid #FFA500; }
         .file-item:hover { background: #1a1a2a; border-color: #2a2a3a; }
         .file-item .icon { font-size: 1.1rem; width: 24px; text-align: center; }
         .file-item .name { flex: 1; font-family: monospace; font-size: 0.9rem; }
@@ -335,12 +341,12 @@ async function loadFiles(path) {
 
         // Breadcrumb
         const parts = d.path.split('/').filter(Boolean);
-        let bc = '<span onclick="loadFiles(\'.\')">ROOT</span>';
+        let bc = '<button type="button" onclick="loadFiles(\'.\')">ROOT</button>';
         let accum = '';
         parts.forEach((p, i) => {
             accum += (accum ? '/' : '') + p;
             const cls = i === parts.length - 1 ? 'current' : '';
-            bc += ` / <span class="${cls}" onclick="loadFiles('${accum}')">${p}</span>`;
+            bc += ` / <button type="button" class="${cls}" onclick="loadFiles('${accum}')">${p}</button>`;
         });
         document.getElementById('breadcrumb').innerHTML = bc;
 
@@ -348,9 +354,9 @@ async function loadFiles(path) {
         let html = '';
         if (d.path !== '.') {
             const parent = parts.slice(0, -1).join('/') || '.';
-            html += `<div class="file-item" onclick="loadFiles('${parent}')">
+            html += `<button type="button" class="file-item" onclick="loadFiles('${parent}')">
                 <span class="icon">⬆️</span><span class="name">..</span><span class="size">parent</span>
-            </div>`;
+            </button>`;
         }
         d.items.forEach(item => {
             const icon = item.is_dir ? '📁' : getFileIcon(item.name);
@@ -358,11 +364,11 @@ async function loadFiles(path) {
             const click = item.is_dir
                 ? `onclick="loadFiles('${item.path}')"`
                 : `onclick="openFile('${item.path}')"`;
-            html += `<div class="file-item" ${click}>
+            html += `<button type="button" class="file-item" ${click}>
                 <span class="icon">${icon}</span>
                 <span class="name">${item.name}</span>
                 <span class="size">${size}</span>
-            </div>`;
+            </button>`;
         });
         document.getElementById('fileList').innerHTML = html || '<div class="empty-msg">Empty directory</div>';
     } catch(e) {
