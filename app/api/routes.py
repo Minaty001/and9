@@ -7,6 +7,7 @@ import logging
 import os
 import threading
 import time
+from typing import Any
 from flask import Blueprint, request, jsonify, Response
 
 from app.core.orchestrator import Orchestrator
@@ -885,7 +886,7 @@ _depgraph = None  # type: ignore
 _depgraph_lock = threading.Lock()
 
 
-def _get_depgraph() -> 'DependencyGraph':
+def _get_depgraph() -> Any:
     """Lazy-init singleton DependencyGraph instance."""
     global _depgraph
     if _depgraph is None:
