@@ -81,7 +81,7 @@ def _run_powershell(script: str, timeout: int = 10) -> str:
     try:
         result = subprocess.run(
             ["powershell", "-NoProfile", "-Command", script],
-            capture_output=True, text=True, timeout=timeout,
+            capture_output=True, text=True, timeout=timeout, check=False,
         )
         return result.stdout.strip()
     except subprocess.TimeoutExpired:
@@ -317,7 +317,7 @@ def pc_lock() -> str:
     if err:
         return err
     try:
-        subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"], timeout=5)
+        subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"], timeout=5, check=False)
         return "Workstation locked."
     except Exception as e:
         return f"Failed to lock: {e}"
@@ -331,7 +331,7 @@ def pc_shutdown(delay: int = 60) -> str:
     if delay < 0:
         delay = 0
     try:
-        subprocess.run(["shutdown", "/s", "/t", str(delay), "/c", "JARVIS initiated shutdown"], timeout=5)
+        subprocess.run(["shutdown", "/s", "/t", str(delay), "/c", "JARVIS initiated shutdown"], timeout=5, check=False)
         if delay > 0:
             return f"Shutdown scheduled in {delay} seconds. Run 'abort shutdown' to cancel."
         return "Shutting down now."
@@ -347,7 +347,7 @@ def pc_restart(delay: int = 60) -> str:
     if delay < 0:
         delay = 0
     try:
-        subprocess.run(["shutdown", "/r", "/t", str(delay), "/c", "JARVIS initiated restart"], timeout=5)
+        subprocess.run(["shutdown", "/r", "/t", str(delay), "/c", "JARVIS initiated restart"], timeout=5, check=False)
         if delay > 0:
             return f"Restart scheduled in {delay} seconds. Run 'abort shutdown' to cancel."
         return "Restarting now."
@@ -361,7 +361,7 @@ def pc_abort_shutdown() -> str:
     if err:
         return err
     try:
-        subprocess.run(["shutdown", "/a"], capture_output=True, timeout=5)
+        subprocess.run(["shutdown", "/a"], capture_output=True, timeout=5, check=False)
         return "Shutdown cancelled."
     except Exception as e:
         return f"Failed to cancel shutdown: {e}"
@@ -878,8 +878,8 @@ def handle_pc_command(query: str) -> dict:
             return {"reply": pc_open_app(app_name), "action": "pc_open_app", "payload": app_name}
 
     # ── Type text ───────────────────────────────────────────────
-    if q.startswith("type ") or q.startswith("write "):
-        text = q[5:] if q.startswith("type ") else q[6:]
+    if q.startswith(("type ", "write ")):
+        text = q[5:] if q.startswith("type ") else q[6:]  # Keep index logic but group prefix check
         if text:
             return {"reply": pc_type_text(text), "action": "pc_type", "payload": text}
 

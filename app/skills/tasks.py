@@ -160,7 +160,7 @@ def handle_device_command(query: str) -> dict:
         is_on = bool(re.search(r"\b(on|enable|start|turn on|switch on)\b", q))
         if IS_TERMUX:
             try:
-                subprocess.run(["termux-torch", "on" if is_on else "off"], capture_output=True, timeout=5)
+                subprocess.run(["termux-torch", "on" if is_on else "off"], capture_output=True, timeout=5, check=False)
                 return {"reply": f"Flashlight turned {'on' if is_on else 'off'}.", "action": "none"}
             except Exception as e:
                 return {"reply": f"Failed to toggle flashlight: {e}", "action": "none"}
@@ -171,7 +171,7 @@ def handle_device_command(query: str) -> dict:
         is_on = bool(re.search(r"\b(on|enable|start|turn on|switch on)\b", q))
         if IS_TERMUX:
             try:
-                subprocess.run(["termux-wifi-enable", "true" if is_on else "false"], capture_output=True, timeout=5)
+                subprocess.run(["termux-wifi-enable", "true" if is_on else "false"], capture_output=True, timeout=5, check=False)
                 return {"reply": f"Wi-Fi turned {'on' if is_on else 'off'}.", "action": "none"}
             except Exception as e:
                 return {"reply": f"Failed to toggle Wi-Fi: {e}", "action": "none"}
@@ -181,7 +181,7 @@ def handle_device_command(query: str) -> dict:
     if "battery" in q:
         if IS_TERMUX:
             try:
-                res = subprocess.run(["termux-battery-status"], capture_output=True, text=True, timeout=5)
+                res = subprocess.run(["termux-battery-status"], capture_output=True, text=True, timeout=5, check=False)
                 data = json.loads(res.stdout)
                 perc = data.get("percentage", "unknown")
                 status = data.get("status", "unknown")
@@ -196,10 +196,10 @@ def handle_device_command(query: str) -> dict:
             is_up = bool(re.search(r"\b(up|increase|raise|louder)\b", q))
             try:
                 if is_up:
-                    subprocess.run(["termux-volume", "music", "max"], capture_output=True, timeout=5)
+                    subprocess.run(["termux-volume", "music", "max"], capture_output=True, timeout=5, check=False)
                     return {"reply": "Volume increased.", "action": "none"}
                 else:
-                    subprocess.run(["termux-volume", "music", "5"], capture_output=True, timeout=5)
+                    subprocess.run(["termux-volume", "music", "5"], capture_output=True, timeout=5, check=False)
                     return {"reply": "Volume decreased.", "action": "none"}
             except Exception as e:
                 return {"reply": f"Failed to adjust volume: {e}", "action": "none"}
@@ -264,7 +264,7 @@ def handle_device_command(query: str) -> dict:
         if target:
             if IS_TERMUX:
                 try:
-                    subprocess.run(["monkey", "-p", target, "-c", "android.intent.category.LAUNCHER", "1"], capture_output=True, timeout=5)
+                    subprocess.run(["monkey", "-p", target, "-c", "android.intent.category.LAUNCHER", "1"], capture_output=True, timeout=5, check=False)
                     return {"reply": f"Opening {app_name}...", "action": "none"}
                 except Exception as e:
                     return {"reply": f"Failed to open {app_name}: {e}", "action": "none"}
