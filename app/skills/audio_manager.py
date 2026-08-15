@@ -32,7 +32,7 @@ def get_bluetooth_audio_devices() -> list[dict[str, str]]:
     | ConvertTo-Json
     """
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: PLW1510
             ["powershell", "-NoProfile", "-Command", ps_script],
             capture_output=True, text=True, timeout=10,
         )
@@ -130,7 +130,7 @@ def set_default_bluetooth_audio() -> dict[str, Any]:
         }}
         """
         try:
-            subprocess.run(
+            subprocess.run(  # noqa: PLW1510
                 ["powershell", "-NoProfile", "-Command", ps_set_speaker],
                 capture_output=True, timeout=10,
             )
@@ -150,7 +150,7 @@ def set_default_bluetooth_audio() -> dict[str, Any]:
         }}
         """
         try:
-            subprocess.run(
+            subprocess.run(  # noqa: PLW1510
                 ["powershell", "-NoProfile", "-Command", ps_set_mic],
                 capture_output=True, timeout=10,
             )
@@ -199,7 +199,7 @@ def set_default_system_audio() -> dict[str, Any]:
             }
         }
         """
-        subprocess.run(
+        subprocess.run(  # noqa: PLW1510
             ["powershell", "-NoProfile", "-Command", ps_script],
             capture_output=True, timeout=10,
         )

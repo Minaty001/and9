@@ -293,7 +293,7 @@ class TestAgentOrchestrator:
         task_ids = orchestrator.plan(subtasks)
         results = orchestrator._execute_batch(task_ids, context=None)
         assert len(results) == 2
-        for tid, result in results.items():
+        for result in results.values():
             assert result is not None
 
     def test_validate_all_pass(self, orchestrator):

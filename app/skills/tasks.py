@@ -40,7 +40,7 @@ def search_web(query: str) -> str:
         if results:
             return results[0].get("snippet", "") or results[0].get("title", "")
         return f"No results for '{query}'."
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"Search failed: {e}")
         return f"Search error: {e}"
 
@@ -68,7 +68,7 @@ def get_realtime_data(query: str) -> str:
             if snippets:
                 return " | ".join(snippets)
         return f"No data found for '{query}'."
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"Search error: {e}"
 
 
@@ -113,7 +113,7 @@ def get_news(topic: str = "") -> str:
         return "Latest News:\n" + "\n".join(
             f"{i}. {a.get('title', '')}" for i, a in enumerate(articles[:5], 1)
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"News error: {e}"
 
 

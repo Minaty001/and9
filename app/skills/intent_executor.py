@@ -3,7 +3,7 @@ Intent executor - generates Android Intent URIs and direct commands.
 Works for both Render (cloud) fallback and on-device execution.
 """
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Any, Dict
 import urllib.parse
 
 logger = logging.getLogger(__name__)
@@ -232,4 +232,4 @@ class IntentExecutor:
     @staticmethod
     def list_apps() -> list:
         """Return all registered app names (for suggestions / help)."""
-        return sorted(set(k for k in APP_MAP.keys() if len(k) > 1))
+        return sorted({k for k in APP_MAP.keys() if len(k) > 1})

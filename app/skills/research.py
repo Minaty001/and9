@@ -33,7 +33,7 @@ def search_sources(query: str, num: int = 5) -> list:
                 {"title": item.get("title", ""), "link": item.get("link", ""), "snippet": item.get("snippet", "")}
                 for item in data.get("organic_results", [])
             ]
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"Search failed: {e}")
     return []
 
