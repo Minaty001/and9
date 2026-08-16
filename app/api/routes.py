@@ -885,7 +885,7 @@ _depgraph = None  # type: ignore
 _depgraph_lock = threading.Lock()
 
 
-def _get_depgraph():
+def _get_depgraph() -> 'DependencyGraph':
     """Lazy-init singleton DependencyGraph instance."""
     global _depgraph
     if _depgraph is None:
