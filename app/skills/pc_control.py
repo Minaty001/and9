@@ -81,7 +81,7 @@ def _run_powershell(script: str, timeout: int = 10) -> str:
     try:
         result = subprocess.run(
             ["powershell", "-NoProfile", "-Command", script],
-            capture_output=True, text=True, timeout=timeout,
+            capture_output=True, text=True, timeout=timeout, check=False,
         )
         return result.stdout.strip()
     except subprocess.TimeoutExpired:
@@ -317,7 +317,7 @@ def pc_lock() -> str:
     if err:
         return err
     try:
-        subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"], timeout=5)
+        subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"], timeout=5, check=False)
         return "Workstation locked."
     except Exception as e:
         return f"Failed to lock: {e}"
@@ -331,7 +331,7 @@ def pc_shutdown(delay: int = 60) -> str:
     if delay < 0:
         delay = 0
     try:
-        subprocess.run(["shutdown", "/s", "/t", str(delay), "/c", "JARVIS initiated shutdown"], timeout=5)
+        subprocess.run(["shutdown", "/s", "/t", str(delay), "/c", "JARVIS initiated shutdown"], timeout=5, check=False)
         if delay > 0:
             return f"Shutdown scheduled in {delay} seconds. Run 'abort shutdown' to cancel."
         return "Shutting down now."
@@ -347,7 +347,7 @@ def pc_restart(delay: int = 60) -> str:
     if delay < 0:
         delay = 0
     try:
-        subprocess.run(["shutdown", "/r", "/t", str(delay), "/c", "JARVIS initiated restart"], timeout=5)
+        subprocess.run(["shutdown", "/r", "/t", str(delay), "/c", "JARVIS initiated restart"], timeout=5, check=False)
         if delay > 0:
             return f"Restart scheduled in {delay} seconds. Run 'abort shutdown' to cancel."
         return "Restarting now."
@@ -361,7 +361,7 @@ def pc_abort_shutdown() -> str:
     if err:
         return err
     try:
-        subprocess.run(["shutdown", "/a"], capture_output=True, timeout=5)
+        subprocess.run(["shutdown", "/a"], capture_output=True, timeout=5, check=False)
         return "Shutdown cancelled."
     except Exception as e:
         return f"Failed to cancel shutdown: {e}"
@@ -432,7 +432,7 @@ def pc_screenshot(save_path: str | None = None) -> str:
     $graphics.Dispose()
     $bitmap.Dispose()
     """
-    _run_powershell(ps, timeout=15)
+    _run_powershell(ps, timeout=15, check=False)
     if os.path.exists(save_path):
         return f"Screenshot saved to {save_path}"
     return "Failed to take screenshot."
@@ -657,7 +657,7 @@ def pc_activate_window(title: str) -> str:
         Write-Output "No window matching '{safe_title}' found."
     }}
     """
-    output = _run_powershell(ps, timeout=10)
+    output = _run_powershell(ps, timeout=10, check=False)
     if output and "Switched" in output:
         return output
     return f"Could not find window matching '{title}'."
@@ -738,7 +738,7 @@ def pc_notification(title: str, message: str) -> str:
     $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
     [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("JARVIS").Show($toast)
     """
-    _run_powershell(ps, timeout=10)
+    _run_powershell(ps, timeout=10, check=False)
     return f"Notification sent: {title}"
 
 

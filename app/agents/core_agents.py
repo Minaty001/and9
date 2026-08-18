@@ -10,8 +10,6 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from app.agents.base import AgentBase, AgentResult
 
-if TYPE_CHECKING:
-    from app.agents.registry import AgentRegistry
 
 logger = logging.getLogger(__name__)
 
