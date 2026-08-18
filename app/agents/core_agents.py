@@ -6,7 +6,7 @@ handle natural conversation, and decompose complex tasks.
 """
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 from app.agents.base import AgentBase, AgentResult
 

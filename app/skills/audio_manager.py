@@ -34,7 +34,7 @@ def get_bluetooth_audio_devices() -> list[dict[str, str]]:
     try:
         result = subprocess.run(
             ["powershell", "-NoProfile", "-Command", ps_script],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True, text=True, timeout=10, check=False,
         )
         if result.returncode != 0 or not result.stdout.strip():
             return []
@@ -132,7 +132,7 @@ def set_default_bluetooth_audio() -> dict[str, Any]:
         try:
             subprocess.run(
                 ["powershell", "-NoProfile", "-Command", ps_set_speaker],
-                capture_output=True, timeout=10,
+                capture_output=True, timeout=10, check=False,
             )
             changes.append(f"speaker → {speaker_name}")
         except Exception as e:
@@ -152,7 +152,7 @@ def set_default_bluetooth_audio() -> dict[str, Any]:
         try:
             subprocess.run(
                 ["powershell", "-NoProfile", "-Command", ps_set_mic],
-                capture_output=True, timeout=10,
+                capture_output=True, timeout=10, check=False,
             )
             changes.append(f"mic → {mic_name}")
         except Exception as e:
@@ -201,7 +201,7 @@ def set_default_system_audio() -> dict[str, Any]:
         """
         subprocess.run(
             ["powershell", "-NoProfile", "-Command", ps_script],
-            capture_output=True, timeout=10,
+            capture_output=True, timeout=10, check=False,
         )
         return {"success": True, "message": "Audio reset to system default devices."}
     except Exception as e:

@@ -432,7 +432,7 @@ def pc_screenshot(save_path: str | None = None) -> str:
     $graphics.Dispose()
     $bitmap.Dispose()
     """
-    _run_powershell(ps, timeout=15, check=False)
+    _run_powershell(ps, timeout=15)
     if os.path.exists(save_path):
         return f"Screenshot saved to {save_path}"
     return "Failed to take screenshot."
@@ -657,7 +657,7 @@ def pc_activate_window(title: str) -> str:
         Write-Output "No window matching '{safe_title}' found."
     }}
     """
-    output = _run_powershell(ps, timeout=10, check=False)
+    output = _run_powershell(ps, timeout=10)
     if output and "Switched" in output:
         return output
     return f"Could not find window matching '{title}'."
@@ -738,7 +738,7 @@ def pc_notification(title: str, message: str) -> str:
     $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
     [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("JARVIS").Show($toast)
     """
-    _run_powershell(ps, timeout=10, check=False)
+    _run_powershell(ps, timeout=10)
     return f"Notification sent: {title}"
 
 
