@@ -12,8 +12,6 @@ from app.agents.base import AgentBase, AgentResult
 
 if TYPE_CHECKING:
     from app.agents.registry import AgentRegistry
-    from app.orchestrator import AgentOrchestrator
-    from app.agents.base import AgentRegistry
 
 logger = logging.getLogger(__name__)
 

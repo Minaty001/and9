@@ -35,6 +35,7 @@ from app.router.command_dictionary import (
     TIME_NOISE_WORDS,
 )
 from app.utils.time_parser import parse_time, parse_duration
+from app.android.actions.youtube_actions import _clean_media_query
 
 logger = logging.getLogger(__name__)
 
@@ -244,8 +245,6 @@ def extract_youtube(query: str) -> dict:
     return {"action": "search", "query": _clean_media_query(q)}
 
 
-# Import shared media query cleaner from the action handler module
-from app.android.actions.youtube_actions import _clean_media_query  # noqa: F811
 
 
 # ── ALARM ─────────────────────────────────────────────────────────

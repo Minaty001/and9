@@ -331,6 +331,4 @@ class TestProjectIntegration:
         assert len(dm_files) >= 5, f"Expected >=5 DM files, found {len(dm_files)}"
 
 
-if __name__ == "__main__":
-    import json
     pytest.main([__file__, "-v", "--tb=short"])
