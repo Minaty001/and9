@@ -1,0 +1,3 @@
+## 2024-08-20 - Custom Button Accessibility and Focus States
+**Learning:** Custom button components (`.btn`, `.icon-btn`, `.close-btn`) in the Jarvis webapp completely lack keyboard focus indicators (`:focus-visible`). Additionally, the 'Clear History' button relies on a `.text-btn` class that is missing from the CSS, causing it to render as a default browser button which looks broken against the dark theme.
+**Action:** Always verify that every custom interactive component class has a corresponding `:focus-visible` state. Implement a unified focus strategy using `outline` and `outline-offset` to ensure visibility against the dark background. Ensure all utility classes used in markup are actually defined in the stylesheet.
