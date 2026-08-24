@@ -279,6 +279,14 @@ body {
     border: none;
 }
 
+.btn:focus-visible,
+.icon-btn:focus-visible,
+.close-btn:focus-visible,
+.text-btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
 .primary-btn {
     background-color: var(--accent-blue);
     color: #0D1117;
