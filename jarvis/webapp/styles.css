@@ -512,6 +512,14 @@ body {
     border-color: var(--accent-blue);
 }
 
+/* Accessibility */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
 /* Permissions Modal */
 .modal-overlay {
     position: fixed;
