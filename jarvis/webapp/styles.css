@@ -26,6 +26,13 @@
     padding: 0;
 }
 
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
 body {
     background-color: var(--bg-dark);
     color: var(--text-primary);
@@ -296,6 +303,21 @@ body {
 
 .secondary-btn:hover {
     background: rgba(255, 255, 255, 0.05);
+}
+
+.text-btn {
+    appearance: none;
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.text-btn:hover {
+    color: var(--text-heading);
 }
 
 /* Camera Vision Box Styling */
