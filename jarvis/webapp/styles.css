@@ -512,6 +512,20 @@ body {
     border-color: var(--accent-blue);
 }
 
+.text-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.text-btn:hover {
+    color: var(--text-primary);
+}
+
 /* Permissions Modal */
 .modal-overlay {
     position: fixed;
@@ -586,3 +600,11 @@ body {
 .perm-title { font-size: 14px; font-weight: 600; color: var(--text-heading); }
 .perm-sub { font-size: 11px; color: var(--text-muted); }
 .perm-grant-btn { font-size: 12px; padding: 4px 12px; }
+
+/* Accessibility: Focus visible states for keyboard navigation */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
