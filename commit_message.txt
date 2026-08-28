@@ -1,0 +1,19 @@
+🎨 Palette: Add keyboard focus states & UI polish
+
+💡 What:
+- Added global `:focus-visible` states to interactive elements (buttons, inputs, selects).
+- Added an `aria-label` to the permissions modal's icon-only close button (`&times;`).
+- Added missing `.text-btn` class styles to properly style the 'Clear History' button.
+
+🎯 Why:
+- Improves accessibility by providing clear visual feedback for keyboard navigation.
+- Ensures screen readers announce the purpose of the close button.
+- Fixes the appearance of an unstyled button to match the design system.
+
+📸 Before/After:
+Before: Unstyled "Clear History" button; no visible focus states when tabbing; close button lacking screen reader context.
+After: Properly styled text button; clear blue outline on keyboard focus; close button properly labeled for AT.
+
+♿ Accessibility:
+- Improves WCAG 2.4.7 Focus Visible compliance.
+- Improves WCAG 4.1.2 Name, Role, Value compliance for the close button.

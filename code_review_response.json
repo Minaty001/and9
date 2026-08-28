@@ -1,0 +1,6 @@
+[
+  {
+    "comment_id": "unused_text_btn_class",
+    "reply": "The `.text-btn` class is actually used in `jarvis/webapp/index.html` for the 'Clear History' button (line 126). Before my change, it was completely unstyled. Adding the class styles fixes its appearance."
+  }
+]
