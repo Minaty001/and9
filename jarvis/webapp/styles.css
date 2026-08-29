@@ -88,6 +88,11 @@ body {
     font-size: 14px;
 }
 
+.provider-selector select:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
 .top-bar-right {
     display: flex;
     align-items: center;
@@ -586,3 +591,12 @@ body {
 .perm-title { font-size: 14px; font-weight: 600; color: var(--text-heading); }
 .perm-sub { font-size: 11px; color: var(--text-muted); }
 .perm-grant-btn { font-size: 12px; padding: 4px 12px; }
+
+/* Accessibility: Focus Visible Styling */
+.btn:focus-visible,
+.icon-btn:focus-visible,
+.close-btn:focus-visible,
+.text-btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
