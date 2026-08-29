@@ -123,7 +123,7 @@
             <section class="panel right-panel">
                 <div class="panel-header">
                     <h2>Conversation History</h2>
-                    <button id="clear-chat-btn" class="text-btn">Clear History</button>
+                    <button id="clear-chat-btn" class="text-btn" aria-label="Clear conversation history">Clear History</button>
                 </div>
 
                 <!-- Chat Messages Scroll Container -->
@@ -145,7 +145,7 @@
 
                 <!-- Input Action Bar -->
                 <form id="chat-form" class="input-form">
-                    <input type="text" id="chat-input" placeholder="Ask Jarvis anything or type a command..." autocomplete="off" />
+                    <input type="text" id="chat-input" aria-label="Message Jarvis" placeholder="Ask Jarvis anything or type a command..." autocomplete="off" />
                     <button type="submit" class="btn primary-btn send-btn">Send</button>
                 </form>
             </section>
@@ -156,7 +156,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>Web Permission Catalog (Android Equivalence)</h3>
-                    <button id="close-modal-btn" class="close-btn">&times;</button>
+                    <button id="close-modal-btn" class="close-btn" aria-label="Close permissions modal">&times;</button>
                 </div>
                 <div class="modal-body">
                     <p class="modal-desc">Jarvis uses modern Web APIs to replicate native Android permissions directly in your browser.</p>
