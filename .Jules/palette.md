@@ -1,0 +1,3 @@
+## 2025-01-24 - Focus States for Interactive Elements
+**Learning:** Found that interactive elements like buttons and selects across the webapp currently lack a `:focus-visible` state, meaning keyboard users cannot tell what is focused. The primary theme color is `var(--accent-blue)`.
+**Action:** Always add a robust `:focus-visible` outline utilizing `outline` and `outline-offset` to all interactive UI components, adhering to the standard memory guidelines, to ensure keyboard navigation visibility.

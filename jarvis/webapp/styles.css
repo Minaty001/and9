@@ -505,7 +505,6 @@ body {
     padding: 10px 16px;
     border-radius: var(--radius-md);
     font-size: 14px;
-    outline: none;
 }
 
 .input-form input:focus {
@@ -586,3 +585,13 @@ body {
 .perm-title { font-size: 14px; font-weight: 600; color: var(--text-heading); }
 .perm-sub { font-size: 11px; color: var(--text-muted); }
 .perm-grant-btn { font-size: 12px; padding: 4px 12px; }
+
+/* Accessibility: Focus visible states for interactive elements */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+.icon-btn:focus-visible,
+.close-btn:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
